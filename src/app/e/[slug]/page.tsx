@@ -1,5 +1,7 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { notFound } from 'next/navigation';
-import { loadEvent } from '@/lib/utils/eventLoader.server';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
 import CountdownTimer from '@/components/invitation/CountdownTimer';
@@ -12,8 +14,9 @@ import GuestBook from '@/components/invitation/GuestBook';
 import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
+import { EventWithSettings } from '@/types';
 
-function EventContent({ event, slug }: { event: any; slug: string }) {
+function EventContent({ event, slug }: { event: EventWithSettings | null; slug: string }) {
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -68,20 +71,42 @@ function EventContent({ event, slug }: { event: any; slug: string }) {
   );
 }
 
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
+export default function EventInvitationPage({ params }: { params: { slug: string } }) {
+  const [event, setEvent] = useState<EventWithSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const slug = params.slug;
 
-export default async function EventInvitationPage({ params }: PageProps) {
-  const { slug } = await params;
-  const event = await loadEvent(slug);
+  useEffect(() => {
+    async function loadEvent() {
+      try {
+        // Charger depuis le fichier JSON dans public/
+        const response = await fetch(`/data/events/${slug}.json`);
+        
+        if (!response.ok) {
+          setEvent(null);
+          setLoading(false);
+          return;
+        }
+        
+        const eventData = await response.json() as EventWithSettings;
+        setEvent(eventData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading event:', error);
+        setEvent(null);
+        setLoading(false);
+      }
+    }
 
-  if (!event) {
+    loadEvent();
+  }, [slug]);
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-xl font-bold text-gray-900">Invitation introuvable</h1>
-          <p className="text-sm text-gray-600 mt-2">L'invitation "{slug}" n'existe pas.</p>
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-600">Chargement...</p>
         </div>
       </div>
     );

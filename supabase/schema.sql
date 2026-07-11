@@ -28,26 +28,20 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Index
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_slug ON events(slug);
 
--- RLS (Row Level Security)
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 
--- Policy: users can view their own events
 CREATE POLICY "Users view own events" ON events
   FOR SELECT USING (auth.uid() = user_id OR is_published = true);
 
--- Policy: users can insert their own events
 CREATE POLICY "Users insert own events" ON events
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Policy: users can update their own events
 CREATE POLICY "Users update own events" ON events
   FOR UPDATE USING (auth.uid() = user_id);
 
--- Policy: users can delete their own events
 CREATE POLICY "Users delete own events" ON events
   FOR DELETE USING (auth.uid() = user_id);
 
@@ -125,7 +119,6 @@ CREATE POLICY "Users manage own guests" ON guests
     )
   );
 
--- Policy: public can view guest by token (for RSVP)
 CREATE POLICY "Public view guest by token" ON guests
   FOR SELECT USING (true);
 
@@ -157,6 +150,15 @@ CREATE POLICY "Users manage own rsvps" ON rsvps
       AND events.user_id = auth.uid()
     )
   );
+
+-- ============================================
+-- TABLE: admin_users (Super admins)
+-- ============================================
+CREATE TABLE IF NOT EXISTS admin_users (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'admin' CHECK (role IN ('admin', 'super_admin')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
 -- ============================================
 -- FUNCTIONS: updated_at trigger

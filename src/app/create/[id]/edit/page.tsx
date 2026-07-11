@@ -16,7 +16,7 @@ export default function EditInvitationPage() {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('textes');
 
-  // Form state
+  // Form state - étendu avec toutes les options
   const [formData, setFormData] = useState({
     // Textes
     title: '',
@@ -38,17 +38,48 @@ export default function EditInvitationPage() {
     address: '',
     lat: '',
     lng: '',
+    mapLink: '',
+    mapImage: '',
+    venueTitle: '',
     
     // Couleurs
     primaryColor: '#4caf50',
     accentColor: '#ec4899',
+    rsvpButtonColor: '#ec4899',
+    
+    // Programme
+    programSectionTitle: 'Programme de la journée',
+    program: [] as Array<{ time: string; title: string; color: string }>,
+    
+    // Infos pratiques
+    practicalSectionTitle: 'Informations pratiques',
+    practicalInfo: [] as Array<{ icon: string; title: string; text: string }>,
+    
+    // Photos
+    welcomeImage: '',
+    heroImage: '',
+    bestPhotos: [] as string[],
     
     // Code vestimentaire
-    dressCodeTitle: '',
+    dressCodeTitle: 'Tenue élégante',
+    dressImages: [] as string[],
+    
+    // Histoire
+    aboutTitle: 'Notre Histoire',
+    aboutStory1: '',
+    aboutStory2: '',
+    aboutImage: '',
     
     // Musique
     musicUrl: '',
     musicVolume: 0.35,
+    musicEnabled: true,
+    
+    // Liens & Contact
+    whatsappDonationPhone: '',
+    supportEmail: '',
+    donationLink: '',
+    metaDescription: '',
   });
 
   useEffect(() => {
@@ -74,11 +105,32 @@ export default function EditInvitationPage() {
             address: loadedEvent.address || '',
             lat: loadedEvent.lat || '',
             lng: loadedEvent.lng || '',
+            mapLink: (loadedEvent as any).mapLink || '',
+            mapImage: (loadedEvent as any).mapImage || '',
+            venueTitle: (loadedEvent as any).venueTitle || '',
             primaryColor: loadedEvent.branding?.primaryColor || '#4caf50',
             accentColor: loadedEvent.branding?.accentColor || '#ec4899',
-            dressCodeTitle: loadedEvent.dressCodeTitle || '',
+            rsvpButtonColor: loadedEvent.rsvpButtonColor || '#ec4899',
+            programSectionTitle: loadedEvent.programSectionTitle || 'Programme de la journée',
+            program: loadedEvent.program || [],
+            practicalSectionTitle: loadedEvent.practicalSectionTitle || 'Informations pratiques',
+            practicalInfo: loadedEvent.practicalInfo || [],
+            welcomeImage: loadedEvent.welcomeImage || '',
+            heroImage: loadedEvent.heroImage || '',
+            bestPhotos: loadedEvent.bestPhotos || [],
+            dressCodeTitle: loadedEvent.dressCodeTitle || 'Tenue élégante',
+            dressImages: loadedEvent.dressImages || [],
+            aboutTitle: loadedEvent.aboutTitle || 'Notre Histoire',
+            aboutStory1: loadedEvent.aboutStory1 || '',
+            aboutStory2: loadedEvent.aboutStory2 || '',
+            aboutImage: loadedEvent.aboutImage || '',
             musicUrl: loadedEvent.ambiance?.musicUrl || '',
             musicVolume: loadedEvent.ambiance?.volume || 0.35,
+            musicEnabled: loadedEvent.ambiance?.enabled !== false,
+            whatsappDonationPhone: (loadedEvent as any).whatsappDonationPhone || '',
+            supportEmail: (loadedEvent as any).supportEmail || '',
+            donationLink: loadedEvent.links?.donation || '',
+            metaDescription: loadedEvent.metaDescription || '',
           });
         }
       } catch (error) {
@@ -90,6 +142,55 @@ export default function EditInvitationPage() {
 
     loadEventData();
   }, [id]);
+
+  const addProgramStep = () => {
+    const colors = ['blue', 'green', 'pink', 'purple', 'indigo', 'amber'];
+    const newStep = {
+      time: '',
+      title: '',
+      color: colors[formData.program.length % colors.length],
+    };
+    setFormData({
+      ...formData,
+      program: [...formData.program, newStep],
+    });
+  };
+
+  const updateProgramStep = (index: number, field: string, value: string) => {
+    const updated = formData.program.map((step, i) => 
+      i === index ? { ...step, [field]: value } : step
+    );
+    setFormData({ ...formData, program: updated });
+  };
+
+  const removeProgramStep = (index: number) => {
+    setFormData({
+      ...formData,
+      program: formData.program.filter((_, i) => i !== index),
+    });
+  };
+
+  const addPracticalInfo = () => {
+    const newInfo = { icon: 'info', title: '', text: '' };
+    setFormData({
+      ...formData,
+      practicalInfo: [...formData.practicalInfo, newInfo],
+    });
+  };
+
+  const updatePracticalInfo = (index: number, field: string, value: string) => {
+    const updated = formData.practicalInfo.map((info, i) => 
+      i === index ? { ...info, [field]: value } : info
+    );
+    setFormData({ ...formData, practicalInfo: updated });
+  };
+
+  const removePracticalInfo = (index: number) => {
+    setFormData({
+      ...formData,
+      practicalInfo: formData.practicalInfo.filter((_, i) => i !== index),
+    });
+  };
 
   const handleSave = async () => {
     if (!event) return;
@@ -106,14 +207,35 @@ export default function EditInvitationPage() {
           ...event.branding,
           primaryColor: formData.primaryColor,
           accentColor: formData.accentColor,
+          welcomeImage: formData.welcomeImage,
+          heroImage: formData.heroImage,
         },
         ambiance: {
           ...event.ambiance,
           musicUrl: formData.musicUrl,
           volume: formData.musicVolume,
+          enabled: formData.musicEnabled,
         },
+        rsvpButtonColor: formData.rsvpButtonColor,
+        program: formData.program,
+        programSectionTitle: formData.programSectionTitle,
+        practicalInfo: formData.practicalInfo,
+        practicalSectionTitle: formData.practicalSectionTitle,
+        dressImages: formData.dressImages,
+        dressCodeTitle: formData.dressCodeTitle,
+        aboutTitle: formData.aboutTitle,
+        aboutStory1: formData.aboutStory1,
+        aboutStory2: formData.aboutStory2,
+        aboutImage: formData.aboutImage,
+        links: {
+          ...event.links,
+          donation: formData.donationLink,
+          whatsappDonation: formData.whatsappDonationPhone,
+          supportEmail: formData.supportEmail,
+        },
+        metaDescription: formData.metaDescription,
         updated_at: new Date().toISOString(),
-      };
+      } as any;
 
       // Sauvegarder
       const saved = await saveEvent(updatedEvent);
@@ -141,6 +263,28 @@ export default function EditInvitationPage() {
     navigator.clipboard.writeText(shareUrl);
     alert('Lien copié ! Partage-le sur WhatsApp.');
   };
+
+  // Options pour les couleurs du programme
+  const PROGRAM_COLORS = [
+    { value: 'blue', label: 'Bleu' },
+    { value: 'green', label: 'Vert' },
+    { value: 'pink', label: 'Rose' },
+    { value: 'purple', label: 'Violet' },
+    { value: 'indigo', label: 'Indigo' },
+    { value: 'amber', label: 'Ambre' },
+  ];
+
+  // Options pour les icônes des infos pratiques
+  const PRACTICAL_ICONS = [
+    { value: 'car', label: '🚗 Parking' },
+    { value: 'bed', label: '🛏️ Hébergement' },
+    { value: 'wine', label: '🍷 Boisson' },
+    { value: 'shirt', label: '👔 Tenue' },
+    { value: 'bus', label: '🚌 Transport' },
+    { value: 'gift', label: '🎁 Cadeau' },
+    { value: 'phone', label: '📞 Contact' },
+    { value: 'info', label: 'ℹ️ Info' },
+  ];
 
   if (loading) {
     return (
@@ -209,7 +353,8 @@ export default function EditInvitationPage() {
               { id: 'photos', label: '🖼️ Photos', icon: '🖼️' },
               { id: 'tenue', label: '👔 Code vestimentaire', icon: '👔' },
               { id: 'musique', label: '♫ Musique', icon: '♫' },
-              { id: 'sections', label: '⚙️ Sections', icon: '⚙️' },
+              { id: 'histoire', label: '📖 Notre histoire', icon: '📖' },
+              { id: 'liens', label: '🔗 Liens & Contact', icon: '🔗' },
             ].map((section) => (
               <button
                 key={section.id}
@@ -368,8 +513,8 @@ export default function EditInvitationPage() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Nom du lieu</label>
                     <input
                       type="text"
-                      value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
+                      value={formData.venueTitle}
+                      onChange={(e) => setFormData({...formData, venueTitle: e.target.value})}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="Ex: Sultani River"
                     />
@@ -407,6 +552,17 @@ export default function EditInvitationPage() {
                         placeholder="15.3128"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Lien Google Maps</label>
+                    <input
+                      type="text"
+                      value={formData.mapLink}
+                      onChange={(e) => setFormData({...formData, mapLink: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="https://maps.google.com/..."
+                    />
                   </div>
                 </div>
               </div>
@@ -456,6 +612,25 @@ export default function EditInvitationPage() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Couleur bouton RSVP</label>
+                    <div className="flex gap-3">
+                      <input
+                        type="color"
+                        value={formData.rsvpButtonColor}
+                        onChange={(e) => setFormData({...formData, rsvpButtonColor: e.target.value})}
+                        className="w-16 h-12 border border-gray-200 rounded-lg cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={formData.rsvpButtonColor}
+                        onChange={(e) => setFormData({...formData, rsvpButtonColor: e.target.value})}
+                        className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                        placeholder="#ec4899"
+                      />
+                    </div>
+                  </div>
+
                   {/* Preview */}
                   <div className="mt-6 p-6 rounded-xl border-2 border-dashed border-gray-200">
                     <p className="text-xs text-gray-500 mb-3">Aperçu des couleurs :</p>
@@ -474,19 +649,373 @@ export default function EditInvitationPage() {
               </div>
             )}
 
-            {/* Placeholder pour les autres sections */}
-            {!['textes', 'date', 'couleurs'].includes(activeSection) && (
+            {/* Section: Programme */}
+            {activeSection === 'programme' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Programme du jour</h2>
                 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                  <div className="text-6xl mb-4">🚧</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Section en construction</h3>
-                  <p className="text-sm text-gray-600">
-                    Cette section sera implémentée dans la prochaine phase.
-                  </p>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de la section</label>
+                    <input
+                      type="text"
+                      value={formData.programSectionTitle}
+                      onChange={(e) => setFormData({...formData, programSectionTitle: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Ex: Programme de la journée"
+                    />
+                  </div>
+
+                  {/* Liste des étapes */}
+                  <div className="space-y-3">
+                    {formData.program.map((step, index) => (
+                      <div key={index} className="flex gap-2 items-end p-3 bg-gray-50 rounded-xl">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-600 mb-1">Heure</label>
+                          <input
+                            type="text"
+                            value={step.time}
+                            onChange={(e) => updateProgramStep(index, 'time', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="19h30 - 20h00"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-600 mb-1">Intitulé</label>
+                          <input
+                            type="text"
+                            value={step.title}
+                            onChange={(e) => updateProgramStep(index, 'title', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="Ex: Arrivée des invités"
+                          />
+                        </div>
+                        <div className="w-32">
+                          <label className="block text-xs text-gray-600 mb-1">Couleur</label>
+                          <select
+                            value={step.color}
+                            onChange={(e) => updateProgramStep(index, 'color', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                          >
+                            {PROGRAM_COLORS.map(c => (
+                              <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={() => removeProgramStep(index)}
+                          className="px-3 py-2 text-red-600 hover:text-red-700 text-xs font-medium"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={addProgramStep}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition"
+                  >
+                    + Ajouter une étape
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Infos pratiques */}
+            {activeSection === 'pratique' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Infos pratiques</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de la section</label>
+                    <input
+                      type="text"
+                      value={formData.practicalSectionTitle}
+                      onChange={(e) => setFormData({...formData, practicalSectionTitle: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Ex: Informations pratiques"
+                    />
+                  </div>
+
+                  {/* Liste des infos */}
+                  <div className="space-y-3">
+                    {formData.practicalInfo.map((info, index) => (
+                      <div key={index} className="p-3 bg-gray-50 rounded-xl space-y-2">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Icône</label>
+                            <select
+                              value={info.icon}
+                              onChange={(e) => updatePracticalInfo(index, 'icon', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            >
+                              {PRACTICAL_ICONS.map(icon => (
+                                <option key={icon.value} value={icon.value}>{icon.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Titre</label>
+                            <input
+                              type="text"
+                              value={info.title}
+                              onChange={(e) => updatePracticalInfo(index, 'title', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                              placeholder="Ex: Parking"
+                            />
+                          </div>
+                          <button
+                            onClick={() => removePracticalInfo(index)}
+                            className="px-3 py-2 text-red-600 hover:text-red-700 text-xs font-medium"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Description</label>
+                          <textarea
+                            value={info.text}
+                            onChange={(e) => updatePracticalInfo(index, 'text', e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="Détails..."
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={addPracticalInfo}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition"
+                  >
+                    + Ajouter une info
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Photos */}
+            {activeSection === 'photos' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Photos</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Image d'accueil (fond)</label>
+                    <input
+                      type="text"
+                      value={formData.welcomeImage}
+                      onChange={(e) => setFormData({...formData, welcomeImage: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="URL de l'image"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Image titre (bannière)</label>
+                    <input
+                      type="text"
+                      value={formData.heroImage}
+                      onChange={(e) => setFormData({...formData, heroImage: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="URL de l'image"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Galerie photos (URLs séparées par des virgules)</label>
+                    <textarea
+                      value={formData.bestPhotos.join(', ')}
+                      onChange={(e) => setFormData({...formData, bestPhotos: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="URL1, URL2, URL3..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Tenue */}
+            {activeSection === 'tenue' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Code vestimentaire</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de la section</label>
+                    <input
+                      type="text"
+                      value={formData.dressCodeTitle}
+                      onChange={(e) => setFormData({...formData, dressCodeTitle: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Ex: Tenue élégante"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Photos tenues (URLs séparées par des virgules, max 8)</label>
+                    <textarea
+                      value={formData.dressImages.join(', ')}
+                      onChange={(e) => setFormData({...formData, dressImages: e.target.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 8)})}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="URL1, URL2..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Musique */}
+            {activeSection === 'musique' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Musique</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.musicEnabled}
+                      onChange={(e) => setFormData({...formData, musicEnabled: e.target.checked})}
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Activer la musique de fond</span>
+                  </label>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">URL musique (MP3 ou YouTube)</label>
+                    <input
+                      type="text"
+                      value={formData.musicUrl}
+                      onChange={(e) => setFormData({...formData, musicUrl: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="https://... ou https://youtu.be/..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Volume ({Math.round(formData.musicVolume * 100)}%)
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round(formData.musicVolume * 100)}
+                      onChange={(e) => setFormData({...formData, musicVolume: Number(e.target.value) / 100})}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Histoire */}
+            {activeSection === 'histoire' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Notre histoire</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Titre</label>
+                    <input
+                      type="text"
+                      value={formData.aboutTitle}
+                      onChange={(e) => setFormData({...formData, aboutTitle: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Ex: Notre Histoire"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Paragraphe 1</label>
+                    <textarea
+                      value={formData.aboutStory1}
+                      onChange={(e) => setFormData({...formData, aboutStory1: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Votre histoire..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Paragraphe 2</label>
+                    <textarea
+                      value={formData.aboutStory2}
+                      onChange={(e) => setFormData({...formData, aboutStory2: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Suite de votre histoire..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Image</label>
+                    <input
+                      type="text"
+                      value={formData.aboutImage}
+                      onChange={(e) => setFormData({...formData, aboutImage: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="URL de l'image"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section: Liens */}
+            {activeSection === 'liens' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Liens & Contact</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">WhatsApp pour dons</label>
+                    <input
+                      type="text"
+                      value={formData.whatsappDonationPhone}
+                      onChange={(e) => setFormData({...formData, whatsappDonationPhone: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Numéro avec indicatif (ex: 243XXXXXXXXX)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email support</label>
+                    <input
+                      type="email"
+                      value={formData.supportEmail}
+                      onChange={(e) => setFormData({...formData, supportEmail: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="contact@votre-événement.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Lien donation alternatif</label>
+                    <input
+                      type="text"
+                      value={formData.donationLink}
+                      onChange={(e) => setFormData({...formData, donationLink: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="https://paypal.com/..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description SEO</label>
+                    <textarea
+                      value={formData.metaDescription}
+                      onChange={(e) => setFormData({...formData, metaDescription: e.target.value})}
+                      rows={2}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="Description pour partage réseaux sociaux"
+                    />
+                  </div>
                 </div>
               </div>
             )}

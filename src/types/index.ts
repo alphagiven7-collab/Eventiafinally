@@ -149,35 +149,47 @@ export interface Ambiance {
 }
 
 // Complete Event with customization (from JSON files)
-export interface EventWithSettings extends Event {
-  identityRevision: number;
-  welcomeMessage: string;
-  gateHint: string;
-  inviteIntro: string;
-  inviteSecondary: string;
-  reserveText: string;
-  rsvpDeadlineText: string;
-  rsvpButtonColor: string;
-  metaDescription: string;
-  aboutTitle: string;
-  mainText: string;
-  programSectionTitle: string;
-  program: ProgramItem[];
-  practicalSectionTitle: string;
-  practicalInfo: PracticalInfoItem[];
-  rsvpDeadline: string;
-  branding: Branding;
-  sections: EventSections;
-  adminCode: string;
-  links: EventLinks;
-  dressCodeTitle: string;
-  ambiance: Ambiance;
-  venue?: string;
-  venueDetails?: VenueDetails;
-  address?: string;
-  coupleLeft?: string;
-  coupleRight?: string;
-}
+ export interface EventWithSettings extends Event {
+   identityRevision: number;
+   welcomeMessage: string;
+   gateHint: string;
+   inviteIntro: string;
+   inviteSecondary: string;
+   reserveText: string;
+   rsvpDeadlineText: string;
+   rsvpButtonColor: string;
+   metaDescription: string;
+   aboutTitle: string;
+   aboutStory1?: string;
+   aboutStory2?: string;
+   aboutImage?: string;
+   mainText: string;
+   programSectionTitle: string;
+   program: ProgramItem[];
+   practicalSectionTitle: string;
+   practicalInfo: PracticalInfoItem[];
+   rsvpDeadline: string;
+   branding: Branding;
+   sections: EventSections;
+   adminCode: string;
+   links: EventLinks;
+   dressCodeTitle: string;
+   dressImages?: string[];
+   ambiance: Ambiance;
+   venue?: string;
+   venueDetails?: VenueDetails;
+   mapLink?: string;
+   mapImage?: string;
+   venueTitle?: string;
+   welcomeImage?: string;
+   heroImage?: string;
+   bestPhotos?: string[];
+   whatsappDonationPhone?: string;
+   supportEmail?: string;
+   address?: string;
+   coupleLeft?: string;
+   coupleRight?: string;
+ }
 
 // ============================================
 // Supabase Database Types

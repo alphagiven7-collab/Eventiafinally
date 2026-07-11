@@ -1,0 +1,67 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { EventWithSettings } from '@/types';
+import { getCountdown } from '@/lib/utils/eventLoader';
+
+interface CountdownTimerProps {
+  targetDate: string;
+}
+
+export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
+  const [countdown, setCountdown] = useState(() => getCountdown(targetDate));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown(getCountdown(targetDate));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (countdown.isPast) {
+    return (
+      <div className="text-center py-8 animate-fade-in">
+        <p className="font-serif text-3xl text-gray-800 mb-2">
+          L'événement a eu lieu
+        </p>
+        <p className="text-gray-600 font-sans">
+          Merci d'avoir participé !
+        </p>
+      </div>
+    );
+  }
+
+  const timeUnits = [
+    { label: 'Jours', value: Number.isNaN(countdown.days) ? 0 : countdown.days },
+    { label: 'Heures', value: Number.isNaN(countdown.hours) ? 0 : countdown.hours },
+    { label: 'Minutes', value: Number.isNaN(countdown.minutes) ? 0 : countdown.minutes },
+    { label: 'Secondes', value: Number.isNaN(countdown.seconds) ? 0 : countdown.seconds },
+  ];
+
+  return (
+    <div className="animate-fade-in">
+      <p className="text-center font-serif text-xl md:text-2xl text-gray-800 mb-6">
+        Plus que...
+      </p>
+      
+      <div className="grid grid-cols-4 gap-3">
+        {timeUnits.map((unit) => (
+          <div
+            key={unit.label}
+            className="relative p-4 bg-gradient-to-br from-emerald-50 to-pink-50 rounded-2xl border border-emerald-100 shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="text-center">
+              <p className="font-serif text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-pink-600">
+                {unit.value}
+              </p>
+              <p className="text-[10px] uppercase tracking-widest text-gray-600 mt-2 font-medium">
+                {unit.label}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

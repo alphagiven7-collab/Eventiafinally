@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { EventWithSettings } from '@/types';
-import { loadEvent, saveEvent } from '@/lib/utils/eventManager';
+import { loadEvent } from '@/lib/utils/eventLoader.server';
+import { saveEvent } from '@/lib/utils/eventManager';
 
-function EditContent() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
-  
+function EditContent({ eventId }: { eventId: string }) {
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,7 +17,7 @@ function EditContent() {
   useEffect(() => {
     async function loadEventData() {
       try {
-        const loadedEvent = await loadEvent(id);
+        const loadedEvent = await loadEvent(eventId);
         if (loadedEvent) {
           setEvent(loadedEvent);
           setFormData({
@@ -77,7 +72,7 @@ function EditContent() {
     }
 
     loadEventData();
-  }, [id]);
+  }, [eventId]);
 
   const handleSave = async () => {
     if (!event) return;
@@ -140,11 +135,11 @@ function EditContent() {
   };
 
   const handlePreview = () => {
-    window.open(`/e/${id}`, '_blank');
+    window.open(`/e/${eventId}`, '_blank');
   };
 
   const handleShare = () => {
-    const shareUrl = `${window.location.origin}/e/${id}`;
+    const shareUrl = `${window.location.origin}/e/${eventId}`;
     navigator.clipboard.writeText(shareUrl);
     alert('Lien copié ! Partage-le sur WhatsApp.');
   };
@@ -962,14 +957,6 @@ function EditContent() {
   );
 }
 
-export default function EditInvitationPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
-      <EditContent />
-    </Suspense>
-  );
+export default function EditInvitationPage({ eventId }: { eventId: string }) {
+  return <EditContent eventId={eventId} />;
 }

@@ -1,8 +1,5 @@
-'use client';
-
-import { useState, useEffect, Suspense } from 'react';
-import { useParams } from 'next/navigation';
-import { EventWithSettings } from '@/types';
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { loadEvent } from '@/lib/utils/eventManager';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
@@ -17,49 +14,23 @@ import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
 
-function EventContent() {
-  const params = useParams();
-  const slug = params.slug as string;
-  
-  const [event, setEvent] = useState<EventWithSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    async function loadEventData() {
-      try {
-        const loadedEvent = await loadEvent(slug);
-        if (!loadedEvent) {
-          setError(true);
-          return;
-        }
-        setEvent(loadedEvent);
-      } catch (err) {
-        console.error('Error loading event:', err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadEventData();
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
+async function loadEventData(slug: string) {
+  try {
+    const loadedEvent = await loadEvent(slug);
+    return loadedEvent;
+  } catch (error) {
+    console.error('Error loading event:', error);
+    return null;
   }
+}
 
-  if (error || !event) {
+function EventContent({ event, slug }: { event: any; slug: string }) {
+  if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h1 className="text-xl font-bold text-gray-900">Invitation introuvable</h1>
+          <p className="text-sm text-gray-600 mt-2">L'invitation "{slug}" n'existe pas.</p>
         </div>
       </div>
     );
@@ -108,17 +79,24 @@ function EventContent() {
   );
 }
 
-export default function EventInvitationPage() {
-  return (
-    <Suspense fallback={
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function EventInvitationPage({ params }: PageProps) {
+  const { slug } = await params;
+  const event = await loadEventData(slug);
+
+  if (!event) {
+    return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-600">Chargement...</p>
+          <h1 className="text-xl font-bold text-gray-900">Invitation introuvable</h1>
+          <p className="text-sm text-gray-600 mt-2">L'invitation "{slug}" n'existe pas.</p>
         </div>
       </div>
-    }>
-      <EventContent />
-    </Suspense>
-  );
+    );
+  }
+
+  return <EventContent event={event} slug={slug} />;
 }

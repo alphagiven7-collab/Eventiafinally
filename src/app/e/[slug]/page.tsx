@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { EventWithSettings } from '@/types';
 import { loadEvent } from '@/lib/utils/eventManager';
@@ -17,7 +17,7 @@ import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
 
-export default function EventInvitationPage() {
+function EventContent() {
   const params = useParams();
   const slug = params.slug as string;
   
@@ -105,5 +105,20 @@ export default function EventInvitationPage() {
         </footer>
       </main>
     </div>
+  );
+}
+
+export default function EventInvitationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    }>
+      <EventContent />
+    </Suspense>
   );
 }

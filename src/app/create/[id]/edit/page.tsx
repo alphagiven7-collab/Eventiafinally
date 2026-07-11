@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { EventWithSettings } from '@/types';
 import { loadEvent, saveEvent } from '@/lib/utils/eventManager';
 
-export default function EditInvitationPage() {
+function EditContent() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -16,71 +16,8 @@ export default function EditInvitationPage() {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('textes');
 
-  // Form state - étendu avec toutes les options
-  const [formData, setFormData] = useState({
-    // Textes
-    title: '',
-    subtitle: '',
-    welcomeMessage: '',
-    gateHint: '',
-    inviteIntro: '',
-    inviteSecondary: '',
-    mainText: '',
-    reserveText: '',
-    rsvpDeadlineText: '',
-    
-    // Date
-    eventDate: '',
-    eventTime: '',
-    
-    // Lieu
-    location: '',
-    address: '',
-    lat: '',
-    lng: '',
-    mapLink: '',
-    mapImage: '',
-    venueTitle: '',
-    
-    // Couleurs
-    primaryColor: '#4caf50',
-    accentColor: '#ec4899',
-    rsvpButtonColor: '#ec4899',
-    
-    // Programme
-    programSectionTitle: 'Programme de la journée',
-    program: [] as Array<{ time: string; title: string; color: string }>,
-    
-    // Infos pratiques
-    practicalSectionTitle: 'Informations pratiques',
-    practicalInfo: [] as Array<{ icon: string; title: string; text: string }>,
-    
-    // Photos
-    welcomeImage: '',
-    heroImage: '',
-    bestPhotos: [] as string[],
-    
-    // Code vestimentaire
-    dressCodeTitle: 'Tenue élégante',
-    dressImages: [] as string[],
-    
-    // Histoire
-    aboutTitle: 'Notre Histoire',
-    aboutStory1: '',
-    aboutStory2: '',
-    aboutImage: '',
-    
-    // Musique
-    musicUrl: '',
-    musicVolume: 0.35,
-    musicEnabled: true,
-    
-    // Liens & Contact
-    whatsappDonationPhone: '',
-    supportEmail: '',
-    donationLink: '',
-    metaDescription: '',
-  });
+  // Form state
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     async function loadEventData() {
@@ -88,7 +25,6 @@ export default function EditInvitationPage() {
         const loadedEvent = await loadEvent(id);
         if (loadedEvent) {
           setEvent(loadedEvent);
-          // Pré-remplir le formulaire
           setFormData({
             title: loadedEvent.title || '',
             subtitle: loadedEvent.subtitle || '',
@@ -143,62 +79,12 @@ export default function EditInvitationPage() {
     loadEventData();
   }, [id]);
 
-  const addProgramStep = () => {
-    const colors = ['blue', 'green', 'pink', 'purple', 'indigo', 'amber'];
-    const newStep = {
-      time: '',
-      title: '',
-      color: colors[formData.program.length % colors.length],
-    };
-    setFormData({
-      ...formData,
-      program: [...formData.program, newStep],
-    });
-  };
-
-  const updateProgramStep = (index: number, field: string, value: string) => {
-    const updated = formData.program.map((step, i) => 
-      i === index ? { ...step, [field]: value } : step
-    );
-    setFormData({ ...formData, program: updated });
-  };
-
-  const removeProgramStep = (index: number) => {
-    setFormData({
-      ...formData,
-      program: formData.program.filter((_, i) => i !== index),
-    });
-  };
-
-  const addPracticalInfo = () => {
-    const newInfo = { icon: 'info', title: '', text: '' };
-    setFormData({
-      ...formData,
-      practicalInfo: [...formData.practicalInfo, newInfo],
-    });
-  };
-
-  const updatePracticalInfo = (index: number, field: string, value: string) => {
-    const updated = formData.practicalInfo.map((info, i) => 
-      i === index ? { ...info, [field]: value } : info
-    );
-    setFormData({ ...formData, practicalInfo: updated });
-  };
-
-  const removePracticalInfo = (index: number) => {
-    setFormData({
-      ...formData,
-      practicalInfo: formData.practicalInfo.filter((_, i) => i !== index),
-    });
-  };
-
   const handleSave = async () => {
     if (!event) return;
     
     setSaving(true);
     
     try {
-      // Mettre à jour l'événement avec les nouvelles données
       const updatedEvent: EventWithSettings = {
         ...event,
         ...formData,
@@ -237,7 +123,6 @@ export default function EditInvitationPage() {
         updated_at: new Date().toISOString(),
       } as any;
 
-      // Sauvegarder
       const saved = await saveEvent(updatedEvent);
       
       if (saved) {
@@ -668,14 +553,19 @@ export default function EditInvitationPage() {
 
                   {/* Liste des étapes */}
                   <div className="space-y-3">
-                    {formData.program.map((step, index) => (
+                    {formData.program.map((step: any, index: number) => (
                       <div key={index} className="flex gap-2 items-end p-3 bg-gray-50 rounded-xl">
                         <div className="flex-1">
                           <label className="block text-xs text-gray-600 mb-1">Heure</label>
                           <input
                             type="text"
                             value={step.time}
-                            onChange={(e) => updateProgramStep(index, 'time', e.target.value)}
+                            onChange={(e) => {
+                              const updated = formData.program.map((s: any, i: number) => 
+                                i === index ? { ...s, time: e.target.value } : s
+                              );
+                              setFormData({...formData, program: updated});
+                            }}
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="19h30 - 20h00"
                           />
@@ -685,7 +575,12 @@ export default function EditInvitationPage() {
                           <input
                             type="text"
                             value={step.title}
-                            onChange={(e) => updateProgramStep(index, 'title', e.target.value)}
+                            onChange={(e) => {
+                              const updated = formData.program.map((s: any, i: number) => 
+                                i === index ? { ...s, title: e.target.value } : s
+                              );
+                              setFormData({...formData, program: updated});
+                            }}
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="Ex: Arrivée des invités"
                           />
@@ -694,7 +589,12 @@ export default function EditInvitationPage() {
                           <label className="block text-xs text-gray-600 mb-1">Couleur</label>
                           <select
                             value={step.color}
-                            onChange={(e) => updateProgramStep(index, 'color', e.target.value)}
+                            onChange={(e) => {
+                              const updated = formData.program.map((s: any, i: number) => 
+                                i === index ? { ...s, color: e.target.value } : s
+                              );
+                              setFormData({...formData, program: updated});
+                            }}
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                           >
                             {PROGRAM_COLORS.map(c => (
@@ -703,7 +603,12 @@ export default function EditInvitationPage() {
                           </select>
                         </div>
                         <button
-                          onClick={() => removeProgramStep(index)}
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              program: formData.program.filter((_: any, i: number) => i !== index)
+                            });
+                          }}
                           className="px-3 py-2 text-red-600 hover:text-red-700 text-xs font-medium"
                         >
                           ✕
@@ -713,7 +618,13 @@ export default function EditInvitationPage() {
                   </div>
 
                   <button
-                    onClick={addProgramStep}
+                    onClick={() => {
+                      const colors = ['blue', 'green', 'pink', 'purple', 'indigo', 'amber'];
+                      setFormData({
+                        ...formData,
+                        program: [...formData.program, { time: '', title: '', color: colors[formData.program.length % colors.length] }]
+                      });
+                    }}
                     className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition"
                   >
                     + Ajouter une étape
@@ -741,14 +652,19 @@ export default function EditInvitationPage() {
 
                   {/* Liste des infos */}
                   <div className="space-y-3">
-                    {formData.practicalInfo.map((info, index) => (
+                    {formData.practicalInfo.map((info: any, index: number) => (
                       <div key={index} className="p-3 bg-gray-50 rounded-xl space-y-2">
                         <div className="flex gap-2 items-end">
                           <div className="flex-1">
                             <label className="block text-xs text-gray-600 mb-1">Icône</label>
                             <select
                               value={info.icon}
-                              onChange={(e) => updatePracticalInfo(index, 'icon', e.target.value)}
+                              onChange={(e) => {
+                                const updated = formData.practicalInfo.map((item: any, i: number) => 
+                                  i === index ? { ...item, icon: e.target.value } : item
+                                );
+                                setFormData({...formData, practicalInfo: updated});
+                              }}
                               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                             >
                               {PRACTICAL_ICONS.map(icon => (
@@ -761,13 +677,23 @@ export default function EditInvitationPage() {
                             <input
                               type="text"
                               value={info.title}
-                              onChange={(e) => updatePracticalInfo(index, 'title', e.target.value)}
+                              onChange={(e) => {
+                                const updated = formData.practicalInfo.map((item: any, i: number) => 
+                                  i === index ? { ...item, title: e.target.value } : item
+                                );
+                                setFormData({...formData, practicalInfo: updated});
+                              }}
                               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                               placeholder="Ex: Parking"
                             />
                           </div>
                           <button
-                            onClick={() => removePracticalInfo(index)}
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                practicalInfo: formData.practicalInfo.filter((_: any, i: number) => i !== index)
+                              });
+                            }}
                             className="px-3 py-2 text-red-600 hover:text-red-700 text-xs font-medium"
                           >
                             ✕
@@ -777,7 +703,12 @@ export default function EditInvitationPage() {
                           <label className="block text-xs text-gray-600 mb-1">Description</label>
                           <textarea
                             value={info.text}
-                            onChange={(e) => updatePracticalInfo(index, 'text', e.target.value)}
+                            onChange={(e) => {
+                              const updated = formData.practicalInfo.map((item: any, i: number) => 
+                                i === index ? { ...item, text: e.target.value } : item
+                              );
+                              setFormData({...formData, practicalInfo: updated});
+                            }}
                             rows={2}
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="Détails..."
@@ -788,7 +719,12 @@ export default function EditInvitationPage() {
                   </div>
 
                   <button
-                    onClick={addPracticalInfo}
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        practicalInfo: [...formData.practicalInfo, { icon: 'info', title: '', text: '' }]
+                      });
+                    }}
                     className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition"
                   >
                     + Ajouter une info
@@ -828,8 +764,8 @@ export default function EditInvitationPage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Galerie photos (URLs séparées par des virgules)</label>
                     <textarea
-                      value={formData.bestPhotos.join(', ')}
-                      onChange={(e) => setFormData({...formData, bestPhotos: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                      value={formData.bestPhotos?.join(', ') || ''}
+                      onChange={(e) => setFormData({...formData, bestPhotos: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean)})}
                       rows={3}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="URL1, URL2, URL3..."
@@ -859,8 +795,8 @@ export default function EditInvitationPage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Photos tenues (URLs séparées par des virgules, max 8)</label>
                     <textarea
-                      value={formData.dressImages.join(', ')}
-                      onChange={(e) => setFormData({...formData, dressImages: e.target.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 8)})}
+                      value={formData.dressImages?.join(', ') || ''}
+                      onChange={(e) => setFormData({...formData, dressImages: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 8)})}
                       rows={3}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="URL1, URL2..."
@@ -899,13 +835,13 @@ export default function EditInvitationPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Volume ({Math.round(formData.musicVolume * 100)}%)
+                      Volume ({Math.round((formData.musicVolume || 0.35) * 100)}%)
                     </label>
                     <input
                       type="range"
                       min="0"
                       max="100"
-                      value={Math.round(formData.musicVolume * 100)}
+                      value={Math.round((formData.musicVolume || 0.35) * 100)}
                       onChange={(e) => setFormData({...formData, musicVolume: Number(e.target.value) / 100})}
                       className="w-full"
                     />
@@ -1023,5 +959,17 @@ export default function EditInvitationPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function EditInvitationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <EditContent />
+    </Suspense>
   );
 }

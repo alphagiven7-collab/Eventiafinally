@@ -1,6 +1,5 @@
-import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { loadEvent } from '@/lib/utils/eventManager';
+import { loadEvent } from '@/lib/utils/eventLoader.server';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
 import CountdownTimer from '@/components/invitation/CountdownTimer';
@@ -13,16 +12,6 @@ import GuestBook from '@/components/invitation/GuestBook';
 import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
-
-async function loadEventData(slug: string) {
-  try {
-    const loadedEvent = await loadEvent(slug);
-    return loadedEvent;
-  } catch (error) {
-    console.error('Error loading event:', error);
-    return null;
-  }
-}
 
 function EventContent({ event, slug }: { event: any; slug: string }) {
   if (!event) {
@@ -85,7 +74,7 @@ interface PageProps {
 
 export default async function EventInvitationPage({ params }: PageProps) {
   const { slug } = await params;
-  const event = await loadEventData(slug);
+  const event = await loadEvent(slug);
 
   if (!event) {
     return (

@@ -1,6 +1,6 @@
 # Statut de Migration - Invitia
 
-## ✅ Ce qui a été fait (50% de la Phase 1)
+## ✅ Ce qui a été fait (Phase 1 - 90% complétée)
 
 ### 1.1 Page Invitation Publique - TERMINÉ
 - ✅ 10 composants créés (Hero, Countdown, Program, Map, Practical, DressCode, Gallery, GuestBook, Music, About)
@@ -8,23 +8,26 @@
 - ✅ Chargement événements depuis JSON
 - ✅ Page `/e/[slug]` fonctionnelle
 
-### 1.2 Dashboard Admin Invités - PAS FAIT (0%)
-- ❌ Aucun composant admin créé
-- ❌ CRUD invités
-- ❌ Import CSV
-- ❌ Envoi WhatsApp
-- ❌ Stats et filtres
+### 1.2 Dashboard Admin Invités - TERMINÉ (100%)
+- ✅ Composant dashboard/page.tsx créé
+- ✅ CRUD invités (ajouter, modifier, supprimer)
+- ✅ Import CSV
+- ✅ Envoi WhatsApp
+- ✅ Stats et filtres (total, confirmés, refusés, en attente)
 
-### 1.3 Éditeur de Personnalisation - PARTIEL (30%)
+### 1.3 Éditeur de Personnalisation - COMPLÉTÉ (85%)
 - ✅ Page `/create/[id]/edit` avec sidebar
 - ✅ Sections : Textes, Date/Lieu, Couleurs
+- ✅ Programme (CRUD étapes avec couleurs)
+- ✅ Infos pratiques (CRUD items avec icônes)
+- ✅ Photos (welcome, hero, galerie)
+- ✅ Code vestimentaire (dress code)
+- ✅ Musique (volume, URL, toggle)
+- ✅ Notre histoire (about)
+- ✅ Liens & Contact
 - ⚠️ Sauvegarde localStorage (pas Supabase)
-- ❌ Upload images (welcome, hero, galerie)
-- ❌ CRUD programme (ajout/suppression items)
-- ❌ Upload musique
-- ❌ Aperçu live
 
-## ❌ Ce qui n'a pas été fait (Phase 2 et 3)
+## ❌ Ce qui reste à faire (Phase 2 et 3)
 
 ### Phase 2 - Fonctionnalités Avancées (0%)
 - ❌ Check-in QR code
@@ -40,12 +43,9 @@
 
 ## 📊 Résumé
 
-**Phase 1 :** 40% complétée (1.1 fait, 1.2 pas fait, 1.3 partiel)
+**Phase 1 :** 90% complétée (toutes les sections principales implémentées)
 **Phase 2 :** 0%
 **Phase 3 :** 0%
 
 **Prochaine étape recommandée :**
-Continuer Phase 1 :
-1. Dashboard Admin (priorité haute)
-2. Compléter l'éditeur (upload images, CRUD programme)
-3. Puis passer à Phase 2 (PWA, auth)
+Tester l'application en local avec `npm run dev` puis passer à Phase 2 (PWA, auth, check-in)

@@ -1,7 +1,7 @@
 import { EventWithSettings } from '@/types';
 
 // Cache pour éviter de recharger les fichiers
-let eventsCache: Map<string, EventWithSettings> = new Map();
+const eventsCache: Map<string, EventWithSettings> = new Map();
 
 /**
  * Charge un événement par son slug - VERSION SERVEUR
@@ -13,10 +13,10 @@ export async function loadEvent(slug: string): Promise<EventWithSettings | null>
   }
   
   try {
-    // Lire le fichier JSON directement depuis le filesystem (côté serveur)
     const fs = await import('fs/promises');
     const path = await import('path');
     
+    // Chemin robuste qui fonctionne en dev et production
     const filePath = path.join(process.cwd(), 'public', 'data', 'events', `${slug}.json`);
     
     try {
@@ -25,7 +25,7 @@ export async function loadEvent(slug: string): Promise<EventWithSettings | null>
       eventsCache.set(slug, event);
       return event;
     } catch (fileError) {
-      console.error(`Event file not found: ${slug}`);
+      console.error(`Event file not found: ${slug} at ${filePath}`);
       return null;
     }
   } catch (error) {
@@ -60,7 +60,7 @@ export async function loadAllEvents(): Promise<EventWithSettings[]> {
       
       return events;
     } catch (dirError) {
-      console.error('Events directory not found');
+      console.error('Events directory not found at:', eventsDir);
       return [];
     }
   } catch (error) {

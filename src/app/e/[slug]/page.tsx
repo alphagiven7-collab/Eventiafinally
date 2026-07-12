@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
 import CountdownTimer from '@/components/invitation/CountdownTimer';
@@ -13,6 +13,7 @@ import GuestBook from '@/components/invitation/GuestBook';
 import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
+import { getEventBySlug } from '@/lib/data/events';
 import { EventWithSettings } from '@/types';
 
 function EventContent({ event, slug }: { event: EventWithSettings | null; slug: string }) {
@@ -80,91 +81,8 @@ function EventContent({ event, slug }: { event: EventWithSettings | null; slug: 
 }
 
 export default function EventInvitationPage({ params }: { params: { slug: string } }) {
-  const [event, setEvent] = useState<EventWithSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const slug = params.slug;
-
-  useEffect(() => {
-    let mounted = true;
-    const controller = new AbortController();
-    
-    async function loadEvent() {
-      try {
-        // La solution la plus fiable : fetch direct sur le dossier public
-        const response = await fetch(`/data/events/${slug}.json`, {
-          signal: controller.signal
-        });
-        
-        if (!response.ok) {
-          if (mounted) {
-            setEvent(null);
-            setLoading(false);
-          }
-          return;
-        }
-        
-        const eventData = await response.json() as EventWithSettings;
-        if (mounted) {
-          setEvent(eventData);
-          setLoading(false);
-        }
-      } catch (error: any) {
-        if (error?.name !== 'AbortError' && mounted) {
-          console.error('Error loading event:', error);
-          setEvent(null);
-          setLoading(false);
-        }
-      }
-    }
-
-    loadEvent();
-
-    // Timeout sécurité mobile
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        setLoading(false);
-      }
-    }, 5000);
-
-    return () => {
-      mounted = false;
-      controller.abort();
-      clearTimeout(timeout);
-    };
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-600 mb-2">Chargement...</p>
-          <div className="text-xs text-gray-400 animate-pulse">
-            Patientez quelques instants
-          </div>
-          {/* Redirection sécurité après 8 secondes */}
-          <div
-            id="redirect-timeout"
-            className="hidden"
-            data-url="/"
-          />
-        </div>
-        {/* Fallback JS pour forcer redirection si bloqué */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              setTimeout(function() {
-                var el = document.getElementById('redirect-timeout');
-                if (el && el.dataset.url) {
-                  window.location.href = el.dataset.url;
-                }
-              }, 8000);
-            `
-          }}
-        />
-      </div>
-    );
-  }
+  const event = getEventBySlug(slug);
 
   return <EventContent event={event} slug={slug} />;
 }

@@ -1,42 +1,52 @@
 import { EventWithSettings } from '@/types';
 
-// Cache pour éviter de recharger les fichiers
+// Cache
 const eventsCache: Map<string, EventWithSettings> = new Map();
 
 /**
- * Charge un événement par son slug - VERSION SERVEUR
+ * Charge un événement par son slug avec timeout et cache
  */
 export async function loadEvent(slug: string): Promise<EventWithSettings | null> {
-  // Vérifier le cache d'abord
   if (eventsCache.has(slug)) {
     return eventsCache.get(slug) || null;
   }
   
   try {
+    // Timeout de sécurité (3 secondes max)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    
     const fs = await import('fs/promises');
     const path = await import('path');
     
-    // Chemin robuste qui fonctionne en dev et production
-    const filePath = path.join(process.cwd(), 'public', 'data', 'events', `${slug}.json`);
+    // Essayer d'abord le dossier public/data/events/
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'data', 'events', `${slug}.json`),
+    ];
     
-    try {
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      const event = JSON.parse(fileContent) as EventWithSettings;
-      eventsCache.set(slug, event);
-      return event;
-    } catch (fileError) {
-      console.error(`Event file not found: ${slug} at ${filePath}`);
-      return null;
+    let event: EventWithSettings | null = null;
+    
+    for (const filePath of possiblePaths) {
+      try {
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        event = JSON.parse(fileContent) as EventWithSettings;
+        eventsCache.set(slug, event);
+        clearTimeout(timeout);
+        return event;
+      } catch {
+        continue;
+      }
     }
+    
+    clearTimeout(timeout);
+    console.error(`Event not found: ${slug}`);
+    return null;
   } catch (error) {
     console.error(`Error loading event ${slug}:`, error);
     return null;
   }
 }
 
-/**
- * Charge tous les événements - VERSION SERVEUR
- */
 export async function loadAllEvents(): Promise<EventWithSettings[]> {
   try {
     const fs = await import('fs/promises');
@@ -59,8 +69,8 @@ export async function loadAllEvents(): Promise<EventWithSettings[]> {
       }
       
       return events;
-    } catch (dirError) {
-      console.error('Events directory not found at:', eventsDir);
+    } catch {
+      console.error('Events directory not found');
       return [];
     }
   } catch (error) {

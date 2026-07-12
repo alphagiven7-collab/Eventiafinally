@@ -69,5 +69,37 @@ export default async function EventInvitationPage({ params }: PageProps) {
   const { slug } = await params;
   const event = await loadEvent(slug);
 
+  // Sécurité mobile : si l'événement est null, rediriger vers l'accueil après 3s
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="text-center max-w-sm">
+          <div className="text-6xl mb-4">💍</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation introuvable</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Désolé, l'invitation demandée n'existe pas.
+          </p>
+          <div className="flex flex-col gap-3">
+            <a
+              href="/"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition text-center"
+            >
+              🏠 Retour à l'accueil
+            </a>
+          </div>
+          <script dangerouslySetInnerHTML={{
+            __html: `
+              setTimeout(function() {
+                if (window.location.pathname !== '/') {
+                  window.location.href = '/';
+                }
+              }, 3000);
+            `
+          }} />
+        </div>
+      </div>
+    );
+  }
+
   return <EventContent event={event} slug={slug} />;
 }

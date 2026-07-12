@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
-import { loadEvent } from '@/lib/utils/eventLoader.server';
+'use client';
+
+import { useState, useEffect } from 'react';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
 import CountdownTimer from '@/components/invitation/CountdownTimer';
@@ -12,10 +13,27 @@ import GuestBook from '@/components/invitation/GuestBook';
 import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
+import { EventWithSettings } from '@/types';
 
-function EventContent({ event, slug }: { event: any; slug: string }) {
+function EventContent({ event, slug }: { event: EventWithSettings | null; slug: string }) {
   if (!event) {
-    notFound();
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="text-center max-w-sm">
+          <div className="text-6xl mb-4">💍</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation introuvable</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Désolé, l'invitation "{slug}" n'existe pas.
+          </p>
+          <a
+            href="/"
+            className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition"
+          >
+            🏠 Retour à l'accueil
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -61,42 +79,89 @@ function EventContent({ event, slug }: { event: any; slug: string }) {
   );
 }
 
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
+export default function EventInvitationPage({ params }: { params: { slug: string } }) {
+  const [event, setEvent] = useState<EventWithSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const slug = params.slug;
 
-export default async function EventInvitationPage({ params }: PageProps) {
-  const { slug } = await params;
-  const event = await loadEvent(slug);
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+    
+    async function loadEvent() {
+      try {
+        // La solution la plus fiable : fetch direct sur le dossier public
+        const response = await fetch(`/data/events/${slug}.json`, {
+          signal: controller.signal
+        });
+        
+        if (!response.ok) {
+          if (mounted) {
+            setEvent(null);
+            setLoading(false);
+          }
+          return;
+        }
+        
+        const eventData = await response.json() as EventWithSettings;
+        if (mounted) {
+          setEvent(eventData);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (error?.name !== 'AbortError' && mounted) {
+          console.error('Error loading event:', error);
+          setEvent(null);
+          setLoading(false);
+        }
+      }
+    }
 
-  // Sécurité mobile : si l'événement est null, rediriger vers l'accueil après 3s
-  if (!event) {
+    loadEvent();
+
+    // Timeout sécurité mobile
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
+      }
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [slug]);
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="text-center max-w-sm">
-          <div className="text-6xl mb-4">💍</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation introuvable</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Désolé, l'invitation demandée n'existe pas.
-          </p>
-          <div className="flex flex-col gap-3">
-            <a
-              href="/"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition text-center"
-            >
-              🏠 Retour à l'accueil
-            </a>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-600 mb-2">Chargement...</p>
+          <div className="text-xs text-gray-400 animate-pulse">
+            Patientez quelques instants
           </div>
-          <script dangerouslySetInnerHTML={{
+          {/* Redirection sécurité après 8 secondes */}
+          <div
+            id="redirect-timeout"
+            className="hidden"
+            data-url="/"
+          />
+        </div>
+        {/* Fallback JS pour forcer redirection si bloqué */}
+        <script
+          dangerouslySetInnerHTML={{
             __html: `
               setTimeout(function() {
-                if (window.location.pathname !== '/') {
-                  window.location.href = '/';
+                var el = document.getElementById('redirect-timeout');
+                if (el && el.dataset.url) {
+                  window.location.href = el.dataset.url;
                 }
-              }, 3000);
+              }, 8000);
             `
-          }} />
-        </div>
+          }}
+        />
       </div>
     );
   }

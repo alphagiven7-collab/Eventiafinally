@@ -56,7 +56,12 @@ export default function InvitationCard({ event, guestName }: InvitationCardProps
 
           {/* Main invitation text */}
           <div className="space-y-4 text-sm md:text-base text-gray-600 leading-relaxed">
-            <p dangerouslySetInnerHTML={{ __html: event.inviteIntro }} />
+            {event.inviteIntro && (
+              <p 
+                className="text-gray-600 font-sans"
+                dangerouslySetInnerHTML={{ __html: event.inviteIntro }} 
+              />
+            )}
             
             {event.inviteSecondary && (
               <p className="text-gray-500 italic font-serif">

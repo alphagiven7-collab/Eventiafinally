@@ -1,30 +1,25 @@
 import { NextResponse } from 'next/server';
 import { EventWithSettings } from '@/types';
+import { getEventBySlug } from '@/data/events';
 
 export async function GET(
   request: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = params;
+    const { slug } = await params;
     
-    // Charger depuis le filesystem
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    // Utiliser la fonction getEventBySlug (plus compatible avec Next.js 16)
+    const event = getEventBySlug(slug);
     
-    const filePath = path.join(process.cwd(), 'public', 'data', 'events', `${slug}.json`);
-    
-    try {
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      const event = JSON.parse(fileContent) as EventWithSettings;
-      
-      return NextResponse.json(event);
-    } catch (fileError) {
+    if (!event) {
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
       );
     }
+    
+    return NextResponse.json(event);
   } catch (error) {
     console.error('Error in /api/events/[slug]:', error);
     return NextResponse.json(

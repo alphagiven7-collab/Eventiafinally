@@ -10,6 +10,7 @@ import {
   Bell, Share2, Calendar, Camera, Smile, Gift,
   AlertCircle, Search, XCircle, Phone, Clock3
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function HomePage() {
   return (
@@ -36,6 +37,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button className="relative p-2">
               <Bell className="w-5 h-5 text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />

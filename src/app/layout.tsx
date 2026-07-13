@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Cormorant_Garamond, Inter } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -50,8 +51,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={`h-full ${playfair.variable} ${cormorant.variable} ${inter.variable}`}>
-      <body className="h-full antialiased flex flex-col bg-gray-50">
-        {children}
+      <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
+        <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </NextThemesProvider>
       </body>
     </html>
   );

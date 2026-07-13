@@ -1,0 +1,45 @@
+{
+  "common": {
+    "appName": "Invitia",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close"
+  },
+  "home": {
+    "heroTitle": "Stressing about your event?",
+    "heroSubtitle": "We built Invitia for you. No more chasing guests, paying a designer, or wasting hours organizing.",
+    "ctaCreate": "Create my free invitation",
+    "ctaDemo": "View demo"
+  },
+  "invitation": {
+    "welcomeTitle": "You are cordially invited",
+    "rsvpButton": "Confirm attendance",
+    "countdown": {
+      "days": "days",
+      "hours": "hours",
+      "minutes": "minutes",
+      "seconds": "seconds"
+    }
+  },
+  "admin": {
+    "guests": "Guests",
+    "total": "Total",
+    "confirmed": "Confirmed",
+    "declined": "Declined",
+    "pending": "Pending",
+    "importCsv": "Import CSV",
+    "sendWhatsApp": "Send WhatsApp",
+    "exportCsv": "Export CSV"
+  },
+  "checkin": {
+    "title": "Guest Check-in",
+    "scan": "Scan QR",
+    "manual": "Manual entry",
+    "validate": "Validate attendance",
+    "success": "Attendance recorded",
+    "error": "Invalid token"
+  }
+}

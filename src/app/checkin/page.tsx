@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Guest } from '@/types';
-import { QrCode, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import QRScanner from '@/components/checkin/QRScanner';
 
 export default function CheckInPage() {
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
@@ -62,31 +63,23 @@ export default function CheckInPage() {
     setTokenInput('');
   };
 
-  const startScanning = () => {
-    setScanning(true);
-    // Pour le MVP, on simule un scan après 2 secondes
-    setTimeout(() => {
-      setScanning(false);
-      // Simuler un token scanné
-      const mockToken = 'scan-' + Math.random().toString(36).substring(2, 8);
-      
-      setCheckinResult({ 
-        success: true, 
-        guest: {
-          id: 'scan-' + Date.now(),
-          event_id: 'yanick-keren',
-          name: 'Invité scanné',
-          status: 'confirmed',
-          adults: 1,
-          children: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          token: mockToken
-        }
+  const handleScanSuccess = (decodedText: string) => {
+    setScanning(false);
+    const guest = verifyToken(decodedText);
+    if (guest) {
+      const checkins = JSON.parse(localStorage.getItem('checkins_yanick-keren') || '[]');
+      checkins.push({
+        guest_id: guest.id,
+        guest_name: guest.name,
+        checked_at: new Date().toISOString()
       });
-      
-      setTimeout(() => setCheckinResult(null), 3000);
-    }, 2000);
+      localStorage.setItem('checkins_yanick-keren', JSON.stringify(checkins));
+      updateGuestStatus(guest.id, 'confirmed');
+      setCheckinResult({ success: true, guest });
+    } else {
+      setCheckinResult({ success: false, message: 'Token invalide ou invité non trouvé' });
+    }
+    setTimeout(() => setCheckinResult(null), 3000);
   };
 
   return (
@@ -127,24 +120,20 @@ export default function CheckInPage() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="relative aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
               {scanning ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-48 h-48 border-2 border-emerald-500 rounded-lg relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 animate-pulse" />
-                  </div>
-                </div>
+                <QRScanner onScanSuccess={handleScanSuccess} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <QrCode className="w-24 h-24 text-gray-300" />
+                  <p className="text-sm text-gray-500">Appuyez sur démarrer pour scanner</p>
                 </div>
               )}
             </div>
             
             <button
-              onClick={startScanning}
+              onClick={() => setScanning(true)}
               disabled={scanning}
               className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition disabled:opacity-50"
             >
-              {scanning ? 'Recherche...' : 'Démarrer le scan'}
+              {scanning ? 'Scan en cours...' : 'Démarrer le scan'}
             </button>
           </div>
         )}

@@ -2,22 +2,26 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -27,8 +31,22 @@ export default function RegisterPage() {
         },
       });
 
-      if (error) setError(error.message);
-      else alert('Inscription réussie ! Vérifiez votre email.');
+      if (error) {
+        setError(error.message);
+      } else if (data?.user?.identities?.length === 0) {
+        // L'utilisateur existe déjà (même email)
+        setError('Cet email est déjà utilisé. Connectez-vous plutôt.');
+      } else {
+        setSuccess('Compte créé avec succès !');
+        // Connecter directement l'utilisateur après inscription
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (!signInError) {
+          router.push('/dashboard');
+        }
+      }
     } catch {
       setError('Erreur d\'inscription');
     } finally {
@@ -50,6 +68,11 @@ export default function RegisterPage() {
           {error && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+              <p className="text-sm text-emerald-600 dark:text-emerald-400">{success}</p>
             </div>
           )}
 

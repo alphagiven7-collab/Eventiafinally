@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function CreateContent() {
   const [events, setEvents] = useState<any[]>([]);
@@ -66,12 +67,14 @@ function CreateContent() {
 
 export default function CreatePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
-      <CreateContent />
-    </Suspense>
+    <ProtectedRoute>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
+        <CreateContent />
+      </Suspense>
+    </ProtectedRoute>
   );
 }

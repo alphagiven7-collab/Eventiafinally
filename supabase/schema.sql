@@ -152,13 +152,49 @@ CREATE POLICY "Users manage own rsvps" ON rsvps
   );
 
 -- ============================================
--- TABLE: admin_users (Super admins)
+-- TABLE: users (Profils utilisateurs)
+-- ============================================
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  phone TEXT,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'organizer' CHECK (role IN ('organizer', 'super_admin', 'staff')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users view own profile" ON users
+  FOR SELECT USING (id = auth.uid());
+
+CREATE POLICY "Users update own profile" ON users
+  FOR UPDATE USING (id = auth.uid());
+
+CREATE POLICY "Super admin manage all users" ON users
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM users WHERE role = 'super_admin')
+  );
+
+-- ============================================
+-- TABLE: admin_users (Super admins - legacy)
 -- ============================================
 CREATE TABLE IF NOT EXISTS admin_users (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role TEXT DEFAULT 'admin' CHECK (role IN ('admin', 'super_admin')),
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Super admin manage admin_users" ON admin_users
+  FOR ALL USING (
+    auth.uid() IN (SELECT id FROM users WHERE role = 'super_admin')
+  );
 
 -- ============================================
 -- FUNCTIONS: updated_at trigger
@@ -181,4 +217,7 @@ CREATE TRIGGER update_guests_updated_at BEFORE UPDATE ON guests
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_rsvps_updated_at BEFORE UPDATE ON rsvps
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

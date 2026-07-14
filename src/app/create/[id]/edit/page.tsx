@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { EventWithSettings, ProgramItem, PracticalInfoItem } from '@/types';
 import { getEventBySlug } from '@/data/events';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 const PROGRAM_COLORS = [
   { value: 'blue', label: 'Bleu' },
@@ -25,6 +26,14 @@ const PRACTICAL_ICONS = [
 ];
 
 export default function EditInvitationPage({ params }: { params: { id: string } }) {
+  return (
+    <ProtectedRoute>
+      <EditInvitationContent params={params} />
+    </ProtectedRoute>
+  );
+}
+
+function EditInvitationContent({ params }: { params: { id: string } }) {
   const eventId = params.id;
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);

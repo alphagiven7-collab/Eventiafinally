@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui';
+import { useAuth } from '@/components/auth/SupabaseProvider';
 import { 
   Sparkles, ArrowRight, CheckCircle, Heart, PartyPopper, 
   Users, MessageCircle, Star, Play, ChevronRight, 
@@ -13,6 +14,8 @@ import {
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* Status Bar (iOS style) */}
@@ -38,13 +41,28 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <button className="relative p-2">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
-              A
-            </div>
+            {loading ? null : user ? (
+              /* Connecté → lien vers dashboard */
+              <Link href="/dashboard">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm cursor-pointer hover:opacity-80">
+                  {(user.user_metadata?.name || 'U').charAt(0).toUpperCase()}
+                </div>
+              </Link>
+            ) : (
+              /* Pas connecté → boutons clairs Connexion / Inscription */
+              <div className="flex items-center gap-2">
+                <Link href="/auth/login">
+                  <button className="px-4 py-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                    Connexion
+                  </button>
+                </Link>
+                <Link href="/auth/register">
+                  <button className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+                    S'inscrire
+                  </button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>

@@ -4,8 +4,17 @@ import { useState } from 'react';
 import { Guest } from '@/types';
 import { Check, X } from 'lucide-react';
 import QRScanner from '@/components/checkin/QRScanner';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export default function CheckInPage() {
+  return (
+    <ProtectedRoute>
+      <CheckInContent />
+    </ProtectedRoute>
+  );
+}
+
+function CheckInContent() {
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
   const [tokenInput, setTokenInput] = useState('');
   const [checkinResult, setCheckinResult] = useState<{

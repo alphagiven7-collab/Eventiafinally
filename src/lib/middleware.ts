@@ -26,30 +26,40 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-
-  // Routes protégées nécessitant authentification
-  const protectedRoutes = ['/create', '/dashboard', '/admin', '/checkin'];
   const pathname = request.nextUrl.pathname;
 
-  // Vérifier si la route est protégée
-  const isProtected = protectedRoutes.some(route => 
-    pathname.startsWith(route) || pathname.startsWith('/create/')
-  );
-
-  // Routes de login/register déjà accessibles sans auth
+  // Routes publiques
   if (pathname.startsWith('/auth/')) {
-    // Si déjà connecté, rediriger vers dashboard
     if (user) {
-      const dashboardUrl = new URL('/dashboard', request.url);
-      return NextResponse.redirect(dashboardUrl);
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return response;
   }
+
+  // Routes protégées nécessitant authentification
+  const protectedRoutes = ['/create', '/dashboard', '/admin', '/checkin', '/profile'];
+  const isProtected = protectedRoutes.some(route => 
+    pathname.startsWith(route) || pathname.startsWith('/create/')
+  );
 
   if (isProtected && !user) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Vérification spéciale pour /admin (super_admin uniquement)
+  if (pathname.startsWith('/admin') && user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    if (profile?.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    return response;
   }
 
   return response;

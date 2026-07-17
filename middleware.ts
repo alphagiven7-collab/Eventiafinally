@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
 
-  // Routes publiques
+  // Routes publiques (login, register)
   if (pathname.startsWith('/auth/')) {
     if (user) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -36,10 +36,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Routes protégées nécessitant authentification
-  const protectedRoutes = ['/create', '/dashboard', '/admin', '/checkin', '/profile'];
+  // Routes protégées
+  const protectedRoutes = ['/profile', '/dashboard', '/admin', '/checkin', '/create'];
   const isProtected = protectedRoutes.some(route => 
-    pathname.startsWith(route) || pathname.startsWith('/create/')
+    pathname === route || pathname.startsWith(route + '/')
   );
 
   if (isProtected && !user) {
@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Vérification spéciale pour /admin (super_admin uniquement)
+  // Vérification admin pour /admin
   if (pathname.startsWith('/admin') && user) {
     const { data: profile } = await supabase
       .from('users')
@@ -66,5 +66,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|data|assets).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|data|assets|e/).*)'],
 };

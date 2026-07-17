@@ -1,39 +1,15 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
+export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const sessionCookie = request.cookies.get('invitia_session')?.value;
 
   // Routes publiques (login, register)
   if (pathname.startsWith('/auth/')) {
-    if (user) {
+    if (sessionCookie) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
-    return response;
+    return NextResponse.next();
   }
 
   // Routes protégées
@@ -42,29 +18,15 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(route + '/')
   );
 
-  if (isProtected && !user) {
+  if (isProtected && !sessionCookie) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Vérification admin pour /admin
-  if (pathname.startsWith('/admin') && user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-    
-    if (profile?.role !== 'super_admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return response;
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|data|assets|e/).*)'],
+  matcher: ['/profile/:path*', '/dashboard/:path*', '/admin/:path*', '/checkin/:path*', '/create/:path*', '/auth/:path*'],
 };

@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/SupabaseProvider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import GuestManager from '@/components/admin/GuestManager';
 import { EventWithSettings } from '@/types';
 
+function isSupabaseReady(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  return url.startsWith('http') && !url.includes('votre_url') && key.length > 10;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
-  const supabase = createClient();
 
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventWithSettings | null>(null);
@@ -21,7 +25,17 @@ export default function DashboardPage() {
   // Charger les événements de l'utilisateur connecté UNIQUEMENT
   const loadEvents = useCallback(async () => {
     if (!user?.id) return;
+    
+    if (!isSupabaseReady()) {
+      // Mode démo : pas d'événements
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+    
     try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -35,11 +49,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, supabase]);
-
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+  }, [user?.id]);
 
   // Créer un événement à partir d'un template
   const handleCreateEvent = async () => {
@@ -53,9 +63,10 @@ export default function DashboardPage() {
       .replace(/^-+|-+$/g, '')
       + '-' + Date.now().toString(36).slice(-4);
 
-    const { error } = await supabase
-      .from('events')
-      .insert({
+    if (!isSupabaseReady()) {
+      // Mode démo : créer un événement local
+      const newEvent = {
+        id: 'event_' + Date.now(),
         slug,
         title: newEventName.trim(),
         user_id: user.id,
@@ -63,16 +74,39 @@ export default function DashboardPage() {
         is_published: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      console.error('Erreur création:', error);
+      } as any;
+      setEvents(prev => [newEvent, ...prev]);
+      setNewEventName('');
+      setShowCreateInput(false);
       return;
     }
 
-    setNewEventName('');
-    setShowCreateInput(false);
-    loadEvents();
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('events')
+        .insert({
+          slug,
+          title: newEventName.trim(),
+          user_id: user.id,
+          event_type: 'wedding',
+          is_published: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Erreur création:', error);
+        return;
+      }
+
+      setNewEventName('');
+      setShowCreateInput(false);
+      loadEvents();
+    } catch (error) {
+      console.error('Erreur création:', error);
+    }
   };
 
   return (

@@ -24,40 +24,49 @@ interface SupabaseProviderProps {
   children: React.ReactNode;
 }
 
+// Helper cookie pour le middleware
+function setSessionCookie(value: string) {
+  document.cookie = `invitia_session=${value}; path=/; max-age=86400; SameSite=Lax`;
+}
+function clearSessionCookie() {
+  document.cookie = 'invitia_session=; path=/; max-age=0';
+}
+
+// Vérifie si Supabase est configuré
+function isSupabaseReady(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  return url.startsWith('http') && !url.includes('votre_url') && key.length > 10;
+}
+
 export default function SupabaseProvider({ children }: SupabaseProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-
-    // Récupérer la session initiale
-    supabase.auth.getSession().then(({ data: { session }, error: getSessionError }) => {
-      if (getSessionError) {
-        console.error('Auth error:', getSessionError.message);
-        setError(getSessionError.message);
+    async function init() {
+      if (isSupabaseReady()) {
+        // Mode Supabase réel
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+          setSessionCookie(session.user.id);
+        }
       } else {
-        setSession(session);
-        setUser(session?.user ?? null);
+        // Mode démo : restaurer depuis localStorage
+        const stored = localStorage.getItem('invitia_user');
+        if (stored) {
+          const userData = JSON.parse(stored);
+          setUser(userData);
+          setSessionCookie(userData.id);
+        }
       }
       setLoading(false);
-    }).catch((err) => {
-      console.error('Auth catch:', err);
-      setError('Erreur de connexion au serveur');
-      setLoading(false);
-    });
-
-    // Écouter les changements d'auth
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    init();
   }, []);
 
   if (loading) {
@@ -71,27 +80,81 @@ export default function SupabaseProvider({ children }: SupabaseProviderProps) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-2xl shadow max-w-md">
-          <div className="text-4xl mb-4">🔌</div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Erreur de connexion</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            Vérifiez les variables d'environnement Supabase dans Vercel
-          </p>
-          <p className="text-xs text-gray-400 mt-2">
-            NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthContext.Provider value={{ user, session, loading }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+// Fonctions exportées pour login/signup/logout
+export function useAuthActions() {
+  const { user, session } = useAuth();
+
+  const login = async (email: string, password: string) => {
+    if (isSupabaseReady()) {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (data.user) {
+        setSessionCookie(data.user.id);
+        localStorage.setItem('invitia_user', JSON.stringify(data.user));
+      }
+      return { error: null };
+    }
+    // Mode démo
+    const users = JSON.parse(localStorage.getItem('invitia_users') || '[]');
+    const found = users.find((u: any) => u.email === email && u.password === password);
+    if (!found) return { error: 'Email ou mot de passe incorrect' };
+    const { password: _, ...userData } = found;
+    localStorage.setItem('invitia_user', JSON.stringify(userData));
+    setSessionCookie(userData.id);
+    window.location.href = '/dashboard';
+    return { error: null };
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    if (isSupabaseReady()) {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { full_name: name } },
+      });
+      if (error) return { error: error.message };
+      if (data.user) {
+        setSessionCookie(data.user.id);
+        localStorage.setItem('invitia_user', JSON.stringify(data.user));
+      }
+      return { error: null };
+    }
+    // Mode démo
+    const users = JSON.parse(localStorage.getItem('invitia_users') || '[]');
+    if (users.find((u: any) => u.email === email)) {
+      return { error: 'Cet email est déjà utilisé' };
+    }
+    const newUser = {
+      id: 'user_' + Date.now(),
+      email,
+      user_metadata: { name },
+      created_at: new Date().toISOString(),
+    };
+    users.push({ ...newUser, password });
+    localStorage.setItem('invitia_users', JSON.stringify(users));
+    localStorage.setItem('invitia_user', JSON.stringify(newUser));
+    setSessionCookie(newUser.id);
+    window.location.href = '/dashboard';
+    return { error: null };
+  };
+
+  const logout = async () => {
+    if (isSupabaseReady()) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    }
+    localStorage.removeItem('invitia_user');
+    clearSessionCookie();
+    window.location.href = '/';
+  };
+
+  return { login, signup, logout, user, session };
 }

@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/providers/theme-provider';
 import SupabaseProvider from '@/providers/auth-provider';
 import { I18nProvider } from '@/providers/i18n-provider';
 import { ToastProvider } from '@/components/ui/toast';
+import { PWAActivator } from '@/providers/pwa-activator';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -59,6 +60,7 @@ export default function RootLayout({
           <ToastProvider>
             <SupabaseProvider>
               <ThemeProvider>
+                <PWAActivator />
                 {children}
               </ThemeProvider>
             </SupabaseProvider>

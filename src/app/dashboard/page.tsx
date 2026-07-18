@@ -6,12 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import GuestManager from '@/components/admin/GuestManager';
 import { EventWithSettings } from '@/types';
-
-function isSupabaseReady(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  return url.startsWith('http') && !url.includes('votre_url') && key.length > 10;
-}
+import { isSupabaseReady } from '@/config/supabase';
 
 export default function DashboardPage() {
   const { user } = useAuth();

@@ -6,7 +6,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow, isAfter, isBefore, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { STORAGE_KEYS } from './constants';
+import { STORAGE_KEYS } from '@/constants';
 
 // === TAILWIND ===
 export function cn(...inputs: ClassValue[]) {

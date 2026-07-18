@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/components/auth/SupabaseProvider';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfilePage() {
   return (

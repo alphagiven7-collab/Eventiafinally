@@ -191,51 +191,6 @@ export interface EventWithSettings extends Event {
     coupleRight?: string;
   }
 
-// ============================================
-// Supabase Database Types
-// ============================================
-
-export interface DatabaseEvent {
-  id: string;
-  user_id?: string;
-  slug: string;
-  title: string;
-  event_type: EventType;
-  event_date: string;
-  event_time?: string;
-  location: string;
-  location_lat?: string;
-  location_lng?: string;
-  description?: string;
-  cover_image?: string;
-  template_id?: string;
-  is_published: boolean;
-  view_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DatabaseGuest {
-  id: string;
-  event_id: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  status: GuestStatus;
-  message?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DatabaseRSVP {
-  id: string;
-  guest_id: string;
-  event_id: string;
-  status: RsvpStatus;
-  note?: string;
-  responded_at: string;
-}
-
 export interface EventSettings {
   id: string;
   event_id: string;

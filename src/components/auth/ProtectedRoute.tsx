@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/SupabaseProvider';
+import { useAuth } from '@/providers/auth-provider';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

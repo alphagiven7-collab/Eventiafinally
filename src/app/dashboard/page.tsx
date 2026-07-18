@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/components/auth/SupabaseProvider';
+import { useAuth } from '@/providers/auth-provider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import GuestManager from '@/components/admin/GuestManager';

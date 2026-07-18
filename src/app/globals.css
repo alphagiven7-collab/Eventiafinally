@@ -2,10 +2,21 @@
 
 @layer base {
   :root {
-    --color-primary: #4caf50;
-    --color-accent: #ec4899;
+    --color-primary: #1A1A2E;
+    --color-gold: #D4AF37;
+    --color-cream: #F8F4F0;
+    --color-sand: #E8E0D8;
+    --color-earth: #6B5B4F;
     --font-serif: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  .dark {
+    --color-primary: #E8E0D8;
+    --color-gold: #F4D03F;
+    --color-cream: #0A0A0F;
+    --color-sand: #14141F;
+    --color-earth: #A89880;
   }
 
   body {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuthActions } from '@/components/auth/SupabaseProvider';
+import { useAuthActions } from '@/providers/auth-provider';
 import Link from 'next/link';
 
 export default function RegisterPage() {

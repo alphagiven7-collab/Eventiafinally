@@ -3,6 +3,8 @@ import { Playfair_Display, Cormorant_Garamond, Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/providers/theme-provider';
 import SupabaseProvider from '@/providers/auth-provider';
+import { I18nProvider } from '@/providers/i18n-provider';
+import { ToastProvider } from '@/components/ui/toast';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -53,11 +55,15 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`h-full ${playfair.variable} ${cormorant.variable} ${inter.variable}`}>
       <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
-        <SupabaseProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </SupabaseProvider>
+        <I18nProvider>
+          <ToastProvider>
+            <SupabaseProvider>
+              <ThemeProvider>
+                {children}
+              </ThemeProvider>
+            </SupabaseProvider>
+          </ToastProvider>
+        </I18nProvider>
       </body>
     </html>
   );

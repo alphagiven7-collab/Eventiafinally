@@ -1,4 +1,6 @@
 import { EventWithSettings } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+import { isSupabaseReady } from '@/config/supabase';
 
 // Données des événements - importées directement sans fetch
 // Garantit le fonctionnement sur iPhone 7 et Safari iOS
@@ -239,6 +241,26 @@ export const events: Record<string, EventWithSettings> = {
 
 export function getEventBySlug(slug: string): EventWithSettings | null {
   return events[slug] || null;
+}
+
+export async function fetchEventBySlug(slug: string): Promise<EventWithSettings | null> {
+  if (!isSupabaseReady()) {
+    return events[slug] || null;
+  }
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('events')
+      .select('*, event_settings(*)')
+      .eq('slug', slug)
+      .single();
+
+    if (error || !data) return events[slug] || null;
+    return data as EventWithSettings;
+  } catch {
+    return events[slug] || null;
+  }
 }
 
 export function getAllEvents(): EventWithSettings[] {

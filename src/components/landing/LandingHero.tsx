@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslation } from 'react-i18next';
 import { Sparkles, CheckCircle, PartyPopper, XCircle, Phone, Search } from 'lucide-react';
 
 export default function LandingHero() {
+  const { t } = useTranslation();
+
   return (
     <>
       {/* Hero Section */}

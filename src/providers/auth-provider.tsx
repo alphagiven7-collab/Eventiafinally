@@ -110,7 +110,15 @@ export function useAuthActions() {
 
   const login = async (email: string, password: string) => {
     if (!isSupabaseReady()) {
-      return { error: 'Supabase non configuré. Créez un fichier .env.local.' };
+      // Mode démo localStorage
+      const users = JSON.parse(localStorage.getItem('invitia_demo_users') || '[]');
+      const found = users.find((u: any) => u.email === email && u.password === password);
+      if (!found) return { error: 'Email ou mot de passe incorrect (mode démo).' };
+      const { password: _, ...userData } = found;
+      localStorage.setItem('invitia_demo_user', JSON.stringify(userData));
+      setSessionCookie(userData.id);
+      window.location.href = '/dashboard';
+      return { error: null };
     }
 
     const supabase = createClient();
@@ -124,7 +132,23 @@ export function useAuthActions() {
 
   const signup = async (email: string, password: string, name: string) => {
     if (!isSupabaseReady()) {
-      return { error: 'Supabase non configuré. Créez un fichier .env.local.' };
+      // Mode démo localStorage
+      const users = JSON.parse(localStorage.getItem('invitia_demo_users') || '[]');
+      if (users.find((u: any) => u.email === email)) {
+        return { error: 'Cet email est déjà utilisé (mode démo).' };
+      }
+      const newUser = {
+        id: 'demo_' + Date.now(),
+        email,
+        user_metadata: { name },
+        created_at: new Date().toISOString(),
+      };
+      users.push({ ...newUser, password });
+      localStorage.setItem('invitia_demo_users', JSON.stringify(users));
+      localStorage.setItem('invitia_demo_user', JSON.stringify(newUser));
+      setSessionCookie(newUser.id);
+      window.location.href = '/dashboard';
+      return { error: null };
     }
 
     const supabase = createClient();
@@ -145,6 +169,7 @@ export function useAuthActions() {
       const supabase = createClient();
       await supabase.auth.signOut();
     }
+    localStorage.removeItem('invitia_demo_user');
     clearSessionCookie();
     window.location.href = '/';
   };

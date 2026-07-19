@@ -41,23 +41,48 @@ function EditEventContent() {
 
   useEffect(() => {
     async function loadEvent() {
-      const evt = getEventBySlug(id);
-      if (!evt && isSupabaseReady()) {
+      // 1. Chercher dans Supabase d'abord
+      if (isSupabaseReady()) {
         try {
           const supabase = createClient();
-          const { data } = await supabase
+          const { data: evtData } = await supabase
             .from('events')
-            .select('*, event_settings(*)')
+            .select('*')
             .eq('slug', id)
             .single();
-          if (data) {
-            populateFields(data as EventWithSettings);
+
+          if (evtData) {
+            // Charger aussi event_settings
+            const { data: settingsData } = await supabase
+              .from('event_settings')
+              .select('*')
+              .eq('event_id', evtData.id)
+              .maybeSingle();
+
+            const merged = { ...evtData, ...(settingsData || {}) } as EventWithSettings;
+            populateFields(merged);
             return;
           }
         } catch { /* fallback */ }
       }
 
-      if (evt) populateFields(evt);
+      // 2. Chercher dans les événements hardcodés
+      const evt = getEventBySlug(id);
+      if (evt) {
+        populateFields(evt);
+        return;
+      }
+
+      // 3. Chercher dans localStorage
+      if (typeof window !== 'undefined') {
+        const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
+        const found = stored.find((e: any) => e.slug === id);
+        if (found) {
+          populateFields(found as EventWithSettings);
+          return;
+        }
+      }
+
       setLoading(false);
     }
 

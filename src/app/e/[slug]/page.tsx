@@ -15,12 +15,47 @@ import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
+import { isSupabaseReady } from '@/config/supabase';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const event = getEventBySlug(slug);
+  const [event, setEvent] = useState<EventWithSettings | null>(null);
+  const [loading, setLoading] = useState(true);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);
+
+  // Charger l'événement depuis toutes les sources
+  useEffect(() => {
+    async function loadEvent() {
+      // 1. Chercher dans Supabase
+      if (isSupabaseReady()) {
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const { data } = await supabase
+            .from('events')
+            .select('*')
+            .eq('slug', slug)
+            .single();
+          if (data) { setEvent(data as EventWithSettings); setLoading(false); return; }
+        } catch { /* fallback */ }
+      }
+
+      // 2. Chercher dans les événements hardcodés
+      const hardcoded = getEventBySlug(slug);
+      if (hardcoded) { setEvent(hardcoded); setLoading(false); return; }
+
+      // 3. Chercher dans localStorage
+      if (typeof window !== 'undefined') {
+        const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
+        const found = stored.find((e: any) => e.slug === slug);
+        if (found) { setEvent(found as EventWithSettings); setLoading(false); return; }
+      }
+
+      setLoading(false);
+    }
+    loadEvent();
+  }, [slug]);
 
   // Récupérer le nom depuis l'URL (paramètre guest)
   useEffect(() => {
@@ -54,6 +89,14 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     }
     setIsGateOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!event) {
     return (

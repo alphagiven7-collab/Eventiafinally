@@ -1,8 +1,10 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 
 export default function LandingCategories() {
+  const { t } = useTranslation();
   return (
     <section className="mx-4 mt-6">
       <div className="flex items-center justify-between mb-4">

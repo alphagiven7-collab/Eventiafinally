@@ -17,15 +17,38 @@ export default function DashboardPage() {
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newEventName, setNewEventName] = useState('');
 
-  // Charger les événements (mode démo : localStorage)
-  const loadEvents = useCallback(() => {
-    // Mode démo : charger depuis localStorage
+  // Charger les événements
+  const loadEvents = useCallback(async () => {
+    if (!user?.id) return;
+
+    // Mode Supabase réel
+    if (isSupabaseReady()) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setEvents(data as EventWithSettings[]);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Erreur chargement Supabase:', err);
+      }
+    }
+
+    // Fallback localStorage
     if (typeof window !== 'undefined') {
       const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
       setEvents(stored);
     }
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   // Chargement initial
   useEffect(() => {
@@ -34,7 +57,7 @@ export default function DashboardPage() {
   }, [authLoading, loadEvents]);
 
   // Créer un événement
-  const handleCreateEvent = () => {
+  const handleCreateEvent = async () => {
     if (!newEventName.trim()) return;
 
     const slug = newEventName
@@ -45,6 +68,32 @@ export default function DashboardPage() {
       .replace(/^-+|-+$/g, '')
       + '-' + Date.now().toString(36).slice(-4);
 
+    // Mode Supabase réel
+    if (isSupabaseReady() && user?.id) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { error } = await supabase.from('events').insert({
+          slug,
+          title: newEventName.trim(),
+          user_id: user.id,
+          event_type: 'wedding',
+          is_published: false,
+        });
+
+        if (!error) {
+          setNewEventName('');
+          setShowCreateInput(false);
+          loadEvents();
+          return;
+        }
+        console.error('Erreur création Supabase:', error);
+      } catch (err) {
+        console.error('Erreur création Supabase:', err);
+      }
+    }
+
+    // Fallback localStorage
     const newEvent: EventWithSettings = {
       id: 'event_' + Date.now(),
       slug,
@@ -133,7 +182,6 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* Cartes des événements */}
               <div className="grid gap-4">
                 {events.map((event) => (
                   <div
@@ -151,9 +199,7 @@ export default function DashboardPage() {
                         <p className="text-sm text-gray-600 mt-1">
                           {event.event_date
                             ? new Date(event.event_date).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
+                                day: 'numeric', month: 'long', year: 'numeric',
                               })
                             : 'Date non définie'}
                         </p>
@@ -161,35 +207,26 @@ export default function DashboardPage() {
                           <p className="text-sm text-gray-500 mt-1">{event.location}</p>
                         )}
                         <div className="flex gap-2 mt-2">
-                          <a
-                            href={`/e/${event.slug}`}
-                            target="_blank"
+                          <a href={`/e/${event.slug}`} target="_blank"
                             className="text-xs text-emerald-600 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                            onClick={(e) => e.stopPropagation()}>
                             🔗 Voir l'invitation
                           </a>
-                          <a
-                            href={`/create/${event.slug}/edit`}
+                          <a href={`/create/${event.slug}/edit`}
                             className="text-xs text-blue-600 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                            onClick={(e) => e.stopPropagation()}>
                             ✏️ Personnaliser
                           </a>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          event.is_published
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                          event.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                         }`}>
                           {event.is_published ? 'Publié' : 'Brouillon'}
                         </span>
                       </div>
                     </div>
-
-                    {/* Détails de l'événement sélectionné */}
                     {selectedEvent?.id === event.id && (
                       <div className="mt-6 pt-6 border-t border-gray-100">
                         <GuestManager event={event} />

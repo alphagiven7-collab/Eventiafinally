@@ -9,7 +9,7 @@ import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventWithSettings | null>(null);
@@ -17,38 +17,25 @@ export default function DashboardPage() {
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newEventName, setNewEventName] = useState('');
 
-  // Charger les événements de l'utilisateur connecté UNIQUEMENT
-  const loadEvents = useCallback(async () => {
-    if (!user?.id) return;
-    
-    if (!isSupabaseReady()) {
-      // Mode démo : pas d'événements
-      setEvents([]);
-      setLoading(false);
-      return;
+  // Charger les événements (mode démo : localStorage)
+  const loadEvents = useCallback(() => {
+    // Mode démo : charger depuis localStorage
+    if (typeof window !== 'undefined') {
+      const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
+      setEvents(stored);
     }
-    
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+    setLoading(false);
+  }, []);
 
-      if (error) throw error;
-      setEvents(data || []);
-    } catch (error) {
-      console.error('Erreur chargement événements:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+  // Chargement initial
+  useEffect(() => {
+    if (authLoading) return;
+    loadEvents();
+  }, [authLoading, loadEvents]);
 
-  // Créer un événement à partir d'un template
-  const handleCreateEvent = async () => {
-    if (!newEventName.trim() || !user?.id) return;
+  // Créer un événement
+  const handleCreateEvent = () => {
+    if (!newEventName.trim()) return;
 
     const slug = newEventName
       .toLowerCase()
@@ -58,50 +45,25 @@ export default function DashboardPage() {
       .replace(/^-+|-+$/g, '')
       + '-' + Date.now().toString(36).slice(-4);
 
-    if (!isSupabaseReady()) {
-      // Mode démo : créer un événement local
-      const newEvent = {
-        id: 'event_' + Date.now(),
-        slug,
-        title: newEventName.trim(),
-        user_id: user.id,
-        event_type: 'wedding',
-        is_published: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as any;
-      setEvents(prev => [newEvent, ...prev]);
-      setNewEventName('');
-      setShowCreateInput(false);
-      return;
-    }
+    const newEvent: EventWithSettings = {
+      id: 'event_' + Date.now(),
+      slug,
+      title: newEventName.trim(),
+      user_id: user?.id || 'demo_user',
+      type: 'wedding',
+      event_date: new Date().toISOString(),
+      location: '',
+      is_published: false,
+      view_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('events')
-        .insert({
-          slug,
-          title: newEventName.trim(),
-          user_id: user.id,
-          event_type: 'wedding',
-          is_published: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) {
-        console.error('Erreur création:', error);
-        return;
-      }
-
-      setNewEventName('');
-      setShowCreateInput(false);
-      loadEvents();
-    } catch (error) {
-      console.error('Erreur création:', error);
-    }
+    const updated = [newEvent, ...events];
+    setEvents(updated);
+    localStorage.setItem('invitia_demo_events', JSON.stringify(updated));
+    setNewEventName('');
+    setShowCreateInput(false);
   };
 
   return (

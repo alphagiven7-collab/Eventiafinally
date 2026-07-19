@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import InvitationHero from '@/components/invitation/InvitationHero';
 import InvitationCard from '@/components/invitation/InvitationCard';
 import CountdownTimer from '@/components/invitation/CountdownTimer';
@@ -16,8 +16,8 @@ import RsvpButton from '@/components/invitation/RsvpButton';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 
-export default function EventInvitationPage({ params }: { params: { slug: string } }) {
-  const slug = params.slug;
+export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const event = getEventBySlug(slug);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);

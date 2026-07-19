@@ -51,33 +51,52 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     async function init() {
       if (!isSupabaseReady()) {
+        // Mode démo localStorage
+        const stored = localStorage.getItem('invitia_demo_user');
+        if (stored) {
+          const userData = JSON.parse(stored);
+          // Simuler un objet User pour que useAuth() retourne quelque chose
+          setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
+          setSessionCookie(userData.id);
+        }
         setLoading(false);
         return;
       }
 
-      const supabase = createClient();
+      try {
+        const supabase = createClient();
 
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      if (currentSession?.user) {
-        setSession(currentSession);
-        setUser(currentSession.user);
-        setSessionCookie(currentSession.user.id);
-      }
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (_event, authSession) => {
-          setUser(authSession?.user ?? null);
-          setSession(authSession);
-          if (authSession?.user) {
-            setSessionCookie(authSession.user.id);
-          } else {
-            clearSessionCookie();
-          }
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          setSessionCookie(currentSession.user.id);
         }
-      );
 
-      setLoading(false);
-      return () => subscription.unsubscribe();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (_event, authSession) => {
+            setUser(authSession?.user ?? null);
+            setSession(authSession);
+            if (authSession?.user) {
+              setSessionCookie(authSession.user.id);
+            } else {
+              clearSessionCookie();
+            }
+          }
+        );
+
+        setLoading(false);
+        return () => subscription.unsubscribe();
+      } catch {
+        // Fallback : mode démo si Supabase injoignable
+        const stored = localStorage.getItem('invitia_demo_user');
+        if (stored) {
+          const userData = JSON.parse(stored);
+          setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
+          setSessionCookie(userData.id);
+        }
+        setLoading(false);
+      }
     }
 
     init();

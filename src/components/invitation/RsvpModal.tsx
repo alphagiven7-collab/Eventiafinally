@@ -32,21 +32,39 @@ export default function RsvpModal({ event, isOpen, onClose }: RsvpModalProps) {
     setIsSubmitting(true);
     setError('');
 
-    const result = await submitRsvp(event.id, {
-      guestName: formData.name.trim(),
-      guests: formData.adults + formData.children,
-      message: formData.message || undefined,
-    });
+    // Essayer Supabase d'abord, puis fallback localStorage
+    let success = false;
+    try {
+      const result = await submitRsvp(event.id, {
+        guestName: formData.name.trim(),
+        guests: formData.adults + formData.children,
+        message: formData.message || undefined,
+      });
+      success = result.success;
+      if (!success) setError(result.error || 'Erreur lors de l\'envoi');
+    } catch {
+      // Fallback localStorage
+      const rsvps = JSON.parse(localStorage.getItem('invitia_rsvps') || '[]');
+      rsvps.push({
+        eventId: event.id,
+        slug: event.slug,
+        name: formData.name.trim(),
+        adults: formData.adults,
+        children: formData.children,
+        message: formData.message,
+        date: new Date().toISOString(),
+      });
+      localStorage.setItem('invitia_rsvps', JSON.stringify(rsvps));
+      success = true;
+    }
 
-    if (result.success) {
+    if (success) {
       setSubmitted(true);
       setTimeout(() => {
         onClose();
         setSubmitted(false);
         setFormData({ name: '', email: '', phone: '', adults: 1, children: 0, message: '', confirmed: true });
       }, 2000);
-    } else {
-      setError(result.error || 'Erreur lors de l\'envoi');
     }
     setIsSubmitting(false);
   };

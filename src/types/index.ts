@@ -3,7 +3,7 @@
 // ============================================
 
 // Event Types
-export type EventType = 'wedding' | 'birthday' | 'baby_shower' | 'graduation' | 'corporate';
+export type EventType = 'wedding' | 'birthday' | 'baby_shower' | 'graduation' | 'corporate' | 'engagement' | 'religious';
 
 // Event Status
 export type EventStatus = 'draft' | 'pending_review' | 'approved' | 'live' | 'archived';

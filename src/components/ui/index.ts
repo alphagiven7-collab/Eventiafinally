@@ -9,3 +9,4 @@ export { Select, type SelectProps } from './select';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, type CardProps } from './card';
 export { Modal } from './modal';
 export { ToastProvider, useToast } from './toast';
+export { default as PhotoUploader } from './photo-uploader';

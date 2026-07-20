@@ -16,6 +16,7 @@ import RsvpButton from '@/components/invitation/RsvpButton';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
+import { getEventIdentity } from '@/constants/design-language';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -24,37 +25,72 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
   const [guestName, setGuestName] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);
 
-  // Charger l'événement depuis toutes les sources
+  // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
+    let cancelled = false;
+
     async function loadEvent() {
-      // 1. Chercher dans Supabase
-      if (isSupabaseReady()) {
-        try {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          const { data } = await supabase
-            .from('events')
-            .select('*')
-            .eq('slug', slug)
-            .single();
-          if (data) { setEvent(data as EventWithSettings); setLoading(false); return; }
-        } catch { /* fallback */ }
+      // 1. TOUJOURS charger d'abord les événements locaux (instantané, pas d'appel réseau)
+      const hardcoded = getEventBySlug(slug);
+      if (hardcoded && !cancelled) {
+        setEvent(hardcoded);
+        setLoading(false);
       }
 
-      // 2. Chercher dans les événements hardcodés
-      const hardcoded = getEventBySlug(slug);
-      if (hardcoded) { setEvent(hardcoded); setLoading(false); return; }
-
-      // 3. Chercher dans localStorage
       if (typeof window !== 'undefined') {
         const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
         const found = stored.find((e: any) => e.slug === slug);
-        if (found) { setEvent(found as EventWithSettings); setLoading(false); return; }
+        if (found && !cancelled) {
+          setEvent(found as EventWithSettings);
+          setLoading(false);
+        }
       }
 
-      setLoading(false);
+      // Si on a déjà trouvé l'événement localement, on arrête ici
+      if (!cancelled && (hardcoded || (typeof window !== 'undefined' && JSON.parse(localStorage.getItem('invitia_demo_events') || '[]').find((e: any) => e.slug === slug)))) {
+        setLoading(false);
+        return;
+      }
+
+      // 2. Essayer Supabase en arrière-plan avec timeout (ne bloque jamais l'UI)
+      if (isSupabaseReady()) {
+        try {
+          const timeoutPromise = new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          );
+
+          const fetchPromise = (async () => {
+            const { createClient } = await import('@/lib/supabase/client');
+            const supabase = createClient();
+            const { data } = await supabase
+              .from('events')
+              .select('*')
+              .eq('slug', slug)
+              .single();
+            return data;
+          })();
+
+          const data = await Promise.race([fetchPromise, timeoutPromise]);
+          if (data && !cancelled) {
+            setEvent(data as EventWithSettings);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Supabase injoignable ou timeout — on continue
+        }
+      }
+
+      // 3. Rien trouvé
+      if (!cancelled) {
+        setLoading(false);
+      }
     }
+
+    setLoading(true);
     loadEvent();
+
+    return () => { cancelled = true; };
   }, [slug]);
 
   // Récupérer le nom depuis l'URL (paramètre guest)
@@ -186,47 +222,50 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
       )}
 
       {/* Contenu principal - affiché après l'ouverture */}
-      {isGateOpen && (
-        <div className="min-h-screen bg-gray-50">
-          <InvitationHero event={event} guestName={guestName || undefined} />
-          
-          <main className="max-w-md mx-auto">
-            <InvitationCard event={event} guestName={guestName || undefined} />
+      {isGateOpen && (() => {
+        const identity = getEventIdentity(event.type);
+        return (
+          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: identity.palette.background }}>
+            <InvitationHero event={event} guestName={guestName || undefined} />
+            
+            <main className="max-w-md mx-auto relative z-10">
+              <InvitationCard event={event} guestName={guestName || undefined} />
 
-            {event.sections?.countdown && (
-              <section className="px-4 mt-8">
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                  <CountdownTimer targetDate={event.event_date} />
+              {event.sections?.countdown && (
+                <section className="px-4 mt-6">
+                  <div className="rounded-3xl shadow-sm border p-6" style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}>
+                    <CountdownTimer targetDate={event.event_date} />
+                  </div>
+                </section>
+              )}
+
+              <PhotoGallery event={event} />
+              <ProgramTimeline event={event} />
+              <RsvpButton event={event} />
+              <VenueMap event={event} />
+              <PracticalInfo event={event} />
+              <DressCode event={event} />
+              <GuestBook event={event} />
+              <MusicPlayer event={event} />
+              <About event={event} />
+
+              <footer className="px-4 mt-8 mb-20 text-center">
+                <div className="rounded-2xl shadow-sm border p-6" style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}>
+                  <p className="text-xs mb-2" style={{ color: identity.palette.textMuted }}>Besoin d'aide ?</p>
+                  {event.links?.supportEmail && (
+                    <a href={`mailto:${event.links.supportEmail}`} className="text-sm font-medium hover:underline" style={{ color: identity.palette.primary }}>
+                      {event.links.supportEmail}
+                    </a>
+                  )}
+                  <p className="text-[10px] mt-4" style={{ color: identity.palette.textMuted }}>
+                    © {new Date().getFullYear()} {event.title}
+                  </p>
                 </div>
-              </section>
-            )}
-
-            <ProgramTimeline event={event} />
-            <RsvpButton event={event} />
-            <VenueMap event={event} />
-            <PracticalInfo event={event} />
-            <DressCode event={event} />
-            <PhotoGallery event={event} />
-            <GuestBook event={event} />
-            <MusicPlayer event={event} />
-            <About event={event} />
-
-            <footer className="px-4 mt-8 mb-20 text-center">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <p className="text-xs text-gray-500 mb-2">Besoin d'aide ?</p>
-                {event.links?.supportEmail && (
-                  <a href={`mailto:${event.links.supportEmail}`} className="text-sm text-emerald-600 font-medium hover:underline">
-                    {event.links.supportEmail}
-                  </a>
-                )}
-                <p className="text-[10px] text-gray-400 mt-4">
-                  © {new Date().getFullYear()} {event.title}
-                </p>
-              </div>
-            </footer>
-          </main>
-        </div>
-      )}
+              </footer>
+            </main>
+          </div>
+        );
+      })()}
     </>
   );
 }

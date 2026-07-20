@@ -1,179 +1,296 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuth } from '@/providers/auth-provider';
-import { PartyPopper, Clock3 } from 'lucide-react';
+import { PartyPopper, Sparkles, Heart, Camera } from 'lucide-react';
 import { ThemeToggle } from '@/providers/theme-toggle';
-import LandingHero from '@/components/landing/LandingHero';
-import LandingStats from '@/components/landing/LandingStats';
-import LandingHowItWorks from '@/components/landing/LandingHowItWorks';
-import LandingCategories from '@/components/landing/LandingCategories';
-import LandingFeatures from '@/components/landing/LandingFeatures';
-import LandingTemplates from '@/components/landing/LandingTemplates';
-import LandingTestimonials from '@/components/landing/LandingTestimonials';
-import LandingPricing from '@/components/landing/LandingPricing';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Status Bar (iOS style) */}
-      <div className="h-10 bg-green-900 flex items-center justify-between px-6 text-white text-[11px] font-semibold">
-        <span>9:41</span>
-        <div className="flex items-center gap-1.5">
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-        </div>
-      </div>
-
-      {/* App Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-sm">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950 font-sans transition-colors">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 transition-colors">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-lg flex items-center justify-center shadow-sm">
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <h1 className="text-base font-bold text-gray-900">Invitia</h1>
-              <p className="text-[10px] text-gray-500 -mt-0.5">Finies les invitations galères</p>
-            </div>
+            <span className="font-serif text-lg font-semibold text-gray-900 dark:text-white">Invitia</span>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            {loading ? null : user ? (
+            {!loading && user ? (
               <Link href="/dashboard">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm cursor-pointer hover:opacity-80">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
                   {(user.user_metadata?.name || 'U').charAt(0).toUpperCase()}
                 </div>
               </Link>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/auth/login">
-                  <button className="px-4 py-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-                    Connexion
-                  </button>
-                </Link>
-                <Link href="/auth/register">
-                  <button className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-                    S'inscrire
-                  </button>
-                </Link>
-              </div>
+              <Link
+                href="/auth/login"
+                className="px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              >
+                Connexion
+              </Link>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto pb-20">
-        <LandingHero />
-        <LandingStats />
-        <LandingHowItWorks />
-        <LandingCategories />
-        <LandingFeatures />
-        <LandingTemplates />
-        <LandingTestimonials />
+      {/* Hero Section */}
+      <section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-5 pt-16 pb-20 overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-amber-100 dark:bg-amber-900/20 rounded-full blur-3xl opacity-40" />
+          <div className="absolute bottom-20 right-10 w-80 h-80 bg-rose-100 dark:bg-rose-900/20 rounded-full blur-3xl opacity-30" />
+        </div>
 
-        {/* Urgency / Why Now */}
-        <section className="mx-4 mt-6">
-          <div className="p-4 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl shadow-md">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock3 className="w-5 h-5 text-white" />
-              <h4 className="text-sm font-bold text-white">Pourquoi commencer maintenant ?</h4>
-            </div>
-            <p className="text-[11px] text-white/80 mb-3">
-              Plus tu attends, plus tu stresses. Une invitation Invitia se crée en 3 minutes.
-              <strong className="text-white"> Demain il sera trop tard pour être tranquille.</strong>
-            </p>
-            <Link href="/create">
-              <button className="w-full bg-white text-amber-700 text-sm font-bold py-2.5 rounded-xl shadow-md hover:bg-amber-50 transition-all active:scale-[0.98]">
-                Je crée mon invitation maintenant
-              </button>
+        <div className="relative z-10 max-w-xl">
+          {/* Emoji + Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full border border-gray-200 dark:border-gray-700 shadow-sm mb-6 animate-fade-in">
+            <span className="text-sm">💌</span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">La plus belle façon d'inviter</span>
+          </div>
+
+          {/* Main headline */}
+          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-light text-gray-900 dark:text-white mb-5 leading-tight tracking-tight animate-reveal-up-slow">
+            Vos invitations ne seront<br />
+            <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-rose-400 bg-clip-text text-transparent">
+              plus jamais les mêmes
+            </span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed animate-fade-in stagger-2">
+            Offrez à vos invités une expérience inoubliable dès l'ouverture de votre lien.
+            Une invitation qui fait dire <em>&ldquo;Wow&rdquo;</em> avant même de lire la date.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up stagger-3">
+            <Link
+              href="/create"
+              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl text-base font-semibold shadow-xl shadow-amber-200/50 dark:shadow-amber-900/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <PartyPopper className="w-5 h-5" />
+              Créer mon invitation
+            </Link>
+            <Link
+              href="/e/yanick-keren"
+              className="w-full sm:w-auto px-6 py-4 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl text-sm font-medium hover:border-amber-300 dark:hover:border-amber-700 hover:text-amber-600 dark:hover:text-amber-400 transition flex items-center justify-center gap-2"
+            >
+              <Heart className="w-4 h-4" />
+              Voir un exemple
             </Link>
           </div>
-        </section>
 
-        <LandingPricing />
-
-        {/* Final CTA */}
-        <section className="mx-4 mt-6 mb-6">
-          <div className="relative h-52 rounded-3xl overflow-hidden shadow-lg">
-            <Image 
-              src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80"
-              alt="Célébration"
-              fill
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/90 via-emerald-800/50 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-5">
-              <h3 className="text-lg font-bold text-white mb-1">
-                Ton événement mérite<br />
-                <span className="text-emerald-300">mieux qu'un stress</span>
-              </h3>
-              <p className="text-xs text-white/70 mb-3 leading-relaxed">
-                Rejoins les 2 000+ organisateurs en RDC qui ont simplifié leur vie.<br />
-                <strong className="text-white">C'est gratuit, 3 minutes, tu vas voir.</strong>
-              </p>
-              <Link href="/create">
-                <button className="inline-flex items-center gap-1.5 bg-white text-emerald-700 text-sm font-bold py-2.5 px-5 rounded-xl shadow-md hover:bg-gray-50 transition-all active:scale-[0.98]">
-                  <PartyPopper className="w-4 h-4" />
-                  Créer mon invitation gratuite
-                </button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Bottom Tab Navigation (iOS style) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-gray-200">
-        <div className="max-w-md mx-auto px-4 py-2">
-          <div className="flex items-center justify-around">
+          {/* Stats */}
+          <div className="mt-12 grid grid-cols-3 gap-6 border-t border-gray-100 dark:border-gray-800 pt-8 animate-fade-in stagger-4">
             {[
-              { icon: 'home', label: 'Accueil', active: true, href: '/' },
-              { icon: 'search', label: 'Explorer', active: false, href: '/dashboard' },
-              { icon: 'plus', label: 'Créer', active: false, href: '/create' },
-              { icon: 'heart', label: 'Favoris', active: false, href: '/' },
-              { icon: 'user', label: 'Profil', active: false, href: '/dashboard' },
-            ].map((tab, i) => (
-              <Link key={i} href={tab.href} className="flex flex-col items-center gap-0.5 px-3 py-1">
-                {tab.icon === 'home' && (
-                  <svg className={`w-5 h-5 ${tab.active ? 'text-emerald-600' : 'text-gray-400'}`} viewBox="0 0 24 24" fill={tab.active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                )}
-                {tab.icon === 'search' && (
-                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                )}
-                {tab.icon === 'plus' && (
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center -mt-3 shadow-lg">
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                  </div>
-                )}
-                {tab.icon === 'heart' && (
-                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                )}
-                {tab.icon === 'user' && (
-                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                  </svg>
-                )}
-                <span className={`text-[10px] ${tab.active ? 'text-emerald-600 font-medium' : 'text-gray-400'}`}>
-                  {tab.label}
-                </span>
-              </Link>
+              { value: '3 min', label: 'Pour créer' },
+              { value: '2000+', label: 'Invitations envoyées' },
+              { value: '100%', label: 'Mobile friendly' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="font-serif text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+              </div>
             ))}
           </div>
         </div>
-      </nav>
+
+        {/* Scroll hint */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
+          <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M19 12l-7 7-7-7"/>
+          </svg>
+        </div>
+      </section>
+
+      {/* Section: Comment ça marche */}
+      <section className="max-w-5xl mx-auto px-5 py-16">
+        <div className="text-center mb-12">
+          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
+            Simple comme un message WhatsApp
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+            Créez, partagez, et vos invités découvrent une expérience magnifique.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: '📸',
+              title: 'Ajoutez vos photos',
+              desc: 'Importez directement depuis votre téléphone. Drag & drop. Aperçu immédiat.',
+            },
+            {
+              icon: '✨',
+              title: 'Personnalisez le style',
+              desc: 'Chaque type d\'événement a sa propre identité visuelle. Mariage, anniversaire, baby shower.',
+            },
+            {
+              icon: '💬',
+              title: 'Partagez le lien',
+              desc: 'Envoyez votre invitation par WhatsApp. Vos invités l\'ouvrent et découvrent la magie.',
+            },
+          ].map((step, i) => (
+            <div
+              key={i}
+              className="relative p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all"
+            >
+              <div className="text-4xl mb-4">{step.icon}</div>
+              <h3 className="font-serif text-lg font-semibold text-gray-900 dark:text-white mb-2">{step.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Section: Types d'événements */}
+      <section className="max-w-5xl mx-auto px-5 py-16">
+        <div className="text-center mb-12">
+          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
+            Chaque événement a son âme
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+            Une identité visuelle unique pour chaque occasion. Mariage, anniversaire, baby shower...
+            Chaque invitation raconte une histoire différente.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { emoji: '💍', name: 'Mariage', color: 'from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20' },
+            { emoji: '🎂', name: 'Anniversaire', color: 'from-pink-100 to-rose-50 dark:from-pink-900/30 dark:to-rose-800/20' },
+            { emoji: '👶', name: 'Baby Shower', color: 'from-blue-100 to-sky-50 dark:from-blue-900/30 dark:to-sky-800/20' },
+            { emoji: '🎓', name: 'Diplôme', color: 'from-navy-100 to-slate-50 dark:from-navy-900/30 dark:to-slate-800/20' },
+            { emoji: '💼', name: 'Corporate', color: 'from-gray-100 to-slate-50 dark:from-gray-900/30 dark:to-slate-800/20' },
+          ].map((cat) => (
+            <Link
+              key={cat.name}
+              href={`/create/${cat.name.toLowerCase()}`}
+              className={`flex flex-col items-center gap-2 p-5 bg-gradient-to-br ${cat.color} rounded-2xl border border-gray-100 dark:border-gray-800 hover:scale-105 transition-all duration-300 shadow-sm`}
+            >
+              <span className="text-3xl">{cat.emoji}</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{cat.name}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Section: Photos-first */}
+      <section className="max-w-5xl mx-auto px-5 py-16">
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12 text-center overflow-hidden relative">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-40 h-40 bg-amber-400 rounded-full blur-3xl" />
+            <div className="absolute bottom-10 right-10 w-40 h-40 bg-rose-400 rounded-full blur-3xl" />
+          </div>
+          <div className="relative z-10">
+            <Camera className="w-12 h-12 text-amber-400 mx-auto mb-5" />
+            <h2 className="font-serif text-3xl md:text-4xl font-light text-white mb-4">
+              Les photos d'abord
+            </h2>
+            <p className="text-gray-400 max-w-lg mx-auto mb-8 leading-relaxed">
+              Une invitation n'est plus un simple texte. C'est une expérience visuelle.
+              L'œil regarde les photos avant de lire la date.
+              Effet Ken Burns, zooms élégants, galeries immersives.
+            </p>
+            <Link
+              href="/create"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-400 text-gray-900 rounded-2xl text-base font-bold transition-all active:scale-[0.98]"
+            >
+              <Sparkles className="w-5 h-5" />
+              Je crée la mienne
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Section: Testimonials */}
+      <section className="max-w-5xl mx-auto px-5 py-16">
+        <div className="text-center mb-12">
+          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
+            Ce qu'ils disent
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              quote: "Mes invités m'ont tous dit : « C'est la plus belle invitation que j'ai jamais reçue ! »",
+              author: 'Marie K.',
+              event: 'Mariage',
+            },
+            {
+              quote: "J'ai créé l'invitation d'anniversaire de ma fille en 3 minutes sur mon téléphone. Incroyablement simple.",
+              author: 'David M.',
+              event: 'Anniversaire',
+            },
+            {
+              quote: "L'effet waouh est garanti. Mes collègues n'en revenaient pas de la qualité.",
+              author: 'Sarah T.',
+              event: 'Corporate',
+            },
+          ].map((testimonial, i) => (
+            <div
+              key={i}
+              className="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm"
+            >
+              <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4 italic">
+                &ldquo;{testimonial.quote}&rdquo;
+              </p>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{testimonial.author}</p>
+                <p className="text-xs text-gray-400">{testimonial.event}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-5xl mx-auto px-5 py-16 pb-24">
+        <div className="text-center">
+          <h2 className="font-serif text-3xl md:text-5xl font-light text-gray-900 dark:text-white mb-4">
+            Prêt à créer la plus belle<br />
+            invitation de votre vie&nbsp;?
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
+            C'est gratuit. Ça prend 3 minutes. L'effet waouh est garanti.
+          </p>
+          <Link
+            href="/create"
+            className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl text-lg font-bold shadow-xl shadow-amber-200/50 dark:shadow-amber-900/30 transition-all active:scale-[0.98]"
+          >
+            <Sparkles className="w-5 h-5" />
+            Créer mon invitation gratuite
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 dark:border-gray-800 py-8 px-5">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">© {new Date().getFullYear()} Invitia</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link href="/e/yanick-keren" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+              Exemple mariage
+            </Link>
+            <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+              Connexion
+            </Link>
+            <Link href="/auth/register" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+              S'inscrire
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -13,6 +13,7 @@
     "@supabase/gotrue-js": "^2.108.2",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.109.0",
+    "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "html5-qrcode": "^2.3.8",

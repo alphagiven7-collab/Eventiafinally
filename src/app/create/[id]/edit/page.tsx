@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/components/ui';
+import PhotoUploader from '@/components/ui/photo-uploader';
 import { EventWithSettings } from '@/types';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
@@ -27,8 +28,8 @@ function EditEventContent() {
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [coverImage, setCoverImage] = useState('');
-  const [heroImage, setHeroImage] = useState('');
+  const [coverPhotos, setCoverPhotos] = useState<string[]>([]);
+  const [heroPhotos, setHeroPhotos] = useState<string[]>([]);
   const [primaryColor, setPrimaryColor] = useState('#4caf50');
   const [accentColor, setAccentColor] = useState('#ec4899');
   const [musicUrl, setMusicUrl] = useState('');
@@ -95,8 +96,10 @@ function EditEventContent() {
       setLocation(evt.location || '');
       setAddress(evt.address || '');
       setDescription(evt.description || '');
-      setCoverImage(evt.cover_image || evt.branding?.welcomeImage || '');
-      setHeroImage(evt.hero_image || evt.branding?.heroImage || '');
+      // Charger les photos existantes (URLs ou base64 stockés dans bestPhotos)
+      const existingPhotos = evt.bestPhotos || [];
+      setCoverPhotos(existingPhotos.length > 0 ? [existingPhotos[0]] : (evt.cover_image ? [evt.cover_image] : []));
+      setHeroPhotos(evt.hero_image ? [evt.hero_image] : (existingPhotos.length > 1 ? [existingPhotos[1]] : []));
       setPrimaryColor(evt.branding?.primaryColor || '#4caf50');
       setAccentColor(evt.branding?.accentColor || '#ec4899');
       setMusicUrl(evt.ambiance?.musicUrl || '');
@@ -128,8 +131,9 @@ function EditEventContent() {
       location,
       address,
       description,
-      cover_image: coverImage,
-      hero_image: heroImage,
+      cover_image: coverPhotos[0] || '',
+      hero_image: heroPhotos[0] || '',
+      bestPhotos: [...coverPhotos, ...heroPhotos].filter(Boolean),
       primaryColor,
       accentColor,
       musicUrl,
@@ -160,8 +164,8 @@ function EditEventContent() {
             location,
             address: address || null,
             description: description || null,
-            cover_image: coverImage || null,
-            hero_image: heroImage || null,
+            cover_image: coverPhotos[0] || null,
+            hero_image: heroPhotos[0] || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', event.id);
@@ -282,28 +286,29 @@ function EditEventContent() {
           </div>
         </section>
 
-        {/* Images et couleurs */}
+        {/* Images */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold mb-4">🎨 Images & Couleurs</h2>
+          <h2 className="text-lg font-semibold mb-4">🖼️ Photos de l'événement</h2>
+          <div className="space-y-6">
+            <PhotoUploader
+              onPhotosChange={setCoverPhotos}
+              existingPhotos={coverPhotos}
+              maxPhotos={1}
+              label="Photo de couverture"
+            />
+            <PhotoUploader
+              onPhotosChange={setHeroPhotos}
+              existingPhotos={heroPhotos}
+              maxPhotos={1}
+              label="Photo hero (plein écran)"
+            />
+          </div>
+        </section>
+
+        {/* Couleurs */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-semibold mb-4">🎨 Couleurs</h2>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Image de couverture</label>
-                <input type="url" value={coverImage} onChange={(e) => setCoverImage(e.target.value)}
-                  placeholder="https://..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
-                {coverImage && (
-                  <img src={coverImage} alt="Aperçu" className="mt-2 w-full h-32 object-cover rounded-lg" />
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Image hero</label>
-                <input type="url" value={heroImage} onChange={(e) => setHeroImage(e.target.value)}
-                  placeholder="https://..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
-                {heroImage && (
-                  <img src={heroImage} alt="Aperçu" className="mt-2 w-full h-32 object-cover rounded-lg" />
-                )}
-              </div>
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

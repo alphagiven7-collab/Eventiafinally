@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { EventWithSettings } from '@/types';
-import Image from 'next/image';
+import { getEventIdentity } from '@/constants/design-language';
+import { ChevronDown } from 'lucide-react';
 
 interface InvitationHeroProps {
   event: EventWithSettings;
@@ -9,88 +11,160 @@ interface InvitationHeroProps {
 }
 
 export default function InvitationHero({ event, guestName }: InvitationHeroProps) {
+  const identity = getEventIdentity(event.type);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Déclencher les animations après le montage
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const heroPhoto =
+    event.hero_image ||
+    event.bestPhotos?.[1] ||
+    event.branding?.heroImage ||
+    event.cover_image ||
+    event.bestPhotos?.[0] ||
+    event.branding?.welcomeImage ||
+    '';
+
   return (
-    <header className="relative h-[70vh] min-h-[500px] flex flex-col justify-center items-center text-center px-4 overflow-hidden">
-      {/* Background image avec overlay amélioré */}
-      {event.branding?.heroImage && (
+    <header
+      ref={containerRef}
+      className="relative h-screen min-h-[600px] max-h-[900px] flex flex-col justify-end items-center text-center overflow-hidden"
+      style={{ backgroundColor: identity.palette.background }}
+    >
+      {/* Photo de fond avec effet Ken Burns */}
+      {heroPhoto && (
         <div className="absolute inset-0 z-0">
-          <Image
-            src={event.branding.heroImage}
+          <img
+            src={heroPhoto}
             alt={event.title}
-            fill
-            className="object-cover"
-            priority
+            className="w-full h-full object-cover"
+            style={{
+              animation: 'ken-burns-soft 20s ease-out forwards',
+            }}
+            loading="eager"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+          {/* Overlay dégradé — plus subtil en haut, progressif en bas */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/70" />
+          {/* Overlay de la couleur primaire de l'identité */}
+          <div
+            className="absolute inset-0 opacity-20 mix-blend-overlay"
+            style={{ backgroundColor: identity.palette.primary }}
+          />
         </div>
       )}
 
-      {/* Ornements floraux décoratifs */}
-      <div className="absolute top-10 left-4 w-24 h-24 opacity-20 animate-fade-in">
-        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="0.5">
+      {/* Ornements décoratifs — subtils, élégants */}
+      <div className="absolute top-12 left-6 z-10 opacity-30">
+        <svg width="60" height="60" viewBox="0 0 100 100" fill="none" stroke={identity.palette.primary} strokeWidth="0.5" className="animate-fade-in">
           <circle cx="50" cy="50" r="45" />
           <circle cx="50" cy="50" r="30" />
-          <circle cx="50" cy="50" r="15" />
+          <circle cx="50" cy="50" r="15" strokeWidth="1" />
         </svg>
       </div>
-      <div className="absolute bottom-10 right-4 w-24 h-24 opacity-20 animate-fade-in" style={{ animationDelay: '200ms' }}>
-        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="0.5">
+      <div className="absolute bottom-20 right-6 z-10 opacity-30" style={{ animationDelay: '300ms' }}>
+        <svg width="60" height="60" viewBox="0 0 100 100" fill="none" stroke={identity.palette.accent} strokeWidth="0.5" className="animate-fade-in">
           <circle cx="50" cy="50" r="45" />
           <circle cx="50" cy="50" r="30" />
-          <circle cx="50" cy="50" r="15" />
+          <circle cx="50" cy="50" r="15" strokeWidth="1" />
         </svg>
       </div>
 
-      {/* Séparateur élégant */}
-      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 animate-scale-in">
-        <svg width="80" height="24" viewBox="0 0 80 24" fill="none">
-          <path d="M0 12 L40 0 L80 12 L40 24 Z" fill="white" opacity="0.6" />
+      {/* Séparateur ornemental */}
+      <div className="absolute bottom-[42%] left-1/2 -translate-x-1/2 z-10">
+        <svg width="100" height="16" viewBox="0 0 100 16" fill="none" className={`${isVisible ? 'opacity-60' : 'opacity-0'} transition-opacity duration-1000`}>
+          <path d="M0 8 L50 0 L100 8 L50 16 Z" fill={identity.palette.primary} />
         </svg>
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-4xl animate-slide-up">
-        <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white mb-4 tracking-wide leading-tight text-balance">
+      {/* Contenu — centré en bas */}
+      <div className="relative z-10 w-full max-w-lg mx-auto px-6 pb-16 md:pb-20">
+        {/* Catégorie tag */}
+        <p
+          className={`text-xs uppercase tracking-[0.3em] mb-3 transition-all ${identity.animations.transitionSpeed} ${isVisible ? 'opacity-80 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ color: identity.palette.primaryLight }}
+        >
+          {identity.emoji} {identity.name}
+        </p>
+
+        {/* Titre principal — typographie serif, grande taille */}
+        <h1
+          className={`${identity.typography.headingClass} ${identity.typography.headingWeight} ${identity.typography.letterSpacing} text-3xl sm:text-4xl md:text-5xl text-white mb-4 leading-tight text-balance transition-all ${identity.animations.transitionSpeed}`}
+          style={{ transitionDelay: '150ms', opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(20px)' }}
+        >
           {event.title}
         </h1>
-        
-        {/* Heart icon avec animation */}
-        <div className="flex justify-center mb-4 animate-scale-in" style={{ animationDelay: '150ms' }}>
-          <svg 
-            className="w-8 h-8 text-pink-300 animate-pulse" 
-            viewBox="0 0 24 24" 
-            fill="currentColor"
-          >
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+
+        {/* Icône cœur avec animation pulse */}
+        <div
+          className={`flex justify-center mb-4 transition-all duration-1000 ${isVisible ? 'opacity-80 scale-100' : 'opacity-0 scale-50'}`}
+          style={{ transitionDelay: '300ms' }}
+        >
+          <svg className="w-7 h-7 animate-pulse" viewBox="0 0 24 24" fill="currentColor" style={{ color: identity.palette.primary }}>
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </div>
 
-        {/* Subtitle avec typographie élégante */}
-        <p className="text-base md:text-lg font-light tracking-[0.2em] text-white/90 font-serif italic animate-slide-up" style={{ animationDelay: '100ms' }}>
-          {event.subtitle}
-        </p>
+        {/* Sous-titre */}
+        {event.subtitle && (
+          <p
+            className={`text-base md:text-lg font-light tracking-[0.15em] text-white/80 italic mb-2 transition-all ${identity.animations.transitionSpeed}`}
+            style={{ transitionDelay: '400ms', opacity: isVisible ? 1 : 0, transform: isVisible ? 'translateY(0)' : 'translateY(15px)' }}
+          >
+            {event.subtitle}
+          </p>
+        )}
 
-        {/* Message personnalisé */}
+        {/* Ligne ornementale */}
+        <div
+          className={`w-12 h-[1px] mx-auto my-3 transition-all duration-1000`}
+          style={{
+            backgroundColor: identity.palette.primary,
+            transitionDelay: '500ms',
+            opacity: isVisible ? 0.6 : 0,
+          }}
+        />
+
+        {/* Message personnalisé pour l'invité */}
         {guestName && (
-          <p className="text-white/80 text-base mt-6 animate-fade-in font-sans">
+          <p
+            className={`text-white/85 text-sm mt-4 font-sans transition-all duration-1000`}
+            style={{ transitionDelay: '600ms', opacity: isVisible ? 1 : 0 }}
+          >
             Cher(e) <span className="font-semibold text-white">{guestName}</span>,
           </p>
         )}
 
         {/* Message d'accueil */}
         {event.welcomeMessage && (
-          <p className="text-white/70 text-sm md:text-base mt-6 max-w-lg mx-auto leading-relaxed font-sans animate-fade-up" style={{ animationDelay: '300ms' }}>
+          <p
+            className={`text-white/65 text-xs md:text-sm mt-3 max-w-md mx-auto leading-relaxed font-sans transition-all duration-1000`}
+            style={{ transitionDelay: '700ms', opacity: isVisible ? 1 : 0 }}
+          >
             {event.welcomeMessage}
           </p>
         )}
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-        <svg className="w-6 h-6 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 5v14M19 12l-7 7-7-7"/>
-        </svg>
+      {/* Indicateur de scroll — discret */}
+      <div
+        className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-10 transition-all duration-1000 ${isVisible ? 'opacity-50' : 'opacity-0'}`}
+        style={{ transitionDelay: '900ms' }}
+      >
+        <ChevronDown className="w-5 h-5 text-white animate-bounce" />
       </div>
+
+      {/* Dégradé de transition vers le contenu (soft) */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-24 z-10 pointer-events-none"
+        style={{
+          background: `linear-gradient(to top, ${identity.palette.background}, transparent)`,
+        }}
+      />
     </header>
   );
 }

@@ -61,17 +61,17 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
         Plus que...
       </p>
       
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {timeUnits.map((unit) => (
           <div
             key={unit.label}
-            className="relative p-4 bg-gradient-to-br from-emerald-50 to-pink-50 rounded-2xl border border-emerald-100 shadow-sm hover:shadow-md transition-all"
+            className="relative p-3 sm:p-4 rounded-2xl border shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-emerald-50 to-white border-emerald-100"
           >
             <div className="text-center">
-              <p className="font-serif text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-pink-600">
+              <p className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-rose-500 bg-clip-text text-transparent">
                 {unit.value}
               </p>
-              <p className="text-[10px] uppercase tracking-widest text-gray-600 mt-2 font-medium">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-1 sm:mt-2 font-medium">
                 {unit.label}
               </p>
             </div>

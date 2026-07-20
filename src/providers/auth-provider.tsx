@@ -49,32 +49,44 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function init() {
-      if (!isSupabaseReady()) {
-        // Mode démo localStorage
-        const stored = localStorage.getItem('invitia_demo_user');
-        if (stored) {
-          const userData = JSON.parse(stored);
-          // Simuler un objet User pour que useAuth() retourne quelque chose
-          setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
-          setSessionCookie(userData.id);
-        }
-        setLoading(false);
-        return;
+      // Toujours charger le localStorage d'abord (instantané, jamais bloquant)
+      const stored = localStorage.getItem('invitia_demo_user');
+      if (stored && !cancelled) {
+        const userData = JSON.parse(stored);
+        setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
+        setSessionCookie(userData.id);
       }
+
+      // Arrêter immédiatement le loading — on a déjà les données locales
+      if (!cancelled) setLoading(false);
+
+      // Si Supabase est dispo, synchroniser en arrière-plan (ne bloque jamais l'UI)
+      if (!isSupabaseReady()) return;
 
       try {
         const supabase = createClient();
 
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (currentSession?.user) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          setSessionCookie(currentSession.user.id);
+        // Race avec timeout 5s pour ne jamais bloquer
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 5000)
+        );
+
+        const sessionPromise = supabase.auth.getSession();
+        const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+        if (result && !cancelled && result.data?.session?.user) {
+          setSession(result.data.session);
+          setUser(result.data.session.user);
+          setSessionCookie(result.data.session.user.id);
         }
 
+        // Écouter les changements d'auth
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (_event, authSession) => {
+            if (cancelled) return;
             setUser(authSession?.user ?? null);
             setSession(authSession);
             if (authSession?.user) {
@@ -85,21 +97,17 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
           }
         );
 
-        setLoading(false);
-        return () => subscription.unsubscribe();
+        return () => {
+          cancelled = true;
+          subscription.unsubscribe();
+        };
       } catch {
-        // Fallback : mode démo si Supabase injoignable
-        const stored = localStorage.getItem('invitia_demo_user');
-        if (stored) {
-          const userData = JSON.parse(stored);
-          setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
-          setSessionCookie(userData.id);
-        }
-        setLoading(false);
+        // Supabase injoignable — on garde les données localStorage déjà chargées
       }
     }
 
     init();
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) {

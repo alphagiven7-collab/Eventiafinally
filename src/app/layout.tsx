@@ -54,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`h-full ${playfair.variable} ${cormorant.variable} ${inter.variable}`}>
+    <html lang="fr" className={`h-full ${playfair.variable} ${cormorant.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
         <I18nProvider>
           <ToastProvider>

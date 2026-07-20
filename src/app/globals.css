@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
+/* Activer le dark mode avec la stratégie "class" (next-themes) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
+    /* Couleurs Invitia — Light Mode */
     --color-primary: #1A1A2E;
     --color-gold: #D4AF37;
     --color-cream: #F8F4F0;
@@ -33,65 +37,89 @@
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   }
 
-  /* Animations */
+  /* Animations d'entrée */
   @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
   }
 
-  .animate-fade-in {
-    animation: fade-in 0.6s ease-out;
+  .animate-fade-in { animation: fade-in 0.6s ease-out; }
+  .animate-slide-up { animation: slide-up 0.8s ease-out; }
+  .animate-scale-in { animation: scale-in 0.5s ease-out; }
+
+  /* Ken Burns — Zoom lent et élégant pour les photos */
+  @keyframes ken-burns-soft {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.05) translate(-0.5%, -0.3%); }
   }
 
-  .animate-slide-up {
-    animation: slide-up 0.8s ease-out;
+  @keyframes ken-burns-lively {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.08) translate(-1%, -0.5%); }
   }
 
-  .animate-scale-in {
-    animation: scale-in 0.5s ease-out;
+  @keyframes ken-burns-modern {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.04) translate(-0.3%, -0.2%); }
   }
 
-  /* Marquee animation */
+  /* Révélation progressive du texte */
+  @keyframes reveal-up {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes reveal-up-slow {
+    0% { opacity: 0; transform: translateY(40px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Parallaxe flottement */
+  @keyframes parallax-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Apparition cinématographique */
+  @keyframes cinematic-fade {
+    0% { opacity: 0; filter: brightness(0.5) saturate(0.5); }
+    100% { opacity: 1; filter: brightness(1) saturate(1); }
+  }
+
+  /* Marquee — défilement infini */
   @keyframes marquee {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
   }
 
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-  }
+  .animate-marquee { animation: marquee 20s linear infinite; }
+
+  /* Classes d'utilité pour les animations */
+  .ken-burns-soft { animation: ken-burns-soft 20s ease-out forwards; }
+  .ken-burns-lively { animation: ken-burns-lively 15s ease-out forwards; }
+  .ken-burns-modern { animation: ken-burns-modern 15s ease-out forwards; }
+  .animate-reveal-up { animation: reveal-up 0.8s ease-out forwards; }
+  .animate-reveal-up-slow { animation: reveal-up-slow 1.2s ease-out forwards; }
+  .animate-cinematic { animation: cinematic-fade 1.5s ease-out forwards; }
+  .animate-parallax-float { animation: parallax-float 6s ease-in-out infinite; }
+
+  /* Staggered children — délais progressifs */
+  .stagger-1 { animation-delay: 0ms; }
+  .stagger-2 { animation-delay: 150ms; }
+  .stagger-3 { animation-delay: 300ms; }
+  .stagger-4 { animation-delay: 450ms; }
+  .stagger-5 { animation-delay: 600ms; }
+  .stagger-6 { animation-delay: 750ms; }
 
   /* Custom scrollbar */
   .scrollbar-hide {

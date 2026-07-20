@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { EventWithSettings } from '@/types';
+import { getEventIdentity } from '@/constants/design-language';
 
 interface MusicPlayerProps {
   event: EventWithSettings;
@@ -11,43 +12,35 @@ export default function MusicPlayer({ event }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(event.ambiance?.volume || 0.35);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const identity = getEventIdentity(event.type);
 
   if (!event.ambiance?.musicUrl) return null;
 
   const togglePlay = () => {
     if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
+      if (isPlaying) { audioRef.current.pause(); } else { audioRef.current.play(); }
       setIsPlaying(!isPlaying);
     }
   };
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value) / 100;
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-  };
-
   return (
-    <section className="px-4 mt-8 animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8">
-        <h3 className="font-serif text-2xl text-gray-900 text-center mb-6">
+    <section className="px-4 mt-6 animate-reveal-up">
+      <div
+        className="rounded-3xl shadow-sm border p-6 md:p-8"
+        style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}
+      >
+        <h3 className={`${identity.typography.headingClass} ${identity.typography.headingWeight} text-xl md:text-2xl text-center mb-5`} style={{ color: identity.palette.text }}>
           Musique ambiante
         </h3>
 
-        {/* Visualiseur audio décoratif */}
-        <div className="flex items-end justify-center gap-1 h-16 mb-6">
+        <div className="flex items-end justify-center gap-1 h-16 mb-5">
           {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="w-1.5 bg-gradient-to-t from-emerald-500 to-pink-500 rounded-full transition-all duration-300"
+              className="w-1.5 rounded-full transition-all duration-300"
               style={{
                 height: isPlaying ? `${Math.random() * 100}%` : '20%',
+                background: `linear-gradient(to top, ${identity.palette.primary}, ${identity.palette.accent})`,
                 animation: isPlaying ? 'pulse 0.5s ease-in-out infinite' : 'none',
                 animationDelay: `${i * 0.05}s`,
               }}
@@ -55,34 +48,28 @@ export default function MusicPlayer({ event }: MusicPlayerProps) {
           ))}
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={togglePlay}
-            className="flex-1 bg-gradient-to-r from-emerald-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 active:scale-95"
-          >
-            {isPlaying ? '⏸️ Pause' : '▶️ Écouter'}
-          </button>
-        </div>
+        <button
+          onClick={togglePlay}
+          className="flex-1 w-full text-white py-3 rounded-2xl font-semibold hover:shadow-lg transition-all duration-300 active:scale-95"
+          style={{ background: `linear-gradient(to right, ${identity.palette.primary}, ${identity.palette.accent})` }}
+        >
+          {isPlaying ? '⏸️ Pause' : '▶️ Écouter'}
+        </button>
 
-        {/* Volume slider avec style */}
         <div className="mt-4">
           <input
-            type="range"
-            min="0"
-            max="100"
-            value={volume * 100}
-            onChange={handleVolumeChange}
-            className="w-full h-2 bg-gradient-to-r from-emerald-100 to-pink-100 rounded-full appearance-none cursor-pointer accent-emerald-600"
+            type="range" min="0" max="100" value={volume * 100}
+            onChange={(e) => {
+              const v = parseInt(e.target.value) / 100;
+              setVolume(v);
+              if (audioRef.current) audioRef.current.volume = v;
+            }}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style={{ accentColor: identity.palette.primary }}
           />
         </div>
 
-        <audio
-          ref={audioRef}
-          src={event.ambiance.musicUrl}
-          loop
-          className="hidden"
-        />
+        <audio ref={audioRef} src={event.ambiance.musicUrl} loop className="hidden" />
       </div>
     </section>
   );

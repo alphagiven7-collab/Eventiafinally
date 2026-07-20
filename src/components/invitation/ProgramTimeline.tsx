@@ -1,6 +1,7 @@
 'use client';
 
 import { EventWithSettings } from '@/types';
+import { getEventIdentity } from '@/constants/design-language';
 
 interface ProgramTimelineProps {
   event: EventWithSettings;
@@ -8,35 +9,24 @@ interface ProgramTimelineProps {
 
 export default function ProgramTimeline({ event }: ProgramTimelineProps) {
   if (!event.program || event.program.length === 0) return null;
+  const identity = getEventIdentity(event.type);
 
   return (
-    <section className="px-4 mt-8 animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8">
-        <h3 className="font-serif text-2xl text-gray-900 text-center mb-8">
+    <section className="px-4 mt-6 animate-reveal-up">
+      <div className="rounded-3xl shadow-sm border p-6 md:p-8" style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}>
+        <h3 className={`${identity.typography.headingClass} ${identity.typography.headingWeight} text-xl md:text-2xl text-center mb-6`} style={{ color: identity.palette.text }}>
           {event.programSectionTitle || 'Programme du jour'}
         </h3>
-
-        {/* Timeline avec design premium */}
         <div className="relative">
-          {/* Ligne centrale */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-200 via-pink-200 to-emerald-200 -translate-x-1/2" />
-
-          {/* Items du programme */}
-          <div className="space-y-6">
+          <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2" style={{ background: `linear-gradient(to bottom, ${identity.palette.primaryLight}, ${identity.palette.accentLight}, ${identity.palette.primaryLight})` }} />
+          <div className="space-y-5">
             {event.program.map((item, index) => (
               <div key={index} className="relative flex items-center">
-                {/* Point sur la timeline */}
-                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-pink-400 shadow-md z-10" />
-
-                {/* Contenu de gauche ou droite selon l'index */}
-                <div className={`w-1/2 ${index % 2 === 0 ? 'pr-8 text-right' : 'pl-8 ml-auto text-left'}`}>
-                  <div className="inline-block p-4 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                    <p className="text-xs font-semibold text-emerald-600 mb-1">
-                      {item.time}
-                    </p>
-                    <p className="text-sm font-medium text-gray-800">
-                      {item.title}
-                    </p>
+                <div className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full shadow-md z-10" style={{ background: `linear-gradient(135deg, ${identity.palette.primary}, ${identity.palette.accent})` }} />
+                <div className={`w-1/2 ${index % 2 === 0 ? 'pr-7 text-right' : 'pl-7 ml-auto text-left'}`}>
+                  <div className="inline-block p-4 rounded-2xl border shadow-sm transition-all" style={{ backgroundColor: identity.palette.background, borderColor: identity.palette.border }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: identity.palette.primary }}>{item.time}</p>
+                    <p className="text-sm font-medium" style={{ color: identity.palette.text }}>{item.title}</p>
                   </div>
                 </div>
               </div>

@@ -71,6 +71,21 @@ export interface EventIdentity {
     glassBg: string;
     border: string;
   };
+  /** Palette alternative pour le dark mode */
+  darkPalette?: {
+    primary: string;
+    primaryLight: string;
+    primaryDark: string;
+    accent: string;
+    accentLight: string;
+    accentDark: string;
+    background: string;
+    surface: string;
+    text: string;
+    textMuted: string;
+    border: string;
+    glassBg: string;
+  };
   typography: {
     headingClass: string;
     bodyClass: string;
@@ -95,6 +110,14 @@ export interface EventIdentity {
     rhythm: 'slow' | 'moderate' | 'lively';
     saturation: 'rich' | 'soft' | 'vibrant';
   };
+}
+
+/** Hook-like helper: retourne la palette adaptée au thème courant */
+export function getPalette(identity: EventIdentity, isDark: boolean) {
+  if (isDark && identity.darkPalette) {
+    return { ...identity.palette, ...identity.darkPalette };
+  }
+  return identity.palette;
 }
 
 export const EVENT_IDENTITIES: Record<EventType, EventIdentity> = {

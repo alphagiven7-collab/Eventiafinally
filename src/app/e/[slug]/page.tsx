@@ -16,14 +16,19 @@ import RsvpButton from '@/components/invitation/RsvpButton';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
-import { getEventIdentity } from '@/constants/design-language';
+import { getEventIdentity, getPalette } from '@/constants/design-language';
+import { useTheme } from 'next-themes';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
@@ -222,10 +227,11 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
       )}
 
       {/* Contenu principal - affiché après l'ouverture */}
-      {isGateOpen && (() => {
+      {isGateOpen && mounted && (() => {
         const identity = getEventIdentity(event.type);
+        const palette = getPalette(identity, isDark);
         return (
-          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: identity.palette.background }}>
+          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: palette.background }}>
             <InvitationHero event={event} guestName={guestName || undefined} />
             
             <main className="max-w-md mx-auto relative z-10">
@@ -233,7 +239,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
 
               {event.sections?.countdown && (
                 <section className="px-4 mt-6">
-                  <div className="rounded-3xl shadow-sm border p-6" style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}>
+                  <div className="rounded-3xl shadow-sm border p-6" style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
                     <CountdownTimer targetDate={event.event_date} />
                   </div>
                 </section>
@@ -250,14 +256,14 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
               <About event={event} />
 
               <footer className="px-4 mt-8 mb-20 text-center">
-                <div className="rounded-2xl shadow-sm border p-6" style={{ backgroundColor: identity.palette.surface, borderColor: identity.palette.border }}>
-                  <p className="text-xs mb-2" style={{ color: identity.palette.textMuted }}>Besoin d'aide ?</p>
+                <div className="rounded-2xl shadow-sm border p-6" style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
+                  <p className="text-xs mb-2" style={{ color: palette.textMuted }}>Besoin d'aide ?</p>
                   {event.links?.supportEmail && (
-                    <a href={`mailto:${event.links.supportEmail}`} className="text-sm font-medium hover:underline" style={{ color: identity.palette.primary }}>
+                    <a href={`mailto:${event.links.supportEmail}`} className="text-sm font-medium hover:underline" style={{ color: palette.primary }}>
                       {event.links.supportEmail}
                     </a>
                   )}
-                  <p className="text-[10px] mt-4" style={{ color: identity.palette.textMuted }}>
+                  <p className="text-[10px] mt-4" style={{ color: palette.textMuted }}>
                     © {new Date().getFullYear()} {event.title}
                   </p>
                 </div>

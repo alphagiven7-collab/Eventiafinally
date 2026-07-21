@@ -19,7 +19,7 @@ interface PhotoUploaderProps {
 export default function PhotoUploader({
   onPhotosChange,
   existingPhotos = [],
-  maxPhotos = 10,
+  maxPhotos = 20,
   label = 'Ajouter des photos',
 }: PhotoUploaderProps) {
   const [photos, setPhotos] = useState<string[]>(existingPhotos);
@@ -118,9 +118,9 @@ export default function PhotoUploader({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${
+        className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 ${
           dragOver
-            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 scale-[1.02]'
+            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 scale-[1.01]'
             : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10'
         }`}
       >
@@ -139,19 +139,16 @@ export default function PhotoUploader({
             <p className="text-sm text-gray-500 dark:text-gray-400">Compression en cours...</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                Glissez-déposez vos photos ici
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                Touchez pour ajouter des photos
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                ou touchez pour sélectionner — JPG, PNG, HEIC
-              </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                Compression automatique • Max {maxPhotos} photos
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                JPG, PNG, HEIC • Max {maxPhotos}
               </p>
             </div>
           </div>
@@ -160,11 +157,11 @@ export default function PhotoUploader({
 
       {/* Prévisualisation */}
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
           {photos.map((photo, index) => (
             <div
               key={index}
-              className="relative group aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             >
               <img
                 src={photo}
@@ -172,34 +169,27 @@ export default function PhotoUploader({
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              {/* Overlay de suppression */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removePhoto(index);
-                }}
-                className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
+                onClick={(e) => { e.stopPropagation(); removePhoto(index); }}
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
                 aria-label={`Supprimer la photo ${index + 1}`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3" />
               </button>
-              {/* Indicateur première photo */}
               {index === 0 && (
-                <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded-full backdrop-blur-sm">
-                  Couverture
+                <span className="absolute bottom-0.5 left-0.5 px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded-full backdrop-blur-sm">
+                  Couv.
                 </span>
               )}
             </div>
           ))}
-
-          {/* Bouton ajouter plus */}
           {photos.length < maxPhotos && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-500 hover:border-emerald-400 hover:text-emerald-500 dark:hover:border-emerald-500 transition-colors"
+              className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center gap-0.5 text-gray-400 dark:text-gray-500 hover:border-emerald-400 hover:text-emerald-500 transition-colors"
             >
-              <ImageIcon className="w-6 h-6" />
-              <span className="text-xs">Ajouter</span>
+              <ImageIcon className="w-5 h-5" />
+              <span className="text-[10px]">Ajouter</span>
             </button>
           )}
         </div>

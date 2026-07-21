@@ -2,36 +2,46 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
-import { PartyPopper, Sparkles, Heart, Camera } from 'lucide-react';
 import { ThemeToggle } from '@/providers/theme-toggle';
+import {
+  Sparkles, Send, Camera, Palette, Users, Heart,
+  ChevronRight, Star, Shield, Zap, Gift
+} from 'lucide-react';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950 font-sans transition-colors">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 transition-colors">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-lg flex items-center justify-center shadow-sm">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-serif text-lg font-semibold text-gray-900 dark:text-white">Invitia</span>
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
+      {/* Header — type app */}
+      <header className="sticky top-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-b border-rose-100 dark:border-gray-800">
+        <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Logo Invitia — enveloppe cœur */}
+            <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36">
+                  <stop offset="0%" stopColor="#f472b6"/>
+                  <stop offset="100%" stopColor="#3b82f6"/>
+                </linearGradient>
+              </defs>
+              <rect width="36" height="36" rx="10" fill="url(#logoGrad)"/>
+              <path d="M10 16.5l8-5 8 5v7a2 2 0 01-2 2H12a2 2 0 01-2-2v-7z" fill="white" opacity="0.9"/>
+              <path d="M18 16l-2 7h4l-2-7z" fill="url(#logoGrad)" opacity="0.8"/>
+              <circle cx="14" cy="20" r="1.5" fill="white"/>
+              <circle cx="22" cy="20" r="1.5" fill="white"/>
+              <path d="M17.5 21.5a1.5 1.5 0 001.5 1.5 1.5 1.5 0 001.5-1.5" stroke="white" strokeWidth="0.8" fill="none"/>
+            </svg>
+            <span className="font-bold text-base text-gray-900 dark:text-white">Invitia</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
             {!loading && user ? (
-              <Link href="/dashboard">
-                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                  {(user.user_metadata?.name || 'U').charAt(0).toUpperCase()}
-                </div>
+              <Link href="/dashboard" className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                {(user.user_metadata?.name || 'U').charAt(0).toUpperCase()}
               </Link>
             ) : (
-              <Link
-                href="/auth/login"
-                className="px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-              >
+              <Link href="/auth/login" className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl shadow-md shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-lg transition-all active:scale-95">
                 Connexion
               </Link>
             )}
@@ -39,258 +49,222 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-5 pt-16 pb-20 overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-10 w-64 h-64 bg-amber-100 dark:bg-amber-900/20 rounded-full blur-3xl opacity-40" />
-          <div className="absolute bottom-20 right-10 w-80 h-80 bg-rose-100 dark:bg-rose-900/20 rounded-full blur-3xl opacity-30" />
-        </div>
-
-        <div className="relative z-10 max-w-xl">
-          {/* Emoji + Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full border border-gray-200 dark:border-gray-700 shadow-sm mb-6 animate-fade-in">
-            <span className="text-sm">💌</span>
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">La plus belle façon d'inviter</span>
+      <main className="max-w-lg mx-auto px-5 pb-24">
+        {/* Hero — avec fond décoratif */}
+        <section className="pt-10 pb-8 text-center relative overflow-hidden">
+          {/* Formes décoratives de fond */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-200 dark:bg-rose-900/20 rounded-full blur-3xl opacity-50" />
+            <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-blue-200 dark:bg-blue-900/20 rounded-full blur-3xl opacity-40" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-violet-200 dark:bg-violet-900/20 rounded-full blur-3xl opacity-30" />
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full border border-rose-100 dark:border-gray-700 shadow-sm mb-6">
+            <Zap className="w-4 h-4 text-rose-500" />
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Creer en 3 minutes</span>
           </div>
 
-          {/* Main headline */}
-          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-light text-gray-900 dark:text-white mb-5 leading-tight tracking-tight animate-reveal-up-slow">
-            Vos invitations ne seront<br />
-            <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-rose-400 bg-clip-text text-transparent">
-              plus jamais les mêmes
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 leading-tight">
+            La plus belle facon<br />
+            <span className="bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">
+              d'inviter vos proches
             </span>
           </h1>
-
-          {/* Subtitle */}
-          <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto leading-relaxed animate-fade-in stagger-2">
-            Offrez à vos invités une expérience inoubliable dès l'ouverture de votre lien.
-            Une invitation qui fait dire <em>&ldquo;Wow&rdquo;</em> avant même de lire la date.
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8 leading-relaxed">
+            Creez des invitations elegantes en quelques clics. Partagez par WhatsApp. Vos invites decouvrent une experience inoubliable.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up stagger-3">
-            <Link
-              href="/create"
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl text-base font-semibold shadow-xl shadow-amber-200/50 dark:shadow-amber-900/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <PartyPopper className="w-5 h-5" />
-              Créer mon invitation
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/create"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
+              <Send className="w-4 h-4" />
+              Creer mon invitation
             </Link>
-            <Link
-              href="/e/yanick-keren"
-              className="w-full sm:w-auto px-6 py-4 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl text-sm font-medium hover:border-amber-300 dark:hover:border-amber-700 hover:text-amber-600 dark:hover:text-amber-400 transition flex items-center justify-center gap-2"
-            >
-              <Heart className="w-4 h-4" />
+            <Link href="/e/yanick-keren"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-rose-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-sm hover:border-rose-400 dark:hover:border-rose-700 transition-all active:scale-95">
+              <Heart className="w-4 h-4 text-rose-500" />
               Voir un exemple
             </Link>
           </div>
 
           {/* Stats */}
-          <div className="mt-12 grid grid-cols-3 gap-6 border-t border-gray-100 dark:border-gray-800 pt-8 animate-fade-in stagger-4">
+          <div className="mt-10 grid grid-cols-3 gap-4">
             {[
-              { value: '3 min', label: 'Pour créer' },
-              { value: '2000+', label: 'Invitations envoyées' },
-              { value: '100%', label: 'Mobile friendly' },
+              { value: '3 min', label: 'Creation' },
+              { value: '2000+', label: 'Envoyees' },
+              { value: '100%', label: 'Mobile' },
             ].map((stat) => (
-              <div key={stat.label}>
-                <p className="font-serif text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+              <div key={stat.label} className="text-center">
+                <p className="text-xl font-extrabold bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">{stat.value}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Scroll hint */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
-          <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M19 12l-7 7-7-7"/>
-          </svg>
-        </div>
-      </section>
-
-      {/* Section: Comment ça marche */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
-        <div className="text-center mb-12">
-          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
-            Simple comme un message WhatsApp
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Créez, partagez, et vos invités découvrent une expérience magnifique.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              icon: '📸',
-              title: 'Ajoutez vos photos',
-              desc: 'Importez directement depuis votre téléphone. Drag & drop. Aperçu immédiat.',
-            },
-            {
-              icon: '✨',
-              title: 'Personnalisez le style',
-              desc: 'Chaque type d\'événement a sa propre identité visuelle. Mariage, anniversaire, baby shower.',
-            },
-            {
-              icon: '💬',
-              title: 'Partagez le lien',
-              desc: 'Envoyez votre invitation par WhatsApp. Vos invités l\'ouvrent et découvrent la magie.',
-            },
-          ].map((step, i) => (
-            <div
-              key={i}
-              className="relative p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all"
-            >
-              <div className="text-4xl mb-4">{step.icon}</div>
-              <h3 className="font-serif text-lg font-semibold text-gray-900 dark:text-white mb-2">{step.title}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Section: Types d'événements */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
-        <div className="text-center mb-12">
-          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
-            Chaque événement a son âme
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Une identité visuelle unique pour chaque occasion. Mariage, anniversaire, baby shower...
-            Chaque invitation raconte une histoire différente.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { emoji: '💍', name: 'Mariage', color: 'from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20' },
-            { emoji: '🎂', name: 'Anniversaire', color: 'from-pink-100 to-rose-50 dark:from-pink-900/30 dark:to-rose-800/20' },
-            { emoji: '👶', name: 'Baby Shower', color: 'from-blue-100 to-sky-50 dark:from-blue-900/30 dark:to-sky-800/20' },
-            { emoji: '🎓', name: 'Diplôme', color: 'from-navy-100 to-slate-50 dark:from-navy-900/30 dark:to-slate-800/20' },
-            { emoji: '💼', name: 'Corporate', color: 'from-gray-100 to-slate-50 dark:from-gray-900/30 dark:to-slate-800/20' },
-          ].map((cat) => (
-            <Link
-              key={cat.name}
-              href={`/create/${cat.name.toLowerCase()}`}
-              className={`flex flex-col items-center gap-2 p-5 bg-gradient-to-br ${cat.color} rounded-2xl border border-gray-100 dark:border-gray-800 hover:scale-105 transition-all duration-300 shadow-sm`}
-            >
-              <span className="text-3xl">{cat.emoji}</span>
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{cat.name}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Section: Photos-first */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 md:p-12 text-center overflow-hidden relative">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-40 h-40 bg-amber-400 rounded-full blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-40 h-40 bg-rose-400 rounded-full blur-3xl" />
-          </div>
-          <div className="relative z-10">
-            <Camera className="w-12 h-12 text-amber-400 mx-auto mb-5" />
-            <h2 className="font-serif text-3xl md:text-4xl font-light text-white mb-4">
-              Les photos d'abord
-            </h2>
-            <p className="text-gray-400 max-w-lg mx-auto mb-8 leading-relaxed">
-              Une invitation n'est plus un simple texte. C'est une expérience visuelle.
-              L'œil regarde les photos avant de lire la date.
-              Effet Ken Burns, zooms élégants, galeries immersives.
-            </p>
-            <Link
-              href="/create"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-400 text-gray-900 rounded-2xl text-base font-bold transition-all active:scale-[0.98]"
-            >
-              <Sparkles className="w-5 h-5" />
-              Je crée la mienne
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Section: Testimonials */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
-        <div className="text-center mb-12">
-          <h2 className="font-serif text-3xl md:text-4xl font-light text-gray-900 dark:text-white mb-3">
-            Ce qu'ils disent
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              quote: "Mes invités m'ont tous dit : « C'est la plus belle invitation que j'ai jamais reçue ! »",
-              author: 'Marie K.',
-              event: 'Mariage',
-            },
-            {
-              quote: "J'ai créé l'invitation d'anniversaire de ma fille en 3 minutes sur mon téléphone. Incroyablement simple.",
-              author: 'David M.',
-              event: 'Anniversaire',
-            },
-            {
-              quote: "L'effet waouh est garanti. Mes collègues n'en revenaient pas de la qualité.",
-              author: 'Sarah T.',
-              event: 'Corporate',
-            },
-          ].map((testimonial, i) => (
-            <div
-              key={i}
-              className="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm"
-            >
-              <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4 italic">
-                &ldquo;{testimonial.quote}&rdquo;
-              </p>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{testimonial.author}</p>
-                <p className="text-xs text-gray-400">{testimonial.event}</p>
+        {/* Comment ca marche */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Comment ca marche</h2>
+          <div className="space-y-3">
+            {[
+              { icon: Camera, color: 'from-rose-400 to-rose-500', bg: 'bg-rose-50 dark:bg-rose-900/20', title: 'Ajoutez vos photos', desc: 'Importez depuis votre telephone. Drag & drop. Apercu immediat.' },
+              { icon: Palette, color: 'from-blue-400 to-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', title: 'Personnalisez le style', desc: 'Chaque evenement a sa propre identite. Mariage, anniversaire, baby shower.' },
+              { icon: Send, color: 'from-violet-400 to-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20', title: 'Partagez le lien', desc: 'Envoyez par WhatsApp. Vos invites ouvrent et decouvrent la magie.' },
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                  <step.icon className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{step.title}</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
+                </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Types d'evenements */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Choisissez votre evenement</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { emoji: '💍', label: 'Mariage', slug: 'wedding', gradient: 'from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-800/20' },
+              { emoji: '💕', label: 'Fiancailles', slug: 'engagement', gradient: 'from-pink-100 to-pink-50 dark:from-pink-900/30 dark:to-pink-800/20' },
+              { emoji: '🎂', label: 'Anniversaire', slug: 'birthday', gradient: 'from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20' },
+              { emoji: '👶', label: 'Baby Shower', slug: 'baby-shower', gradient: 'from-blue-100 to-sky-50 dark:from-blue-900/30 dark:to-sky-800/20' },
+              { emoji: '🙏', label: 'Religieux', slug: 'religious', gradient: 'from-cream-100 to-cream-50 dark:from-cream-900/30 dark:to-cream-800/20' },
+              { emoji: '🎓', label: 'Diplome', slug: 'graduation', gradient: 'from-navy-100 to-slate-50 dark:from-navy-900/30 dark:to-slate-800/20' },
+              { emoji: '💼', label: 'Corporate', slug: 'corporate', gradient: 'from-gray-100 to-slate-50 dark:from-gray-900/30 dark:to-slate-800/20' },
+            ].map((cat) => (
+              <Link key={cat.slug}
+                href={`/create/${cat.slug}`}
+                className={`flex items-center gap-3 p-4 bg-gradient-to-br ${cat.gradient} rounded-2xl border border-gray-100 dark:border-gray-800 hover:scale-105 transition-all shadow-sm active:scale-95`}>
+                <span className="text-2xl">{cat.emoji}</span>
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{cat.label}</span>
+                <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Decorative separator */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rose-300 to-rose-300 dark:via-rose-700" />
+          <svg className="w-6 h-6" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="10" fill="url(#logoGrad)"/>
+            <path d="M10 16.5l8-5 8 5v7a2 2 0 01-2 2H12a2 2 0 01-2-2v-7z" fill="white" opacity="0.9"/>
+          </svg>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blue-300 to-blue-300 dark:via-blue-700" />
+        </div>
+
+        {/* Pourquoi Invitia */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Pourquoi Invitia ?</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon: Shield, label: 'Gratuit', desc: 'Sans carte bancaire' },
+              { icon: Zap, label: '3 minutes', desc: 'Creation express' },
+              { icon: Heart, label: 'Effet waouh', desc: 'Design premium' },
+              { icon: Users, label: 'WhatsApp', desc: 'Partage facile' },
+            ].map((item, i) => (
+              <div key={i} className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 text-center shadow-sm">
+                <item.icon className="w-6 h-6 text-rose-500 mx-auto mb-2" />
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{item.label}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Temoignages */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Ils ont adore</h2>
+          <div className="space-y-3">
+            {[
+              { quote: "Mes invites m'ont tous dit : c'est la plus belle invitation que j'ai jamais recue !", author: 'Marie K.', event: 'Mariage', avatar: 'MK' },
+              { quote: "J'ai cree l'invitation d'anniversaire de ma fille en 3 minutes sur mon telephone.", author: 'David M.', event: 'Anniversaire', avatar: 'DM' },
+            ].map((t, i) => (
+              <div key={i} className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{t.avatar}</div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      {[...Array(5)].map((_, s) => (<Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />))}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
+                    <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-200 mt-1.5">{t.author} · <span className="text-gray-400">{t.event}</span></p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA Final */}
+        <section className="text-center mb-4">
+          <div className="p-6 bg-gradient-to-br from-rose-500 to-blue-600 rounded-3xl shadow-xl shadow-rose-200 dark:shadow-rose-900/30">
+            <Gift className="w-8 h-8 text-white mx-auto mb-3" />
+            <h3 className="text-lg font-extrabold text-white mb-2">Pret a creer la plus belle invitation ?</h3>
+            <p className="text-xs text-white/80 mb-5">C'est gratuit. Ca prend 3 minutes. L'effet waouh est garanti.</p>
+            <Link href="/create"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-gray-900 rounded-2xl font-bold text-sm hover:shadow-2xl transition-all active:scale-95">
+              <Sparkles className="w-4 h-4 text-rose-500" />
+              Creer mon invitation gratuite
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="text-center pt-4 pb-2">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">
+            © {new Date().getFullYear()} Invitia — Fait avec ❤️ en RDC
+          </p>
+        </footer>
+      </main>
+
+      {/* Bottom navigation — style app mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border-t border-gray-100 dark:border-gray-800">
+        <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-around">
+          {[
+            { icon: 'home', label: 'Accueil', active: true, href: '/' },
+            { icon: 'search', label: 'Explorer', active: false, href: '/dashboard' },
+            { icon: 'plus', label: 'Creer', active: false, href: '/create' },
+            { icon: 'heart', label: 'Favoris', active: false, href: '/e/yanick-keren' },
+            { icon: 'user', label: 'Profil', active: false, href: '/dashboard' },
+          ].map((tab, i) => (
+            <Link key={i} href={tab.href} className="flex flex-col items-center gap-0.5 px-3 py-1">
+              {tab.icon === 'home' && (
+                <svg className={`w-5 h-5 ${tab.active ? 'text-rose-500' : 'text-gray-400'}`} viewBox="0 0 24 24" fill={tab.active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              )}
+              {tab.icon === 'search' && (
+                <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              )}
+              {tab.icon === 'plus' && (
+                <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-blue-500 rounded-full flex items-center justify-center -mt-3 shadow-lg shadow-rose-200 dark:shadow-rose-900/30">
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </div>
+              )}
+              {tab.icon === 'heart' && (
+                <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              )}
+              {tab.icon === 'user' && (
+                <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              )}
+              <span className={`text-[10px] font-medium ${tab.active ? 'text-rose-500' : 'text-gray-400'}`}>{tab.label}</span>
+            </Link>
           ))}
         </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="max-w-5xl mx-auto px-5 py-16 pb-24">
-        <div className="text-center">
-          <h2 className="font-serif text-3xl md:text-5xl font-light text-gray-900 dark:text-white mb-4">
-            Prêt à créer la plus belle<br />
-            invitation de votre vie&nbsp;?
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-            C'est gratuit. Ça prend 3 minutes. L'effet waouh est garanti.
-          </p>
-          <Link
-            href="/create"
-            className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl text-lg font-bold shadow-xl shadow-amber-200/50 dark:shadow-amber-900/30 transition-all active:scale-[0.98]"
-          >
-            <Sparkles className="w-5 h-5" />
-            Créer mon invitation gratuite
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 dark:border-gray-800 py-8 px-5">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">© {new Date().getFullYear()} Invitia</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link href="/e/yanick-keren" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-              Exemple mariage
-            </Link>
-            <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-              Connexion
-            </Link>
-            <Link href="/auth/register" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-              S'inscrire
-            </Link>
-          </div>
-        </div>
-      </footer>
+      </nav>
     </div>
   );
 }

@@ -83,10 +83,16 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
           setSessionCookie(result.data.session.user.id);
         }
 
-        // Écouter les changements d'auth
+        // Écouter les changements d'auth — avec guard anti-boucle
+        let lastEvent = '';
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (_event, authSession) => {
             if (cancelled) return;
+            // Éviter les re-renders en boucle : ignorer les événements identiques
+            const eventKey = `${_event}-${authSession?.user?.id ?? 'null'}`;
+            if (eventKey === lastEvent) return;
+            lastEvent = eventKey;
+
             setUser(authSession?.user ?? null);
             setSession(authSession);
             if (authSession?.user) {

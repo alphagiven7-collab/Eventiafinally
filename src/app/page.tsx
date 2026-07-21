@@ -18,7 +18,7 @@ export default function HomePage() {
         <img
           src="https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80"
           alt=""
-          className="w-full h-full object-cover opacity-[0.04] dark:opacity-[0.03]"
+          className="w-full h-full object-cover opacity-[0.08] dark:opacity-[0.05]"
           loading="lazy"
         />
       </div>
@@ -67,10 +67,10 @@ export default function HomePage() {
             <img
               src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200&q=80"
               alt=""
-              className="w-full h-full object-cover opacity-25 dark:opacity-15"
+              className="w-full h-full object-cover opacity-40 dark:opacity-25"
               loading="eager"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/60 to-white/90 dark:from-gray-950/90 dark:via-gray-950/60 dark:to-gray-950/90" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/30 to-white/70 dark:from-gray-950/70 dark:via-gray-950/30 dark:to-gray-950/70" />
           </div>
 
           <div className="relative z-10">
@@ -148,7 +148,7 @@ export default function HomePage() {
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-rose-900/50 via-pink-800/30 to-blue-900/50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 via-pink-400/15 to-blue-500/20" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
             <p className="text-white/90 text-lg md:text-xl font-bold mb-1">✨ Chaque invitation raconte une histoire</p>
             <p className="text-white/70 text-xs">Mariage · Anniversaire · Baby Shower · Fiancailles · Diplome</p>
@@ -216,7 +216,7 @@ export default function HomePage() {
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-violet-800/50 to-rose-900/70" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/25 via-violet-400/20 to-rose-500/25" />
           <div className="absolute inset-0 flex items-center justify-center text-center p-6">
             <div>
               <p className="text-white text-lg font-extrabold mb-1">📱 Ouvert depuis WhatsApp</p>

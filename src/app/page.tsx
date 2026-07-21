@@ -69,25 +69,25 @@ export default function HomePage() {
             <div className="relative z-10">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full border border-rose-100 dark:border-gray-700 shadow-sm mb-6">
                 <Zap className="w-4 h-4 text-rose-500" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Creer en 3 minutes</span>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">La premiere emotion de votre evenement</span>
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 leading-tight">
-                La plus belle facon<br />
-                <span className="bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">d'inviter vos proches</span>
+                Avant le jour J,<br />
+                <span className="bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">il y a l'invitation</span>
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8 leading-relaxed">
-                Creez des invitations elegantes en quelques clics. Partagez par WhatsApp. Vos invites decouvrent une experience inoubliable.
+                Parce qu'un evenement commence bien avant la date. Offrez a vos invites un moment unique des l'ouverture du lien.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link href="/create" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
-                  <Send className="w-4 h-4" /> Creer mon invitation
+                  <Send className="w-4 h-4" /> Essayer gratuitement
                 </Link>
                 <Link href="/e/yanick-keren" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-rose-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-sm hover:border-rose-400 dark:hover:border-rose-700 transition-all active:scale-95">
-                  <Heart className="w-4 h-4 text-rose-500" /> Voir un exemple
+                  <Heart className="w-4 h-4 text-rose-500" /> Decouvrir un exemple
                 </Link>
               </div>
               <div className="mt-10 grid grid-cols-3 gap-4">
-                {[{ value: '3 min', label: 'Creation' },{ value: '2000+', label: 'Envoyees' },{ value: '100%', label: 'Mobile' }].map((stat) => (
+                {[{ value: '3 min', label: 'Pour creer' },{ value: '2000+', label: 'Invitations envoyees' },{ value: '100%', label: 'Souvenirs' }].map((stat) => (
                   <div key={stat.label} className="text-center">
                     <p className="text-xl font-extrabold bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">{stat.value}</p>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
@@ -99,12 +99,12 @@ export default function HomePage() {
 
           {/* Comment ca marche */}
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Comment ca marche</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Tout commence par une photo</h2>
             <div className="space-y-3">
               {[
-                { icon: Camera, color: 'from-rose-400 to-rose-500', title: 'Ajoutez vos photos', desc: 'Importez depuis votre telephone. Drag & drop. Apercu immediat.' },
-                { icon: Palette, color: 'from-blue-400 to-blue-500', title: 'Personnalisez le style', desc: 'Chaque evenement a sa propre identite visuelle.' },
-                { icon: Send, color: 'from-violet-400 to-violet-500', title: 'Partagez le lien', desc: 'Envoyez par WhatsApp. Vos invites decouvrent la magie.' },
+                { icon: Camera, color: 'from-rose-400 to-rose-500', title: 'Vos photos prennent vie', desc: "Importez-les depuis votre telephone. Elles deviennent le coeur de l'invitation." },
+                { icon: Palette, color: 'from-blue-400 to-blue-500', title: 'Votre histoire, votre style', desc: 'Chaque evenement a son ambiance. Mariage, anniversaire, conference ou diplome.' },
+                { icon: Send, color: 'from-violet-400 to-violet-500', title: 'Un lien, une emotion', desc: "Partagez par WhatsApp. Vos invites recoivent bien plus qu'une simple invitation." },
               ].map((step, i) => (
                 <div key={i} className="flex items-start gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
                   <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
@@ -124,23 +124,20 @@ export default function HomePage() {
             <img src="https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80" alt="Mariage" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
             <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 via-pink-400/15 to-blue-500/20" />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-              <p className="text-white/90 text-lg md:text-xl font-bold mb-1">✨ Chaque invitation raconte une histoire</p>
-              <p className="text-white/70 text-xs">Mariage · Anniversaire · Baby Shower · Fiancailles · Diplome</p>
+              <p className="text-white/90 text-lg md:text-xl font-bold mb-1">✨ Vos plus beaux souvenirs meritent la plus belle invitation</p>
+              <p className="text-white/70 text-xs">Chaque photo raconte une histoire. Chaque histoire merite d'etre partagee.</p>
             </div>
           </div>
 
           {/* Types d'evenements */}
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Choisissez votre evenement</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Votre evenement, votre univers</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { emoji: '💍', label: 'Mariage', slug: 'wedding', gradient: 'from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-800/20' },
-                { emoji: '💕', label: 'Fiancailles', slug: 'engagement', gradient: 'from-pink-100 to-pink-50 dark:from-pink-900/30 dark:to-pink-800/20' },
                 { emoji: '🎂', label: 'Anniversaire', slug: 'birthday', gradient: 'from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20' },
-                { emoji: '👶', label: 'Baby Shower', slug: 'baby-shower', gradient: 'from-blue-100 to-sky-50 dark:from-blue-900/30 dark:to-sky-800/20' },
-                { emoji: '🙏', label: 'Religieux', slug: 'religious', gradient: 'from-cream-100 to-cream-50 dark:from-cream-900/30 dark:to-cream-800/20' },
+                { emoji: '🎤', label: 'Conference', slug: 'corporate', gradient: 'from-gray-100 to-slate-50 dark:from-gray-900/30 dark:to-slate-800/20' },
                 { emoji: '🎓', label: 'Diplome', slug: 'graduation', gradient: 'from-navy-100 to-slate-50 dark:from-navy-900/30 dark:to-slate-800/20' },
-                { emoji: '💼', label: 'Corporate', slug: 'corporate', gradient: 'from-gray-100 to-slate-50 dark:from-gray-900/30 dark:to-slate-800/20' },
               ].map((cat) => (
                 <Link key={cat.slug} href={`/create/${cat.slug}`} className={`flex items-center gap-3 p-4 bg-gradient-to-br ${cat.gradient} rounded-2xl border border-gray-100 dark:border-gray-800 hover:scale-105 transition-all shadow-sm active:scale-95`}>
                   <span className="text-2xl">{cat.emoji}</span>
@@ -163,13 +160,13 @@ export default function HomePage() {
 
           {/* Pourquoi Invitia */}
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Pourquoi Invitia ?</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Ce qui fait la difference</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: Shield, label: 'Gratuit', desc: 'Sans carte bancaire' },
-                { icon: Zap, label: '3 minutes', desc: 'Creation express' },
-                { icon: Heart, label: 'Effet waouh', desc: 'Design premium' },
-                { icon: Users, label: 'WhatsApp', desc: 'Partage facile' },
+                { icon: Shield, label: 'Gratuit', desc: 'Sans carte, sans pub' },
+                { icon: Zap, label: '3 minutes', desc: "Le temps d'un cafe" },
+                { icon: Heart, label: 'Emotion', desc: 'Pas juste un carton' },
+                { icon: Users, label: 'WhatsApp', desc: 'La ou sont vos invites' },
               ].map((item, i) => (
                 <div key={i} className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 text-center shadow-sm">
                   <item.icon className="w-6 h-6 text-rose-500 mx-auto mb-2" />
@@ -188,19 +185,19 @@ export default function HomePage() {
             <div className="absolute inset-0 flex items-center justify-center p-6 gap-5">
               <svg className="w-14 h-14 flex-shrink-0" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               <div className="text-left">
-                <p className="text-white text-lg font-extrabold mb-0.5">Ouvert depuis WhatsApp</p>
-                <p className="text-white/80 text-xs">Vos invites recoivent un lien. Ils l'ouvrent. L'effet waouh est immediat.</p>
+                <p className="text-white text-lg font-extrabold mb-0.5">Ouvert sur WhatsApp</p>
+                <p className="text-white/80 text-xs">Un lien recu. Un clic. Et l'emotion commence. Aussi simple que ca.</p>
               </div>
             </div>
           </div>
 
           {/* Temoignages */}
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Ils ont adore</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Ce qu'ils en disent</h2>
             <div className="space-y-3">
               {[
-                { quote: "Mes invites m'ont tous dit : c'est la plus belle invitation que j'ai jamais recue !", author: 'Marie K.', event: 'Mariage', avatar: 'MK' },
-                { quote: "J'ai cree l'invitation d'anniversaire de ma fille en 3 minutes sur mon telephone.", author: 'David M.', event: 'Anniversaire', avatar: 'DM' },
+                { quote: "Je voulais que mes invites ressentent quelque chose avant meme d'arriver. C'est exactement ce qui s'est passe.", author: 'Marie K.', event: 'Mariage', avatar: 'MK' },
+                { quote: "J'ai cree l'invitation d'anniversaire de ma fille sur mon telephone. Elle m'a dit : Maman, c'est la plus belle chose que j'ai vue.", author: 'David M.', event: 'Anniversaire', avatar: 'DM' },
               ].map((t, i) => (
                 <div key={i} className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
                   <div className="flex gap-3">
@@ -229,16 +226,16 @@ export default function HomePage() {
           <section className="text-center mb-4">
             <div className="p-6 bg-gradient-to-br from-rose-500 to-blue-600 rounded-3xl shadow-xl shadow-rose-200 dark:shadow-rose-900/30">
               <Gift className="w-8 h-8 text-white mx-auto mb-3" />
-              <h3 className="text-lg font-extrabold text-white mb-2">Pret a creer la plus belle invitation ?</h3>
-              <p className="text-xs text-white/80 mb-5">C'est gratuit. Ca prend 3 minutes. L'effet waouh est garanti.</p>
+              <h3 className="text-lg font-extrabold text-white mb-2">Votre evenement merite la plus belle des invitations</h3>
+              <p className="text-xs text-white/80 mb-5">Gratuit. 3 minutes. Aucune carte bancaire demandee.</p>
               <Link href="/create" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-gray-900 rounded-2xl font-bold text-sm hover:shadow-2xl transition-all active:scale-95">
-                <Sparkles className="w-4 h-4 text-rose-500" /> Creer mon invitation gratuite
+                <Sparkles className="w-4 h-4 text-rose-500" /> Commencer mon invitation
               </Link>
             </div>
           </section>
 
           <footer className="text-center pt-4 pb-2">
-            <p className="text-[11px] text-gray-400 dark:text-gray-500">© {new Date().getFullYear()} Invitia — Fait avec ❤️ en RDC</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">© {new Date().getFullYear()} Invitia — Chaque invitation est un souvenir qui commence</p>
           </footer>
         </main>
 

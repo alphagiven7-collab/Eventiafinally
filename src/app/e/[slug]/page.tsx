@@ -18,11 +18,14 @@ import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { getEventIdentity, getPalette } from '@/constants/design-language';
 import { useTheme } from 'next-themes';
+import { getUserEvents } from '@/lib/storage';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const { user } = useAuth();
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [guestName, setGuestName] = useState<string | null>(null);
@@ -42,17 +45,17 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
         setLoading(false);
       }
 
-      if (typeof window !== 'undefined') {
-        const stored = JSON.parse(localStorage.getItem('invitia_demo_events') || '[]');
-        const found = stored.find((e: any) => e.slug === slug);
+      if (typeof window !== 'undefined' && user?.id) {
+        const userEvts = await getUserEvents(user.id);
+        const found = userEvts.find((e) => e.slug === slug);
         if (found && !cancelled) {
-          setEvent(found as EventWithSettings);
+          setEvent(found);
           setLoading(false);
         }
       }
 
       // Si on a déjà trouvé l'événement localement, on arrête ici
-      if (!cancelled && (hardcoded || (typeof window !== 'undefined' && JSON.parse(localStorage.getItem('invitia_demo_events') || '[]').find((e: any) => e.slug === slug)))) {
+      if (!cancelled && (hardcoded || (typeof window !== 'undefined' && user?.id && (await getUserEvents(user.id)).find((e) => e.slug === slug)))) {
         setLoading(false);
         return;
       }
@@ -96,7 +99,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     loadEvent();
 
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, user?.id]);
 
   // Récupérer le nom depuis l'URL (paramètre guest)
   useEffect(() => {

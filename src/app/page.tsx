@@ -12,12 +12,23 @@ export default function HomePage() {
   const { user, loading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
+    <div className="min-h-screen font-sans transition-colors relative">
+      {/* Image de fond globale subtile */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <img
+          src="https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80"
+          alt=""
+          className="w-full h-full object-cover opacity-[0.04] dark:opacity-[0.03]"
+          loading="lazy"
+        />
+      </div>
+
+      <div className="relative z-10">
       {/* Header — type app */}
       <header className="sticky top-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {/* Logo Invitia — enveloppe cœur */}
+            {/* Logo Invitia — enveloppe coeur */}
             <svg className="w-9 h-9" viewBox="0 0 36 36" fill="none">
               <defs>
                 <linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36">
@@ -50,92 +61,94 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-lg mx-auto px-5 pb-24">
-        {/* Hero — avec fond décoratif */}
-        <section className="pt-10 pb-8 text-center relative overflow-hidden">
-          {/* Formes décoratives de fond */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-200 dark:bg-rose-900/20 rounded-full blur-3xl opacity-50" />
-            <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-blue-200 dark:bg-blue-900/20 rounded-full blur-3xl opacity-40" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-violet-200 dark:bg-violet-900/20 rounded-full blur-3xl opacity-30" />
-          </div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full border border-rose-100 dark:border-gray-700 shadow-sm mb-6">
-            <Zap className="w-4 h-4 text-rose-500" />
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Creer en 3 minutes</span>
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 leading-tight">
-            La plus belle facon<br />
-            <span className="bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">
-              d'inviter vos proches
-            </span>
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8 leading-relaxed">
-            Creez des invitations elegantes en quelques clics. Partagez par WhatsApp. Vos invites decouvrent une experience inoubliable.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/create"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
-              <Send className="w-4 h-4" />
-              Creer mon invitation
-            </Link>
-            <Link href="/e/yanick-keren"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-rose-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-sm hover:border-rose-400 dark:hover:border-rose-700 transition-all active:scale-95">
-              <Heart className="w-4 h-4 text-rose-500" />
-              Voir un exemple
-            </Link>
+        {/* Hero — avec photo de fond */}
+        <section className="pt-10 pb-8 text-center relative overflow-hidden rounded-b-[3rem] mb-4">
+          <div className="absolute inset-0 z-0">
+            <img
+              src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200&q=80"
+              alt=""
+              className="w-full h-full object-cover opacity-25 dark:opacity-15"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/60 to-white/90 dark:from-gray-950/90 dark:via-gray-950/60 dark:to-gray-950/90" />
           </div>
 
-          {/* Stats */}
-          <div className="mt-10 grid grid-cols-3 gap-4">
-            {[
-              { value: '3 min', label: 'Creation' },
-              { value: '2000+', label: 'Envoyees' },
-              { value: '100%', label: 'Mobile' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-xl font-extrabold bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">{stat.value}</p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full border border-rose-100 dark:border-gray-700 shadow-sm mb-6">
+              <Zap className="w-4 h-4 text-rose-500" />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Creer en 3 minutes</span>
+            </div>
 
-        {/* Comment ca marche — avec photo de fond */}
-        <section className="mb-8 relative">
-          {/* Background photo decorative */}
-          <div className="absolute inset-0 rounded-3xl overflow-hidden opacity-[0.06] dark:opacity-[0.08]">
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-500 via-blue-500 to-violet-500" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,white_1px,transparent_1px)] bg-[size:40px_40px]" />
-          </div>
-          <div className="relative">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Comment ca marche</h2>
-            <div className="space-y-3">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 leading-tight">
+              La plus belle facon<br />
+              <span className="bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">
+                d'inviter vos proches
+              </span>
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8 leading-relaxed">
+              Creez des invitations elegantes en quelques clics. Partagez par WhatsApp. Vos invites decouvrent une experience inoubliable.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/create"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
+                <Send className="w-4 h-4" />
+                Creer mon invitation
+              </Link>
+              <Link href="/e/yanick-keren"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-rose-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-sm hover:border-rose-400 dark:hover:border-rose-700 transition-all active:scale-95">
+                <Heart className="w-4 h-4 text-rose-500" />
+                Voir un exemple
+              </Link>
+            </div>
+
+            {/* Stats */}
+            <div className="mt-10 grid grid-cols-3 gap-4">
               {[
-                { icon: Camera, color: 'from-rose-400 to-rose-500', title: 'Ajoutez vos photos', desc: 'Importez depuis votre telephone. Drag & drop. Apercu immediat.' },
-                { icon: Palette, color: 'from-blue-400 to-blue-500', title: 'Personnalisez le style', desc: 'Chaque evenement a sa propre identite visuelle.' },
-                { icon: Send, color: 'from-violet-400 to-violet-500', title: 'Partagez le lien', desc: 'Envoyez par WhatsApp. Vos invites decouvrent la magie.' },
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
-                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                    <step.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{step.title}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
-                  </div>
+                { value: '3 min', label: 'Creation' },
+                { value: '2000+', label: 'Envoyees' },
+                { value: '100%', label: 'Mobile' },
+              ].map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <p className="text-xl font-extrabold bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">{stat.value}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{stat.label}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Section visuelle — photo atmosphere */}
-        <div className="mb-8 relative h-44 rounded-3xl overflow-hidden shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-rose-400 via-pink-400 to-blue-400">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_white_1px,_transparent_1px)] bg-[size:30px_30px] opacity-30" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_white_2px,_transparent_2px)] bg-[size:60px_60px] opacity-20" />
+        {/* Comment ca marche */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">Comment ca marche</h2>
+          <div className="space-y-3">
+            {[
+              { icon: Camera, color: 'from-rose-400 to-rose-500', title: 'Ajoutez vos photos', desc: 'Importez depuis votre telephone. Drag & drop. Apercu immediat.' },
+              { icon: Palette, color: 'from-blue-400 to-blue-500', title: 'Personnalisez le style', desc: 'Chaque evenement a sa propre identite visuelle.' },
+              { icon: Send, color: 'from-violet-400 to-violet-500', title: 'Partagez le lien', desc: 'Envoyez par WhatsApp. Vos invites decouvrent la magie.' },
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                  <step.icon className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{step.title}</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
+        </section>
+
+        {/* Photo ambiance — mariage */}
+        <div className="mb-8 relative h-52 rounded-3xl overflow-hidden shadow-xl">
+          <img
+            src="https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80"
+            alt="Mariage"
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-900/50 via-pink-800/30 to-blue-900/50" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
             <p className="text-white/90 text-lg md:text-xl font-bold mb-1">✨ Chaque invitation raconte une histoire</p>
             <p className="text-white/70 text-xs">Mariage · Anniversaire · Baby Shower · Fiancailles · Diplome</p>
@@ -166,7 +179,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Decorative separator */}
+        {/* Separator */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-rose-300 to-rose-300 dark:via-rose-700" />
           <svg className="w-6 h-6" viewBox="0 0 36 36" fill="none">
@@ -195,11 +208,15 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Section visuelle — invitation example preview */}
-        <div className="mb-8 relative h-40 rounded-3xl overflow-hidden shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-violet-400 to-rose-400">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_2px,_transparent_2px)] bg-[size:50px_50px] opacity-25" />
-          </div>
+        {/* Photo WhatsApp */}
+        <div className="mb-8 relative h-44 rounded-3xl overflow-hidden shadow-xl">
+          <img
+            src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80"
+            alt="Mobile"
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-violet-800/50 to-rose-900/70" />
           <div className="absolute inset-0 flex items-center justify-center text-center p-6">
             <div>
               <p className="text-white text-lg font-extrabold mb-1">📱 Ouvert depuis WhatsApp</p>
@@ -232,7 +249,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Decorative photo strip before CTA */}
+        {/* Photo strip */}
         <div className="mb-6 flex gap-3 overflow-x-auto scrollbar-hide pb-2">
           {['💍', '💕', '🎂', '👶', '🙏', '🎓', '💼'].map((emoji, i) => (
             <div key={i}
@@ -307,6 +324,7 @@ export default function HomePage() {
           ))}
         </div>
       </nav>
+      </div>
     </div>
   );
 }

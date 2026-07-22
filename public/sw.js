@@ -1,40 +1,27 @@
-const CACHE = "invitia-v1";
+// Service Worker désactivé pour corriger le bug de rechargement infini
+// sur Safari 15 (iPhone 7 Plus et anciens appareils iOS)
 
 self.addEventListener("install", (e) => {
+    // Forcer l'activation immédiate
     self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
+    // Supprimer tous les caches et se désinstaller
     e.waitUntil(
         caches.keys().then((keys) =>
             Promise.all(keys.map((k) => caches.delete(k)))
-        ).then(() => self.clients.claim())
+        ).then(() => {
+            // Se désinstaller soi-même
+            return self.registration.unregister();
+        }).then(() => {
+            // Recharger tous les clients pour qu'ils n'utilisent plus le SW
+            return self.clients.matchAll().then((clients) => {
+                clients.forEach((client) => client.navigate(client.url));
+            });
+        })
     );
 });
 
-self.addEventListener("fetch", (e) => {
-    if (e.request.method !== "GET") return;
-
-    const url = new URL(e.request.url);
-    
-    // Pour les pages HTML : toujours réseau, avec fallback cache
-    if (url.pathname.endsWith(".html") || url.pathname.endsWith("/") || !url.pathname.split("/").pop().includes(".")) {
-        e.respondWith(
-            fetch(e.request).catch(() => caches.match(e.request))
-        );
-        return;
-    }
-
-    // Pour tout le reste (JS, CSS, images, JSON) : réseau d'abord
-    e.respondWith(
-        fetch(e.request)
-            .then((res) => {
-                if (res && res.ok) {
-                    const clone = res.clone();
-                    caches.open(CACHE).then((c) => c.put(e.request, clone));
-                }
-                return res;
-            })
-            .catch(() => caches.match(e.request))
-    );
-});
+// Ne plus intercepter les requêtes fetch
+// (pas de addEventListener "fetch" → toutes les requêtes passent directement au réseau)

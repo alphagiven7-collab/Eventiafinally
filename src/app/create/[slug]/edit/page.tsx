@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/components/ui';
 import { useAuth } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
+import { Music, Upload, X } from 'lucide-react';
 import {
   EventWithSettings,
   ProgramItem,
@@ -100,6 +101,197 @@ function Field({
           placeholder={placeholder}
           className={base}
         />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Uploader audio local (base64)
+   ───────────────────────────────────────────── */
+function AudioUploader({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (dataUrl: string) => void;
+}) {
+  const fileInputRef = useState<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState('');
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setFileName(file.name);
+      onChange(dataUrl);
+    } catch {
+      alert("Erreur lors de l'import du fichier audio.");
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        id="audio-upload-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+        }}
+      />
+      {value ? (
+        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
+            <Music className="w-5 h-5 text-rose-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+              {fileName || 'Fichier audio chargé'}
+            </p>
+            <audio src={value} controls className="w-full h-8 mt-1" />
+          </div>
+          <button
+            type="button"
+            onClick={() => { onChange(''); setFileName(''); }}
+            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <label
+          htmlFor="audio-upload-input"
+          className="flex items-center gap-3 p-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition"
+        >
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+            {uploading ? (
+              <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5 text-rose-500" />
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+              {uploading ? 'Import en cours...' : 'Touchez pour importer un fichier audio'}
+            </p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">MP3, OGG, WAV • Max 10 Mo</p>
+          </div>
+        </label>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Uploader image unique (pour Hero, Welcome, About, Map)
+   ───────────────────────────────────────────── */
+function SingleImageUploader({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (dataUrl: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      // @ts-ignore
+      const imageCompression = (await import('browser-image-compression')).default;
+      const options = {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1600,
+        useWebWorker: true,
+        fileType: 'image/webp',
+        initialQuality: 0.85,
+      };
+      let result: File | Blob;
+      try {
+        result = await imageCompression(file, options);
+      } catch {
+        result = file;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(result);
+      });
+      onChange(dataUrl);
+    } catch {
+      alert("Erreur lors de l'import de l'image.");
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        {label}
+      </label>
+      {value ? (
+        <div className="relative group">
+          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-36">
+            <img src={value} alt={label} className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-xl">
+            <label className="px-3 py-2 bg-white/90 rounded-lg text-xs font-medium cursor-pointer hover:bg-white transition">
+              Changer
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="px-3 py-2 bg-red-500/90 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+          />
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+            {uploading ? (
+              <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5 text-rose-500" />
+            )}
+          </div>
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            {uploading ? 'Compression en cours...' : 'Touchez pour importer une image'}
+          </p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">JPG, PNG, HEIC</p>
+        </label>
       )}
     </div>
   );
@@ -638,28 +830,16 @@ function EditEventContent() {
         {/* ═══════ 2. IMAGES ═══════ */}
         <Section title="Images" icon="🖼️">
           <div className="space-y-4 pt-4">
-            <Field
+            <SingleImageUploader
               label="Image Hero (bannière principale)"
               value={heroImage}
               onChange={setHeroImage}
-              placeholder="https://... ou collez une URL"
             />
-            {heroImage && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-32">
-                <img src={heroImage} alt="Hero" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <Field
+            <SingleImageUploader
               label="Image du Welcome Gate (porte d'entrée)"
               value={welcomeImage}
               onChange={setWelcomeImage}
-              placeholder="https://... ou collez une URL"
             />
-            {welcomeImage && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-32">
-                <img src={welcomeImage} alt="Welcome" className="w-full h-full object-cover" />
-              </div>
-            )}
             <PhotoUploader
               onPhotosChange={setCoverPhotos}
               existingPhotos={coverPhotos}
@@ -804,12 +984,11 @@ function EditEventContent() {
             <Field label="Titre de la section" value={aboutTitle} onChange={setAboutTitle} placeholder="À propos de nous" />
             <Field label="Histoire (partie 1)" value={aboutStory1} onChange={setAboutStory1} rows={3} placeholder="Notre histoire a commencé..." />
             <Field label="Histoire (partie 2)" value={aboutStory2} onChange={setAboutStory2} rows={3} placeholder="Le chapitre suivant..." />
-            <Field label="Image de couverture À propos" value={aboutImage} onChange={setAboutImage} placeholder="https://..." />
-            {aboutImage && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-32">
-                <img src={aboutImage} alt="À propos" className="w-full h-full object-cover" />
-              </div>
-            )}
+            <SingleImageUploader
+              label="Image de couverture À propos"
+              value={aboutImage}
+              onChange={setAboutImage}
+            />
           </div>
         </Section>
 
@@ -832,12 +1011,11 @@ function EditEventContent() {
             <Field label="Nom du lieu" value={venue} onChange={setVenue} placeholder="Château de Versailles" />
             <Field label="Adresse du lieu" value={venueAddress} onChange={setVenueAddress} placeholder="Place d'Armes, 78000 Versailles" />
             <Field label="Lien Google Maps" value={venueMapLink} onChange={setVenueMapLink} placeholder="https://maps.google.com/..." />
-            <Field label="Image de la carte" value={venueMapImage} onChange={setVenueMapImage} placeholder="https://... (image de la carte)" />
-            {venueMapImage && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-32">
-                <img src={venueMapImage} alt="Carte" className="w-full h-full object-cover" />
-              </div>
-            )}
+            <SingleImageUploader
+              label="Image de la carte"
+              value={venueMapImage}
+              onChange={setVenueMapImage}
+            />
           </div>
         </Section>
 
@@ -898,12 +1076,7 @@ function EditEventContent() {
             </div>
             {musicEnabled && (
               <>
-                <Field
-                  label="URL de la musique (MP3, OGG...)"
-                  value={musicUrl}
-                  onChange={setMusicUrl}
-                  placeholder="https://... ou /audio/music.mp3"
-                />
+                <AudioUploader value={musicUrl} onChange={setMusicUrl} />
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Volume ({musicVolume}%)

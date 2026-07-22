@@ -235,10 +235,10 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
         const identity = getEventIdentity(event.type);
         const palette = getPalette(identity, isDark);
         return (
-          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: palette.background }}>
+          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: '#fafafa' }}>
             <InvitationHero event={event} guestName={guestName || undefined} />
             
-            <main className="max-w-md mx-auto relative z-10 pb-28">
+            <main className="max-w-md mx-auto relative z-10 pb-10">
               <InvitationCard event={event} guestName={guestName || undefined} />
 
               {event.sections?.countdown && (

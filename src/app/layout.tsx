@@ -55,6 +55,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={`h-full ${playfair.variable} ${cormorant.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+      </head>
       <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
         <I18nProvider>
           <ToastProvider>

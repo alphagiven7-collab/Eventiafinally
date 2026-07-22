@@ -24,7 +24,8 @@
   }
 
   body {
-    font-family: var(--font-inter), system-ui, sans-serif;
+    font-family: 'Montserrat', var(--font-sans), system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

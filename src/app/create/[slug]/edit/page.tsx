@@ -22,11 +22,13 @@ import { getUserEvents, saveEvent } from '@/lib/storage';
    ───────────────────────────────────────────── */
 function Section({
   title,
+  subtitle,
   icon,
   children,
   defaultOpen = false,
 }: {
   title: string;
+  subtitle?: string;
   icon: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
@@ -39,9 +41,12 @@ function Section({
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition"
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">{icon}</span>
-          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">{icon}</span>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+          </div>
+          {subtitle && !open && <p className="text-[10px] text-gray-400 dark:text-gray-500 ml-8">{subtitle}</p>}
         </div>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -53,7 +58,12 @@ function Section({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">{children}</div>}
+      {open && (
+        <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
+          {subtitle && <p className="text-[11px] text-gray-400 dark:text-gray-500 italic mb-1 -mx-5 px-5 py-2.5 bg-gray-50/50 dark:bg-gray-700/30">{subtitle}</p>}
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -63,6 +73,7 @@ function Section({
    ───────────────────────────────────────────── */
 function Field({
   label,
+  help,
   value,
   onChange,
   type = 'text',
@@ -71,6 +82,7 @@ function Field({
   rows,
 }: {
   label: string;
+  help?: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
@@ -85,6 +97,7 @@ function Field({
       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
         {label} {required && <span className="text-rose-500">*</span>}
       </label>
+      {help && <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 leading-relaxed">{help}</p>}
       {rows ? (
         <textarea
           value={value}
@@ -197,10 +210,12 @@ function AudioUploader({
    ───────────────────────────────────────────── */
 function SingleImageUploader({
   label,
+  help,
   value,
   onChange,
 }: {
   label: string;
+  help?: string;
   value: string;
   onChange: (dataUrl: string) => void;
 }) {
@@ -242,6 +257,7 @@ function SingleImageUploader({
       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
         {label}
       </label>
+      {help && <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 leading-relaxed">{help}</p>}
       {value ? (
         <div className="relative group">
           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-36">
@@ -805,116 +821,220 @@ function EditEventContent() {
       </header>
 
       <main className="max-w-lg mx-auto px-5 py-6 space-y-4">
-        {/* ═══════ 1. INFORMATIONS GÉNÉRALES ═══════ */}
-        <Section title="Informations générales" icon="📝" defaultOpen>
+        {/* ═══════ 1. LES DÉTAILS DE VOTRE ÉVÉNEMENT ═══════ */}
+        <Section
+          title="Les détails de votre événement"
+          subtitle="Commençons par l'essentiel : qui, quand et où !"
+          icon="📝"
+          defaultOpen
+        >
           <div className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Titre de l'événement" value={title} onChange={setTitle} required />
-              <Field label="Sous-titre" value={subtitle} onChange={setSubtitle} />
+              <Field
+                label="Nom de votre événement"
+                help="Ex: Le mariage de Marie & Pierre"
+                value={title}
+                onChange={setTitle}
+                required
+                placeholder="Ex: Le mariage de Marie & Pierre"
+              />
+              <Field
+                label="Petit mot d'accroche"
+                help="Une phrase courte qui apparaîtra sous le titre"
+                value={subtitle}
+                onChange={setSubtitle}
+                placeholder="Ex: Célébrons notre amour"
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Prénom du/de la marié(e) gauche" value={coupleLeft} onChange={setCoupleLeft} placeholder="Ex: Marie" />
-              <Field label="Prénom du/de la marié(e) droit" value={coupleRight} onChange={setCoupleRight} placeholder="Ex: Pierre" />
+              <Field
+                label="Prénom de la première personne"
+                help="Sera affiché à gauche dans l'invitation"
+                value={coupleLeft}
+                onChange={setCoupleLeft}
+                placeholder="Ex: Marie"
+              />
+              <Field
+                label="Prénom de la deuxième personne"
+                help="Sera affiché à droite dans l'invitation"
+                value={coupleRight}
+                onChange={setCoupleRight}
+                placeholder="Ex: Pierre"
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="Date" value={eventDate} onChange={setEventDate} type="date" required />
-              <Field label="Heure" value={eventTime} onChange={setEventTime} type="time" />
-              <Field label="Lieu" value={location} onChange={setLocation} required />
+              <Field
+                label="Date de l'événement"
+                help="Le grand jour !"
+                value={eventDate}
+                onChange={setEventDate}
+                type="date"
+                required
+              />
+              <Field
+                label="Heure de début"
+                value={eventTime}
+                onChange={setEventTime}
+                type="time"
+              />
+              <Field
+                label="Ville ou lieu"
+                help="Ex: Paris, Château de Versailles..."
+                value={location}
+                onChange={setLocation}
+                required
+                placeholder="Ex: Paris"
+              />
             </div>
-            <Field label="Adresse complète" value={address} onChange={setAddress} placeholder="123 rue de Paris, 75001" />
-            <Field label="Description" value={description} onChange={setDescription} rows={3} placeholder="Description de votre événement..." />
-            <Field label="Meta description (SEO)" value={metaDescription} onChange={setMetaDescription} rows={2} placeholder="Description pour les moteurs de recherche..." />
+            <Field
+              label="Adresse complète"
+              help="L'adresse exacte pour que vos invités puissent s'y rendre"
+              value={address}
+              onChange={setAddress}
+              placeholder="Ex: 123 rue de Paris, 75001 Paris"
+            />
+            <Field
+              label="Description de l'événement"
+              help="Quelques mots sur votre événement (optionnel)"
+              value={description}
+              onChange={setDescription}
+              rows={3}
+              placeholder="Ex: Nous sommes heureux de vous convier à notre célébration..."
+            />
+            <Field
+              label="Description pour Google"
+              help="Si vous partagez le lien sur les réseaux, c'est ce texte qui apparaîtra (optionnel)"
+              value={metaDescription}
+              onChange={setMetaDescription}
+              rows={2}
+              placeholder="Ex: Le mariage de Marie et Pierre - 15 mars 2026 à Paris"
+            />
           </div>
         </Section>
 
-        {/* ═══════ 2. IMAGES ═══════ */}
-        <Section title="Images" icon="🖼️">
+        {/* ═══════ 2. VOS PHOTOS ═══════ */}
+        <Section
+          title="Vos photos"
+          subtitle="Ajoutez les photos qui rendront votre invitation unique"
+          icon="📸"
+        >
           <div className="space-y-4 pt-4">
             <SingleImageUploader
-              label="Image Hero (bannière principale)"
+              label="Photo de couverture (celle en haut)"
               value={heroImage}
               onChange={setHeroImage}
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
+              C'est la grande image que vos invités verront en arrivant sur votre invitation
+            </p>
             <SingleImageUploader
-              label="Image du Welcome Gate (porte d'entrée)"
+              label="Photo d'accueil (avant d'ouvrir l'invitation)"
               value={welcomeImage}
               onChange={setWelcomeImage}
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
+              C'est l'image de fond que vos invités verront avant de saisir leur nom
+            </p>
             <PhotoUploader
               onPhotosChange={setCoverPhotos}
               existingPhotos={coverPhotos}
               maxPhotos={10}
-              label="Photos de couverture / galerie"
+              label="Votre galerie de photos"
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
+              La première photo sera utilisée comme image de partage sur les réseaux sociaux
+            </p>
           </div>
         </Section>
 
-        {/* ═══════ 3. WELCOME GATE ═══════ */}
-        <Section title="Welcome Gate (écran d'accueil)" icon="🚪">
+        {/* ═══════ 3. MESSAGE D'ACCUEIL ═══════ */}
+        <Section
+          title="Message d'accueil"
+          subtitle="C'est ce que vos invités verront avant de découvrir l'invitation"
+          icon="🚪"
+        >
           <div className="space-y-4 pt-4">
             <Field
-              label="Message de bienvenue"
+              label="Votre message de bienvenue"
+              help="Écrivez quelques mots chaleureux pour accueillir vos invités"
               value={welcomeMessage}
               onChange={setWelcomeMessage}
               rows={3}
-              placeholder="Nous sommes ravis de vous inviter à célébrer notre union..."
+              placeholder="Ex: Nous sommes ravis de vous inviter à célébrer notre union..."
             />
             <Field
-              label="Texte d'incitation (sous le message)"
+              label="Invitation à entrer son nom"
+              help="Le texte qui apparaît sous le message pour demander aux invités de saisir leur prénom"
               value={gateHint}
               onChange={setGateHint}
-              placeholder="Veuillez saisir votre nom pour découvrir votre invitation personnelle."
+              placeholder="Ex: Entrez votre prénom pour ouvrir votre invitation"
             />
           </div>
         </Section>
 
-        {/* ═══════ 4. TEXTE D'INVITATION ═══════ */}
-        <Section title="Texte d'invitation" icon="💌">
+        {/* ═══════ 4. CONTENU DE L'INVITATION ═══════ */}
+        <Section
+          title="Contenu de l'invitation"
+          subtitle="Rédigez le texte que vos invités liront sur la carte d'invitation"
+          icon="💌"
+        >
           <div className="space-y-4 pt-4">
             <Field
-              label="Introduction (utilisez {couple} pour insérer les prénoms)"
+              label="Texte d'introduction"
+              help="Écrivez le texte qui apparaîtra sur la carte d'invitation. Tapez {'{couple}'} pour insérer automatiquement les prénoms."
               value={inviteIntro}
               onChange={setInviteIntro}
               rows={3}
-              placeholder="Nous avons la joie de vous inviter au mariage de {couple}..."
+              placeholder="Ex: Nous avons la joie de vous inviter au mariage de {couple}..."
             />
             <Field
-              label="Texte secondaire"
+              label="Texte complémentaire"
+              help="Un second paragraphe sur la carte (optionnel)"
               value={inviteSecondary}
               onChange={setInviteSecondary}
               rows={3}
-              placeholder="Texte supplémentaire..."
+              placeholder="Ex: Nous serions honorés de votre présence..."
             />
             <Field
-              label="Texte principal"
+              label="Message personnel"
+              help="Un message qui sera affiché sous la carte d'invitation (optionnel)"
               value={mainText}
               onChange={setMainText}
               rows={3}
-              placeholder="Texte principal de l'invitation..."
+              placeholder="Ex: Venez célébrer ce moment unique avec nous..."
             />
             <Field
-              label="Texte du bouton RSVP"
+              label="Texte du bouton de confirmation"
+              help="Le texte qui apparaît sur le bouton où vos invités confirment leur venue"
               value={reserveText}
               onChange={setReserveText}
-              placeholder="Confirmer ma présence"
+              placeholder="Ex: Confirmer ma présence"
             />
             <Field
-              label="Date limite RSVP"
+              label="Date limite pour confirmer"
+              help="Indiquez jusqu'à quand vos invités peuvent confirmer leur venue"
               value={rsvpDeadlineText}
               onChange={setRsvpDeadlineText}
-              placeholder="Merci de confirmer avant le 15 mars 2026"
+              placeholder="Ex: Merci de confirmer avant le 15 mars 2026"
             />
           </div>
         </Section>
 
-        {/* ═══════ 5. COULEURS & BRANDING ═══════ */}
-        <Section title="Couleurs & Branding" icon="🎨">
+        {/* ═══════ 5. LES COULEURS ═══════ */}
+        <Section
+          title="Les couleurs"
+          subtitle="Choisissez les couleurs qui reflètent votre style"
+          icon="🎨"
+        >
           <div className="space-y-4 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Couleur principale
+                  Couleur dominante
                 </label>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
+                  Utilisée pour les titres et les éléments principaux
+                </p>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -932,8 +1052,11 @@ function EditEventContent() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Couleur accent
+                  Couleur secondaire
                 </label>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
+                  Utilisée pour les accents et les détails
+                </p>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -952,8 +1075,11 @@ function EditEventContent() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Couleur bouton RSVP
+                Couleur du bouton « Confirmer sa venue »
               </label>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
+                C'est le bouton sur lequel vos invités cliqueront pour confirmer leur présence
+              </p>
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -971,64 +1097,132 @@ function EditEventContent() {
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold"
                   style={{ backgroundColor: rsvpButtonColor }}
                 >
-                  RSVP
+                  OK
                 </div>
               </div>
             </div>
           </div>
         </Section>
 
-        {/* ═══════ 6. SECTION À PROPOS ═══════ */}
-        <Section title="Section À propos" icon="💑">
+        {/* ═══════ 6. NOTRE HISTOIRE ═══════ */}
+        <Section
+          title="Notre histoire"
+          subtitle="Racontez votre parcours à vos invités (optionnel)"
+          icon="💑"
+        >
           <div className="space-y-4 pt-4">
-            <Field label="Titre de la section" value={aboutTitle} onChange={setAboutTitle} placeholder="À propos de nous" />
-            <Field label="Histoire (partie 1)" value={aboutStory1} onChange={setAboutStory1} rows={3} placeholder="Notre histoire a commencé..." />
-            <Field label="Histoire (partie 2)" value={aboutStory2} onChange={setAboutStory2} rows={3} placeholder="Le chapitre suivant..." />
+            <Field
+              label="Titre de cette section"
+              help="Ex: Comment tout a commencé..."
+              value={aboutTitle}
+              onChange={setAboutTitle}
+              placeholder="Ex: Notre histoire"
+            />
+            <Field
+              label="Comment vous vous êtes rencontrés"
+              help="Racontez les débuts de votre histoire"
+              value={aboutStory1}
+              onChange={setAboutStory1}
+              rows={3}
+              placeholder="Ex: Tout a commencé un soir d'été..."
+            />
+            <Field
+              label="La suite de votre histoire"
+              help="Le chapitre suivant (la demande, les projets...)"
+              value={aboutStory2}
+              onChange={setAboutStory2}
+              rows={3}
+              placeholder="Ex: Et puis un jour, la demande en mariage..."
+            />
             <SingleImageUploader
-              label="Image de couverture À propos"
+              label="Photo pour illustrer votre histoire"
               value={aboutImage}
               onChange={setAboutImage}
             />
           </div>
         </Section>
 
-        {/* ═══════ 7. PROGRAMME ═══════ */}
-        <Section title="Programme de la journée" icon="📅">
+        {/* ═══════ 7. DÉROULÉ DE LA JOURNÉE ═══════ */}
+        <Section
+          title="Déroulé de la journée"
+          subtitle="Indiquez à vos invités comment se passera la journée"
+          icon="📅"
+        >
           <div className="space-y-4 pt-4">
             <Field
-              label="Titre de la section programme"
+              label="Titre de cette section"
+              help="Ex: Le programme, Déroulé de la journée..."
               value={programSectionTitle}
               onChange={setProgramSectionTitle}
-              placeholder="Programme de la journée"
+              placeholder="Ex: Déroulé de la journée"
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              Ajoutez chaque étape avec l'heure et une courte description (ex: 14h - Cérémonie)
+            </p>
             <ProgramEditor items={program} onChange={setProgram} />
           </div>
         </Section>
 
-        {/* ═══════ 8. LIEU / VENUE ═══════ */}
-        <Section title="Lieu & Carte" icon="📍">
+        {/* ═══════ 8. OÙ ÇA SE PASSE ? ═══════ */}
+        <Section
+          title="Où ça se passe ?"
+          subtitle="Aidez vos invités à trouver le lieu de l'événement"
+          icon="📍"
+        >
           <div className="space-y-4 pt-4">
-            <Field label="Nom du lieu" value={venue} onChange={setVenue} placeholder="Château de Versailles" />
-            <Field label="Adresse du lieu" value={venueAddress} onChange={setVenueAddress} placeholder="Place d'Armes, 78000 Versailles" />
-            <Field label="Lien Google Maps" value={venueMapLink} onChange={setVenueMapLink} placeholder="https://maps.google.com/..." />
+            <Field
+              label="Nom du lieu"
+              help="Ex: Château de Versailles, Mairie du 8ème, Salle des fêtes..."
+              value={venue}
+              onChange={setVenue}
+              placeholder="Ex: Château de Versailles"
+            />
+            <Field
+              label="Adresse complète"
+              help="L'adresse exacte pour le GPS de vos invités"
+              value={venueAddress}
+              onChange={setVenueAddress}
+              placeholder="Ex: Place d'Armes, 78000 Versailles"
+            />
+            <Field
+              label="Lien vers la carte (Google Maps)"
+              help="Collez ici le lien Google Maps pour que vos invités puissent s'y rendre facilement"
+              value={venueMapLink}
+              onChange={setVenueMapLink}
+              placeholder="Ex: https://maps.google.com/..."
+            />
             <SingleImageUploader
-              label="Image de la carte"
+              label="Photo ou image du lieu"
+              help="Une photo du lieu ou une capture de carte"
               value={venueMapImage}
               onChange={setVenueMapImage}
             />
           </div>
         </Section>
 
-        {/* ═══════ 9. DRESS CODE ═══════ */}
-        <Section title="Dress Code" icon="👔">
+        {/* ═══════ 9. TENUE VESTIMENTAIRE ═══════ */}
+        <Section
+          title="Tenue vestimentaire"
+          subtitle="Indiquez à vos invités comment s'habiller (optionnel)"
+          icon="👔"
+        >
           <div className="space-y-4 pt-4">
-            <Field label="Titre du dress code" value={dressCodeTitle} onChange={setDressCodeTitle} placeholder="Tenue élégante" />
+            <Field
+              label="Quelle tenue pour votre événement ?"
+              help="Ex: Tenue élégante, Tenue de soirée, Chic et décontracté..."
+              value={dressCodeTitle}
+              onChange={setDressCodeTitle}
+              placeholder="Ex: Tenue élégante"
+            />
             <PhotoUploader
               onPhotosChange={setDressImages}
               existingPhotos={dressImages}
               maxPhotos={8}
-              label="Photos d'inspiration tenue"
+              label="Photos d'inspiration pour la tenue"
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
+              Ajoutez des photos pour donner des idées à vos invités
+            </p>
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -1039,26 +1233,38 @@ function EditEventContent() {
                 />
                 <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500" />
               </label>
-              <span className="text-xs text-gray-700 dark:text-gray-300">Afficher la section Dress Code</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300">Afficher cette section sur l'invitation</span>
             </div>
           </div>
         </Section>
 
-        {/* ═══════ 10. INFOS PRATIQUES ═══════ */}
-        <Section title="Informations pratiques" icon="ℹ️">
+        {/* ═══════ 10. INFOS UTILES ═══════ */}
+        <Section
+          title="Infos utiles pour vos invités"
+          subtitle="Parking, hébergement, bar... tout ce qu'ils doivent savoir"
+          icon="ℹ️"
+        >
           <div className="space-y-4 pt-4">
             <Field
-              label="Titre de la section"
+              label="Titre de cette section"
+              help="Ex: Bon à savoir, Infos pratiques..."
               value={practicalSectionTitle}
               onChange={setPracticalSectionTitle}
-              placeholder="Informations pratiques"
+              placeholder="Ex: Informations pratiques"
             />
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              Ajoutez les infos utiles pour vos invités (parking, hébergement, bar...)
+            </p>
             <PracticalInfoEditor items={practicalInfo} onChange={setPracticalInfo} />
           </div>
         </Section>
 
-        {/* ═══════ 11. MUSIQUE & AMBIANCE ═══════ */}
-        <Section title="Musique & Ambiance" icon="🎵">
+        {/* ═══════ 11. MUSIQUE ═══════ */}
+        <Section
+          title="Musique d'ambiance"
+          subtitle="Ajoutez une musique qui joue quand vos invités ouvrent l'invitation (optionnel)"
+          icon="🎵"
+        >
           <div className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">
@@ -1071,7 +1277,7 @@ function EditEventContent() {
                 <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500" />
               </label>
               <span className="text-xs text-gray-700 dark:text-gray-300">
-                Activer la musique de fond
+                Oui, je veux une musique de fond
               </span>
             </div>
             {musicEnabled && (
@@ -1081,6 +1287,9 @@ function EditEventContent() {
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Volume ({musicVolume}%)
                   </label>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
+                    Réglez le volume pour que la musique soit agréable sans gêner la lecture
+                  </p>
                   <input
                     type="range"
                     min={0}
@@ -1095,13 +1304,17 @@ function EditEventContent() {
           </div>
         </Section>
 
-        {/* ═══════ 12. SECTIONS VISIBLES ═══════ */}
-        <Section title="Sections visibles" icon="👁️">
+        {/* ═══════ 12. PAGES À AFFICHER ═══════ */}
+        <Section
+          title="Pages à afficher"
+          subtitle="Choisissez quelles sections vos invités verront sur l'invitation"
+          icon="👁️"
+        >
           <div className="space-y-3 pt-4">
             {[
-              { label: 'Galerie photos', value: secGallery, setter: setSecGallery },
-              { label: 'Compte à rebours', value: secCountdown, setter: setSecCountdown },
-              { label: 'Dress Code', value: secDressCode, setter: setSecDressCode },
+              { label: 'La galerie de photos', value: secGallery, setter: setSecGallery },
+              { label: 'Le compte à rebours avant le jour J', value: secCountdown, setter: setSecCountdown },
+              { label: 'Les indications sur la tenue', value: secDressCode, setter: setSecDressCode },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -1119,20 +1332,60 @@ function EditEventContent() {
           </div>
         </Section>
 
-        {/* ═══════ 13. LIENS & CONTACT ═══════ */}
-        <Section title="Liens & Contact" icon="🔗">
+        {/* ═══════ 13. CONTACT & LIENS ═══════ */}
+        <Section
+          title="Contact et liens utiles"
+          subtitle="Comment vos invités peuvent vous joindre ou contribuer (optionnel)"
+          icon="📩"
+        >
           <div className="space-y-4 pt-4">
-            <Field label="Email de support" value={supportEmail} onChange={setSupportEmail} type="email" placeholder="contact@exemple.com" />
-            <Field label="Lien de donation" value={donationLink} onChange={setDonationLink} placeholder="https://..." />
-            <Field label="Numéro WhatsApp pour donation" value={whatsappDonation} onChange={setWhatsappDonation} placeholder="+33612345678" />
-            <Field label="Message WhatsApp donation" value={whatsappDonationMessage} onChange={setWhatsappDonationMessage} rows={2} placeholder="Bonjour, je souhaite contribuer..." />
+            <Field
+              label="Votre email de contact"
+              help="Les invités pourront vous envoyer un email depuis l'invitation"
+              value={supportEmail}
+              onChange={setSupportEmail}
+              type="email"
+              placeholder="Ex: marie.pierre@email.com"
+            />
+            <Field
+              label="Lien pour offrir un cadeau"
+              help="Si vous avez une cagnotte en ligne, collez le lien ici"
+              value={donationLink}
+              onChange={setDonationLink}
+              placeholder="Ex: https://www.cagnotte.com/..."
+            />
+            <Field
+              label="Numéro WhatsApp pour le cadeau"
+              help="Pour que vos invités puissent envoyer un message WhatsApp"
+              value={whatsappDonation}
+              onChange={setWhatsappDonation}
+              placeholder="Ex: +33612345678"
+            />
+            <Field
+              label="Message WhatsApp pré-rempli"
+              help="Le message que vos invités verront quand ils ouvriront WhatsApp"
+              value={whatsappDonationMessage}
+              onChange={setWhatsappDonationMessage}
+              rows={2}
+              placeholder="Ex: Bonjour ! Je souhaite contribuer au cadeau de mariage..."
+            />
           </div>
         </Section>
 
-        {/* ═══════ 14. ADMINISTRATION ═══════ */}
-        <Section title="Administration" icon="🔒">
+        {/* ═══════ 14. SÉCURITÉ ═══════ */}
+        <Section
+          title="Sécurité de votre événement"
+          subtitle="Protégez l'accès à votre événement"
+          icon="🔒"
+        >
           <div className="space-y-4 pt-4">
-            <Field label="Code admin" value={adminCode} onChange={setAdminCode} placeholder="Code secret pour gérer l'événement" />
+            <Field
+              label="Mot de passe de l'événement"
+              help="Un code secret pour que vous seul puissiez modifier cet événement. Ne partagez ce code avec personne."
+              value={adminCode}
+              onChange={setAdminCode}
+              placeholder="Ex: mon-code-secret-2026"
+            />
           </div>
         </Section>
 

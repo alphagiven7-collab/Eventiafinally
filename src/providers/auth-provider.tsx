@@ -207,5 +207,20 @@ export function useAuthActions() {
     window.location.href = '/';
   };
 
-  return { login, signup, logout, user, session };
+  const signInWithGoogle = async () => {
+    if (!isSupabaseReady()) {
+      return { error: 'Google Sign-In nécessite Supabase configuré.' };
+    }
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  return { login, signup, logout, signInWithGoogle, user, session };
 }

@@ -40,6 +40,12 @@ export default function InvitationExperience({ event, guestName }: { event: Even
     // Initialiser le gate (welcome → main view)
     initGate(root, guestName);
 
+    // Initialiser le menu des boissons
+    initDrinkMenu(root);
+
+    // Initialiser la musique de fond
+    initMusic(root, event);
+
     return () => {
       style.remove();
       tailwind.remove();
@@ -323,6 +329,107 @@ function initThemeToggle(root: HTMLElement) {
   });
 }
 
+function initDrinkMenu(root: HTMLElement) {
+  const section = root.querySelector('#drink-menu-section') as HTMLElement;
+  const grid = root.querySelector('#drink-menu-grid') as HTMLElement;
+  if (!section || !grid) return;
+
+  // Boissons par défaut
+  const defaultDrinks = [
+    { id: 'champagne', name: 'Champagne', desc: 'Moët & Chandon', emoji: '🥂' },
+    { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Bordeaux', emoji: '🍷' },
+    { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Chablis', emoji: '🥂' },
+    { id: 'cocktail', name: 'Cocktail', desc: 'Spritz', emoji: '🍹' },
+    { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '🍺' },
+    { id: 'soft', name: 'Soft', desc: 'Jus / Eau', emoji: '🥤' },
+  ];
+
+  const selected = new Set<string>();
+  const storageKey = `wedding_drink_pick_${window.location.pathname}`;
+
+  // Restaurer sélection
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) JSON.parse(saved).forEach((s: string) => selected.add(s));
+  } catch {}
+
+  function render() {
+    grid.innerHTML = defaultDrinks.map(d => `
+      <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${d.id}">
+        <input type="checkbox" class="drink-card-input" value="${d.id}" ${selected.has(d.id) ? 'checked' : ''}>
+        <div class="drink-card-media">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2.5rem;background:linear-gradient(135deg,#fdf2f8,#fce7f3);">${d.emoji}</div>
+          <span class="drink-card-check">${selected.has(d.id) ? '✓' : ''}</span>
+        </div>
+        <div class="drink-card-body">
+          <span class="drink-card-title">${d.name}</span>
+          <span class="drink-card-desc">${d.desc}</span>
+        </div>
+      </label>
+    `).join('');
+
+    // Bind clicks
+    grid.querySelectorAll('.drink-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = (card as HTMLElement).dataset.drink!;
+        if (selected.has(id)) selected.delete(id);
+        else selected.add(id);
+        try { localStorage.setItem(storageKey, JSON.stringify([...selected])); } catch {}
+        render();
+      });
+    });
+  }
+
+  render();
+  section.style.display = 'block';
+}
+
+function initMusic(root: HTMLElement, event: EventWithSettings) {
+  if (!event.ambiance?.enabled || !event.ambiance?.musicUrl) return;
+
+  const btn = root.querySelector('#music-toggle-btn') as HTMLElement;
+  const audio = root.querySelector('#background-music') as HTMLAudioElement;
+  if (!btn || !audio) return;
+
+  audio.src = event.ambiance.musicUrl;
+  audio.volume = event.ambiance.volume || 0.35;
+  audio.loop = true;
+  btn.classList.remove('hidden');
+
+  let isPlaying = false;
+
+  function updateBtn() {
+    isPlaying = !audio.paused;
+    const icon = btn.querySelector('.music-toggle-icon');
+    if (icon) icon.textContent = isPlaying ? '♫' : '♪';
+    btn.title = isPlaying ? 'Couper la musique' : 'Lancer la musique';
+  }
+
+  btn.addEventListener('click', () => {
+    if (audio.paused) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+    updateBtn();
+  });
+
+  // Autoplay après ouverture du gate
+  const observer = new MutationObserver(() => {
+    const gate = root.querySelector('#welcome-gate') as HTMLElement;
+    const mainView = root.querySelector('#main-view') as HTMLElement;
+    if (gate?.style.display === 'none' && mainView?.style.display === 'block') {
+      audio.play().catch(() => {});
+      observer.disconnect();
+    }
+  });
+  const gate = root.querySelector('#welcome-gate');
+  if (gate) observer.observe(gate, { attributes: true, attributeFilter: ['style'] });
+
+  audio.addEventListener('play', updateBtn);
+  audio.addEventListener('pause', updateBtn);
+}
+
 function getOriginalCSS(): string {
   return `
     :root {
@@ -386,6 +493,20 @@ function getOriginalCSS(): string {
     .invitation-experience-root .venue-map-embed { width: 100%; height: 200px; border: 0; }
     .invitation-experience-root .venue-map-fallback { height: 12rem; position: relative; }
 
+    /* Drink menu */
+    .invitation-experience-root .drink-menu-shell { background: linear-gradient(168deg, #ffffff 0%, #fffafb 45%, #f8fafc 100%); }
+    .invitation-experience-root .drink-menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; width: 100%; }
+    .invitation-experience-root label.drink-card { position: relative; display: block; margin: 0; border-radius: 16px; overflow: hidden; border: 2px solid #e2e8f0; background: #fff; cursor: pointer; user-select: none; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+    .invitation-experience-root label.drink-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
+    .invitation-experience-root label.drink-card.is-selected { border-color: #ec4899; box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.25), 0 10px 24px rgba(236, 72, 153, 0.12); }
+    .invitation-experience-root .drink-card-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
+    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 88px; overflow: hidden; background: #f1f5f9; }
+    .invitation-experience-root .drink-card-check { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); border: 1px solid #e2e8f0; color: transparent; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; z-index: 2; }
+    .invitation-experience-root label.drink-card.is-selected .drink-card-check { background: #ec4899; border-color: #ec4899; color: #fff; }
+    .invitation-experience-root .drink-card-body { padding: 0.65rem 0.7rem 0.75rem; text-align: center; }
+    .invitation-experience-root .drink-card-title { display: block; font-size: 0.78rem; font-weight: 600; color: #0f172a; line-height: 1.25; }
+    .invitation-experience-root .drink-card-desc { display: block; margin-top: 0.2rem; font-size: 0.62rem; color: #64748b; line-height: 1.35; }
+
     /* Dark mode */
     .invitation-experience-root.dark-mode-applied { background: #0f172a; color: #e5e7eb; }
     .invitation-experience-root.dark-mode-applied #main-view { background: #111827 !important; }
@@ -400,14 +521,20 @@ function getOriginalCSS(): string {
 
 function getOriginalHTML(): string {
   return `
+    <!-- Audio element pour musique de fond -->
+    <audio id="background-music" loop preload="auto" style="display:none;"></audio>
+
     <!-- Outils flottants -->
-    <div style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">
+    <div id="app-floating-tools" style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">
       <label style="cursor:pointer;" title="Mode clair / sombre">
         <input type="checkbox" id="theme-toggle-input" style="display:none;">
         <span style="display:inline-block;width:40px;height:24px;border-radius:999px;background:#e5e7eb;border:1px solid #d1d5db;position:relative;transition:background 0.3s;">
           <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;font-size:10px;" class="theme-thumb">☀</span>
         </span>
       </label>
+      <button id="music-toggle-btn" type="button" class="hidden" style="width:32px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;" title="Musique">
+        <span class="music-toggle-icon">♪</span>
+      </button>
     </div>
 
     <!-- Welcome Gate -->
@@ -639,7 +766,20 @@ function getOriginalHTML(): string {
         </button>
       </section>
 
-      <!-- 10. Practical Info -->
+      <!-- 10. Menu des boissons -->
+      <section id="drink-menu-section" style="padding:0 16px;margin-top:24px;display:none;">
+        <div class="drink-menu-shell" style="border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05);border:1px solid #f3f4f6;overflow:hidden;">
+          <div style="padding:20px 20px 12px;text-align:center;">
+            <div style="width:44px;height:44px;border-radius:999px;background:linear-gradient(135deg,#fce7f3,#fdf2f8);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:1.25rem;box-shadow:0 4px 14px rgba(236,72,153,0.12);">🥂</div>
+            <h3 style="font-family:'Playfair Display',serif;font-size:20px;color:#1f2937;margin-bottom:4px;">Menu des boissons</h3>
+            <p style="font-size:11px;color:#6b7280;max-width:320px;margin:0 auto;">Sélectionnez vos préférences pour le jour J (optionnel).</p>
+          </div>
+          <div id="drink-menu-grid" class="drink-menu-grid" style="padding:0 16px 16px;"></div>
+          <p style="font-size:10px;text-align:center;color:#9ca3af;padding:0 16px 16px;border-top:1px dashed #e2e8f0;padding-top:12px;margin-top:4px;">Vos choix seront repris automatiquement lors de la confirmation RSVP.</p>
+        </div>
+      </section>
+
+      <!-- 11. Practical Info -->
       <section style="padding:0 16px;margin-top:24px;">
         <div style="background:white;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05);padding:16px;border:1px solid #f9fafb;">
           <h3 style="font-weight:600;font-size:12px;color:#1f2937;margin-bottom:16px;padding:0 8px;display:flex;justify-content:space-between;align-items:center;">

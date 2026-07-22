@@ -314,18 +314,23 @@ function initThemeToggle(root: HTMLElement) {
   if (!toggle) return;
 
   // Restaurer le thème sauvegardé
-  const saved = localStorage.getItem('wedding_theme_mode');
+  const saved = localStorage.getItem('invitia_theme') || localStorage.getItem('wedding_theme_mode');
   if (saved === 'dark') {
     toggle.checked = true;
-    document.body.classList.add('dark-mode');
-    document.documentElement.classList.add('dark-mode');
+    document.documentElement.classList.add('dark');
+    root.classList.add('dark-mode-applied');
   }
 
   toggle.addEventListener('change', () => {
     const isDark = toggle.checked;
-    document.body.classList.toggle('dark-mode', isDark);
-    document.documentElement.classList.toggle('dark-mode', isDark);
-    localStorage.setItem('wedding_theme_mode', isDark ? 'dark' : 'light');
+    // Mettre à jour next-themes via le DOM
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    // Mettre à jour le style de l'invitation
+    root.classList.toggle('dark-mode-applied', isDark);
+    // Persister
+    localStorage.setItem('invitia_theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
   });
 }
 
@@ -394,7 +399,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   audio.src = event.ambiance.musicUrl;
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
-  btn.classList.remove('hidden');
+  btn.style.display = 'flex';
 
   let isPlaying = false;
 
@@ -532,7 +537,7 @@ function getOriginalHTML(): string {
           <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;font-size:10px;" class="theme-thumb">☀</span>
         </span>
       </label>
-      <button id="music-toggle-btn" type="button" class="hidden" style="width:32px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;" title="Musique">
+      <button id="music-toggle-btn" type="button" style="width:32px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;" title="Musique">
         <span class="music-toggle-icon">♪</span>
       </button>
     </div>

@@ -7,7 +7,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { getUserEvents, saveEvent, deleteEvent, deletePhotos, migrateFromLocalStorage } from '@/lib/storage';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -149,6 +149,22 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <AdminLayout>
         <div className="space-y-6">
+          {/* Bannière Premium */}
+          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-2xl p-4 border border-amber-200 dark:border-amber-800/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Passez à Premium</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">200 invités, QR jour J, analytics, exports • 30$ une fois</p>
+              </div>
+            </div>
+            <a href="/pricing" className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition shadow-sm">
+              Découvrir
+            </a>
+          </div>
+
           {/* En-tête */}
           <div className="flex items-center justify-between">
             <div>
@@ -270,6 +286,13 @@ export default function DashboardPage() {
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       Modifier
+                    </a>
+                    <a
+                      href={`/dashboard/invites`}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      Invités
                     </a>
                     <button
                       onClick={() => setDeleteTarget(event)}

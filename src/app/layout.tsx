@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import '@/lib/polyfills';
 import './globals.css';
 import { ThemeProvider } from '@/providers/theme-provider';
 import SupabaseProvider from '@/providers/auth-provider';

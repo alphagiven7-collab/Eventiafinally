@@ -545,37 +545,60 @@ function EditEventContent() {
   // ── Admin ──
   const [adminCode, setAdminCode] = useState('');
 
-  /* ── Chargement de l'événement ── */
+  /* ── Chargement de l'événement (local-first, Supabase en arrière-plan) ── */
   useEffect(() => {
+    let cancelled = false;
+
     async function loadEvent() {
-      if (isSupabaseReady()) {
+      // 1. TOUJOURS charger les données locales en premier (instantané)
+      const localEvt = getEventBySlug(slug);
+      if (localEvt && !cancelled) {
+        populateFields(localEvt);
+      }
+
+      // 2. Charger depuis localStorage si connecté
+      if (user?.id && !cancelled) {
         try {
-          const supabase = createClient();
-          const { data: evtData } = await supabase
-            .from('events')
-            .select('*')
-            .eq('slug', slug)
-            .single();
-          if (evtData) {
-            populateFields(evtData as EventWithSettings);
-            return;
+          const userEvts = await getUserEvents(user.id);
+          const found = userEvts.find((e) => e.slug === slug);
+          if (found && !cancelled) {
+            populateFields(found);
           }
         } catch {}
       }
-      const evt = getEventBySlug(slug);
-      if (evt) {
-        populateFields(evt);
-        return;
-      }
-      if (user?.id) {
-        const userEvts = await getUserEvents(user.id);
-        const found = userEvts.find((e) => e.slug === slug);
-        if (found) {
-          populateFields(found);
-          return;
+
+      // Si déjà trouvé localement, arrêter ici (pas besoin de Supabase)
+      if (localEvt) return;
+
+      // 3. Essayer Supabase en arrière-plan avec timeout 8s
+      if (isSupabaseReady() && !cancelled) {
+        try {
+          const timeoutPromise = new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 8000)
+          );
+          const fetchPromise = (async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+              .from('events')
+              .select('*')
+              .eq('slug', slug)
+              .single();
+            return data;
+          })();
+          const data = await Promise.race([fetchPromise, timeoutPromise]);
+          if (data && !cancelled) {
+            populateFields(data as EventWithSettings);
+            return;
+          }
+        } catch {
+          // Supabase injoignable ou timeout
         }
       }
-      setLoading(false);
+
+      // 4. Rien trouvé → arrêter le loading
+      if (!cancelled) {
+        setLoading(false);
+      }
     }
 
     function populateFields(evt: EventWithSettings) {
@@ -633,6 +656,7 @@ function EditEventContent() {
     }
 
     loadEvent();
+    return () => { cancelled = true; };
   }, [slug, user?.id]);
 
   /* ── Sauvegarde ── */

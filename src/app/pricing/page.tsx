@@ -14,11 +14,17 @@ export default function PricingPage() {
       description: 'Pour découvrir Invitia',
       features: [
         '1 invitation',
-        '20 invités maximum',
-        'Personnalisation complète',
-        'RSVP en ligne',
-        'Photos et musique',
+        '5 photos maximum',
+        'Personnalisation des textes',
+        'Couleurs personnalisées',
         'Compte à rebours',
+        'Lieu & programme',
+      ],
+      notIncluded: [
+        'Pas de musique',
+        'Pas de RSVP en ligne',
+        'Pas d\'import CSV',
+        'Pas de QR code',
       ],
       cta: 'Commencer gratuitement',
       highlighted: false,
@@ -32,11 +38,13 @@ export default function PricingPage() {
       features: [
         'Invitations illimitées',
         '200 invités par événement',
+        'RSVP en ligne + confirmation',
+        'Musique de fond',
+        '20 photos + galerie',
         'Import CSV d\'invités',
         'QR code jour J',
         'Analytics & statistiques',
         'Export CSV / JSON',
-        'Suivi RSVP en temps réel',
         'Relances WhatsApp',
         'Gestion des groupes',
         'Support prioritaire',
@@ -123,6 +131,12 @@ export default function PricingPage() {
                     <li key={feature} className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                       <span className="text-xs text-gray-600 dark:text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                  {(plan as any).notIncluded?.map((item: string) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5 text-red-400 text-xs font-bold">✕</span>
+                      <span className="text-xs text-red-400 dark:text-red-500 line-through">{item}</span>
                     </li>
                   ))}
                 </ul>

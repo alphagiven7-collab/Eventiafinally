@@ -1,19 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import InvitationHero from '@/components/invitation/InvitationHero';
-import InvitationCard from '@/components/invitation/InvitationCard';
-import CountdownTimer from '@/components/invitation/CountdownTimer';
-import ProgramTimeline from '@/components/invitation/ProgramTimeline';
-import VenueMap from '@/components/invitation/VenueMap';
-import PracticalInfo from '@/components/invitation/PracticalInfo';
-import DressCode from '@/components/invitation/DressCode';
-import PhotoGallery from '@/components/invitation/PhotoGallery';
-import GuestBook from '@/components/invitation/GuestBook';
-import MusicPlayer from '@/components/invitation/MusicPlayer';
-import About from '@/components/invitation/About';
-import RsvpButton from '@/components/invitation/RsvpButton';
-import InvitationNav from '@/components/invitation/InvitationNav';
+import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
@@ -137,25 +125,20 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f4f4f6' }}>
+        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#f4f4f6' }}>
         <div className="text-center max-w-sm">
           <div className="text-6xl mb-4">💍</div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation introuvable</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Désolé, l'invitation "{slug}" n'existe pas.
-          </p>
-          <a
-            href="/"
-            className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition"
-          >
+          <p className="text-sm text-gray-600 mb-4">Désolé, l'invitation "{slug}" n'existe pas.</p>
+          <a href="/" className="inline-block bg-pink-500 hover:bg-pink-600 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
             🏠 Retour à l'accueil
           </a>
         </div>
@@ -163,130 +146,5 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     );
   }
 
-  return (
-    <>
-      {/* Gate d'accueil - affiché tant que l'invité n'a pas ouvert l'invitation */}
-      {!isGateOpen && (
-        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-md flex items-center justify-center px-5">
-          <div className="w-full max-w-sm">
-            {/* Envelope seal */}
-            <div className="relative w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl animate-pulse">
-              <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            </div>
-
-            {/* Content */}
-            <div className="text-center mb-8">
-              <p className="text-[11px] uppercase tracking-[0.25em] text-rose-400 mb-2 font-medium">
-                Invitation du cœur
-              </p>
-              <h1 className="font-serif text-3xl text-white mb-2">
-                {event.coupleLeft || event.title} & {event.coupleRight || ''}
-              </h1>
-              <p className="text-sm text-gray-300 mb-1">
-                {event.welcomeMessage}
-              </p>
-              <p className="text-xs text-gray-400 mt-4 italic">
-                Veuillez saisir votre nom pour découvrir votre invitation personnelle.
-              </p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const input = (e.currentTarget.querySelector('input') as HTMLInputElement);
-              if (input?.value.trim()) {
-                handleGateOpen(input.value.trim());
-              }
-            }} className="space-y-3">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Votre nom et prénom"
-                  className="w-full bg-white/95 border border-rose-100 rounded-xl p-4 text-sm text-gray-700 text-center focus:ring-2 focus:ring-rose-200 focus:border-rose-300 outline-none transition"
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white p-4 text-sm font-semibold tracking-wide rounded-xl shadow-lg transition-all active:scale-[0.98]"
-              >
-                Ouvrir mon invitation
-              </button>
-            </form>
-
-            {/* Designer access (desktop only) */}
-            <div className="hidden md:flex flex-col gap-2 fixed right-5 top-5">
-              <button
-                onClick={() => window.location.href = '/dashboard'}
-                className="border border-white/30 bg-black/50 text-white rounded-xl px-4 py-2 text-xs font-semibold backdrop-blur hover:bg-black/70 transition"
-              >
-                Mode concepteur
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Contenu principal - affiché après l'ouverture */}
-      {isGateOpen && mounted && (() => {
-        const identity = getEventIdentity(event.type);
-        const palette = getPalette(identity, isDark);
-        return (
-          <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: '#fafafa' }}>
-            <InvitationHero event={event} guestName={guestName || undefined} />
-            
-            <main className="max-w-md mx-auto relative z-10 pb-10">
-              <InvitationCard event={event} guestName={guestName || undefined} />
-
-              {event.sections?.countdown && (
-                <section className="px-4 mt-6">
-                  <div className="rounded-3xl shadow-sm border p-6" style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
-                    <CountdownTimer targetDate={event.event_date} />
-                  </div>
-                </section>
-              )}
-
-              <div data-section="photos">
-                <PhotoGallery event={event} />
-              </div>
-              <div data-section="programme">
-                <ProgramTimeline event={event} />
-              </div>
-              <RsvpButton event={event} />
-              <div data-section="infos">
-                <VenueMap event={event} />
-                <PracticalInfo event={event} />
-              </div>
-              <DressCode event={event} />
-              <GuestBook event={event} />
-              <MusicPlayer event={event} />
-              <About event={event} />
-
-              <footer className="px-4 mt-8 mb-20 text-center">
-                <div className="rounded-2xl shadow-sm border p-6" style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
-                  <p className="text-xs mb-2" style={{ color: palette.textMuted }}>Besoin d'aide ?</p>
-                  {event.links?.supportEmail && (
-                    <a href={`mailto:${event.links.supportEmail}`} className="text-sm font-medium hover:underline" style={{ color: palette.primary }}>
-                      {event.links.supportEmail}
-                    </a>
-                  )}
-                  <p className="text-[10px] mt-4" style={{ color: palette.textMuted }}>
-                    © {new Date().getFullYear()} {event.title}
-                  </p>
-                </div>
-              </footer>
-            </main>
-          </div>
-        );
-      })()}
-
-      {/* Menu de navigation glassmorphism flottant */}
-      {isGateOpen && mounted && event && (
-        <InvitationNav event={event} guestName={guestName || undefined} />
-      )}
-    </>
-  );
+  return <InvitationExperience event={event} guestName={guestName || undefined} />;
 }

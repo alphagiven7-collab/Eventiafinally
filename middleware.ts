@@ -53,6 +53,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Routes protégées : rediriger vers login si pas connecté
+  // Auth callback doit être accessible sans être connecté
+  if (pathname.startsWith('/auth/callback')) {
+    return NextResponse.next();
+  }
+
   const protectedRoutes = ['/profile', '/dashboard', '/admin', '/checkin', '/create'];
   const isProtected = protectedRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'));
 

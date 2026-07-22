@@ -13,6 +13,7 @@ import GuestBook from '@/components/invitation/GuestBook';
 import MusicPlayer from '@/components/invitation/MusicPlayer';
 import About from '@/components/invitation/About';
 import RsvpButton from '@/components/invitation/RsvpButton';
+import InvitationNav from '@/components/invitation/InvitationNav';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
@@ -237,7 +238,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
           <div className="min-h-screen transition-colors duration-700" style={{ backgroundColor: palette.background }}>
             <InvitationHero event={event} guestName={guestName || undefined} />
             
-            <main className="max-w-md mx-auto relative z-10">
+            <main className="max-w-md mx-auto relative z-10 pb-28">
               <InvitationCard event={event} guestName={guestName || undefined} />
 
               {event.sections?.countdown && (
@@ -248,11 +249,17 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
                 </section>
               )}
 
-              <PhotoGallery event={event} />
-              <ProgramTimeline event={event} />
+              <div data-section="photos">
+                <PhotoGallery event={event} />
+              </div>
+              <div data-section="programme">
+                <ProgramTimeline event={event} />
+              </div>
               <RsvpButton event={event} />
-              <VenueMap event={event} />
-              <PracticalInfo event={event} />
+              <div data-section="infos">
+                <VenueMap event={event} />
+                <PracticalInfo event={event} />
+              </div>
               <DressCode event={event} />
               <GuestBook event={event} />
               <MusicPlayer event={event} />
@@ -275,6 +282,11 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
           </div>
         );
       })()}
+
+      {/* Menu de navigation glassmorphism flottant */}
+      {isGateOpen && mounted && event && (
+        <InvitationNav event={event} guestName={guestName || undefined} />
+      )}
     </>
   );
 }

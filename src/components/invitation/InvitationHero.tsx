@@ -15,7 +15,6 @@ export default function InvitationHero({ event, guestName }: InvitationHeroProps
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Déclencher les animations après le montage
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
@@ -23,10 +22,9 @@ export default function InvitationHero({ event, guestName }: InvitationHeroProps
 
   const heroPhoto =
     event.hero_image ||
-    event.bestPhotos?.[1] ||
+    event.bestPhotos?.[0] ||
     event.branding?.heroImage ||
     event.cover_image ||
-    event.bestPhotos?.[0] ||
     event.branding?.welcomeImage ||
     '';
 
@@ -43,13 +41,11 @@ export default function InvitationHero({ event, guestName }: InvitationHeroProps
             src={heroPhoto}
             alt={event.title}
             className="w-full h-full object-cover"
-            style={{
-              animation: 'ken-burns-soft 20s ease-out forwards',
-            }}
+            style={{ animation: 'ken-burns-soft 20s ease-out forwards' }}
             loading="eager"
           />
           {/* Overlay dégradé — plus subtil en haut, progressif en bas */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/80" />
           {/* Overlay de la couleur primaire de l'identité */}
           <div
             className="absolute inset-0 opacity-20 mix-blend-overlay"
@@ -147,6 +143,26 @@ export default function InvitationHero({ event, guestName }: InvitationHeroProps
           >
             {event.welcomeMessage}
           </p>
+        )}
+
+        {/* Date et lieu — style élégant */}
+        {event.event_date && (
+          <div
+            className={`mt-6 transition-all duration-1000`}
+            style={{ transitionDelay: '800ms', opacity: isVisible ? 1 : 0 }}
+          >
+            <p className="text-white/90 text-sm font-serif italic">
+              {new Date(event.event_date).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </p>
+            {event.location && (
+              <p className="text-white/60 text-xs mt-1 font-sans">{event.location}</p>
+            )}
+          </div>
         )}
       </div>
 

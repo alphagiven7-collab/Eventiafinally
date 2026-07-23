@@ -631,16 +631,20 @@ function getOriginalHTML(): string {
 
       <!-- 3. À propos -->
       <section style="padding:0 16px;margin-top:24px;">
-        <div style="position:relative;border-radius:16px;overflow:hidden;height:112px;box-shadow:0 1px 2px rgba(0,0,0,0.05);background:#111827;cursor:pointer;">
+        <div id="about-section-card" style="position:relative;border-radius:16px;overflow:hidden;height:112px;box-shadow:0 1px 2px rgba(0,0,0,0.05);background:#111827;cursor:pointer;" onclick="this.querySelector('#about-toggle-detail').style.display = this.querySelector('#about-toggle-detail').style.display === 'block' ? 'none' : 'block'">
           <img id="about-cover-image" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Couple" style="width:100%;height:100%;object-fit:cover;opacity:0.6;">
           <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 24px;">
             <div style="color:white;">
-              <h3 class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;">À propos de nous</h3>
+              <h3 id="about-card-title" class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;">À propos de nous</h3>
               <p style="font-size:11px;color:#e5e7eb;font-weight:300;display:flex;align-items:center;background:rgba(0,0,0,0.3);padding:4px 8px;border-radius:999px;backdrop-filter:blur(4px);">
                 Découvrir notre histoire ›
               </p>
             </div>
           </div>
+        </div>
+        <div id="about-toggle-detail" style="display:none;background:white;border-radius:16px;margin-top:8px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+          <p id="about-story-1" style="font-size:13px;color:#4b5563;line-height:1.7;margin-bottom:12px;"></p>
+          <p id="about-story-2" style="font-size:13px;color:#4b5563;line-height:1.7;"></p>
         </div>
       </section>
 
@@ -663,7 +667,7 @@ function getOriginalHTML(): string {
               <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=500&q=80" alt="Souvenir 2b">
             </div>
           </div>
-          <p style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:12px;">Touchez ici pour ouvrir la galerie complète</p>
+          <p id="gallery-open-text" style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:12px;cursor:pointer;" onclick="const g=document.querySelector('.best-photos-shell .premium-marquee'); if(g)g.scrollIntoView({behavior:'smooth'});">Touchez ici pour faire défiler les photos ›</p>
         </div>
       </section>
 

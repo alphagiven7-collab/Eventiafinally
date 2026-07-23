@@ -542,7 +542,7 @@ function CreateEventContent() {
             <div className="space-y-4 pt-4">
               <SingleImageUploader label="Photo de couverture (celle en haut)" value={heroImage} onChange={setHeroImage} />
               <SingleImageUploader label="Photo d'accueil (avant d'ouvrir l'invitation)" value={welcomeImage} onChange={setWelcomeImage} />
-              <PhotoUploader onPhotosChange={setCoverPhotos} existingPhotos={coverPhotos} maxPhotos={10} label="Votre galerie de photos" />
+              <PhotoUploader onPhotosChange={setCoverPhotos} existingPhotos={coverPhotos} maxPhotos={5} label="Votre galerie de photos (max 5)" />
             </div>
           </Section>
 

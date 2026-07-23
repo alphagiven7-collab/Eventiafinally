@@ -970,8 +970,8 @@ function EditEventContent() {
             <PhotoUploader
               onPhotosChange={setCoverPhotos}
               existingPhotos={coverPhotos}
-              maxPhotos={10}
-              label="Votre galerie de photos"
+              maxPhotos={5}
+              label="Votre galerie de photos (max 5)"
             />
             <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
               La première photo sera utilisée comme image de partage sur les réseaux sociaux

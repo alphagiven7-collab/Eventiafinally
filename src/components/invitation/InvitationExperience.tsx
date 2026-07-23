@@ -41,7 +41,7 @@ export default function InvitationExperience({ event, guestName }: { event: Even
     initGate(root, guestName);
 
     // Initialiser le menu des boissons
-    initDrinkMenu(root);
+    initDrinkMenu(root, event);
 
     // Initialiser la musique de fond
     initMusic(root, event);
@@ -355,20 +355,22 @@ function initThemeToggle(root: HTMLElement) {
   });
 }
 
-function initDrinkMenu(root: HTMLElement) {
+function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
   const section = root.querySelector('#drink-menu-section') as HTMLElement;
   const grid = root.querySelector('#drink-menu-grid') as HTMLElement;
   if (!section || !grid) return;
 
-  // Boissons par défaut
-  const defaultDrinks = [
-    { id: 'champagne', name: 'Champagne', desc: 'Moët & Chandon', emoji: '🥂' },
-    { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Bordeaux', emoji: '🍷' },
-    { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Chablis', emoji: '🥂' },
-    { id: 'cocktail', name: 'Cocktail', desc: 'Spritz', emoji: '🍹' },
-    { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '🍺' },
-    { id: 'soft', name: 'Soft', desc: 'Jus / Eau', emoji: '🥤' },
-  ];
+  // Boissons personnalisées ou par défaut
+  const defaultDrinks = (event?.drinks && event.drinks.length > 0)
+    ? event.drinks
+    : [
+        { id: 'champagne', name: 'Champagne', desc: 'Moët & Chandon', emoji: '🥂' },
+        { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Bordeaux', emoji: '🍷' },
+        { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Chablis', emoji: '🥂' },
+        { id: 'cocktail', name: 'Cocktail', desc: 'Spritz', emoji: '🍹' },
+        { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '🍺' },
+        { id: 'soft', name: 'Soft', desc: 'Jus / Eau', emoji: '🥤' },
+      ];
 
   const selected = new Set<string>();
   const storageKey = `wedding_drink_pick_${window.location.pathname}`;

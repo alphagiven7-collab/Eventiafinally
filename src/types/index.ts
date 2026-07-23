@@ -125,6 +125,13 @@ export interface Branding {
   ogShareImage: string;
 }
 
+export interface DrinkItem {
+  id: string;
+  name: string;
+  desc: string;
+  emoji: string;
+}
+
 export interface EventSections {
   quiz: boolean;
   donation: boolean;
@@ -175,6 +182,7 @@ export interface EventWithSettings extends Event {
     links?: EventLinks;
     dressCodeTitle?: string;
     dressImages?: string[];
+    drinks?: DrinkItem[];
     ambiance?: Ambiance;
     venue?: string;
     venueDetails?: VenueDetails;

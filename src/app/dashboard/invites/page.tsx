@@ -102,6 +102,11 @@ function GuestManagementContent() {
   // Ajouter un invité
   const handleAddGuest = async () => {
     if (!newName.trim()) { addToast('error', 'Le nom est obligatoire'); return; }
+    // Limite 20 invités en mode gratuit
+    if (guests.length >= 20) {
+      addToast('error', 'Limite de 20 invités atteinte. Passez à Premium pour plus.');
+      return;
+    }
     const guest: Guest = {
       id: 'guest_' + Date.now(),
       event_id: selectedEventId,

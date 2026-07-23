@@ -584,6 +584,13 @@ function getOriginalHTML(): string {
             Ouvrir mon invitation
           </button>
         </div>
+        <div style="margin-top:16px;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;">
+          <span style="font-size:9px;color:#9ca3af;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px;">📸 Photos</span>
+          <span style="font-size:9px;color:#9ca3af;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px;">📅 Programme</span>
+          <span style="font-size:9px;color:#9ca3af;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px;">📍 GPS</span>
+          <span style="font-size:9px;color:#9ca3af;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px;">✓ RSVP</span>
+          <span style="font-size:9px;color:#9ca3af;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px;">⏳ Compte à rebours</span>
+        </div>
       </div>
     </div>
 

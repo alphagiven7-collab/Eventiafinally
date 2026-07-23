@@ -85,8 +85,9 @@ export default function DashboardPage() {
         .replace(/^-+|-+$/g, '')
         + '-' + Date.now().toString(36).slice(-4);
 
+      const eventId = crypto.randomUUID ? crypto.randomUUID() : 'event_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
       const localEvent: EventWithSettings = {
-        id: 'event_' + Date.now(),
+        id: eventId,
         slug,
         title: newEventName.trim(),
         user_id: user.id,

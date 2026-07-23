@@ -175,6 +175,16 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   if (event.dressCodeTitle) {
     setText('#dress-code-title', event.dressCodeTitle);
   }
+  // Injecter les photos de dress code
+  if (event.dressImages && event.dressImages.length > 0) {
+    const dressTrack = root.querySelector('.dress-marquee-track') as HTMLElement;
+    if (dressTrack) {
+      const allDress = [...event.dressImages, ...event.dressImages];
+      dressTrack.innerHTML = allDress.map(p =>
+        `<img src="${p}" style="width:120px;height:160px;object-fit:cover;border-radius:0.75rem;border:1px solid #e5e7eb;flex-shrink:0;" alt="Tenue">`
+      ).join('');
+    }
+  }
 
   // Practical info
   if (event.practicalSectionTitle) {
@@ -206,23 +216,38 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   // Best Photos - injecter les photos uploadées
   if (event.bestPhotos && event.bestPhotos.length > 0) {
-    // Remplacer la grille statique
-    const gridContainer = root.querySelector('.best-photos-shell > div[style*="grid-template-columns:repeat(2,1fr)"]') as HTMLElement;
-    if (gridContainer) {
-      const photos = event.bestPhotos.slice(0, 6);
-      gridContainer.innerHTML = photos.slice(0, 2).map(p => 
-        `<img src="${p}" style="height:160px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo">`
-      ).join('');
+    // Remplacer les deux images statiques dans la grille
+    const shell = root.querySelector('.best-photos-shell') as HTMLElement;
+    if (shell) {
+      const staticImgs = shell.querySelectorAll('div[style*="grid-template-columns"] > img');
+      const photos = event.bestPhotos.slice(0, Math.min(event.bestPhotos.length, 6));
+      staticImgs.forEach((img, i) => {
+        if (i < photos.length) (img as HTMLImageElement).src = photos[i];
+        else if (i === 0 && photos.length > 0) (img as HTMLImageElement).src = photos[0];
+      });
     }
     // Remplacer le marquee
     const marqueeTrack = root.querySelector('.premium-marquee-track') as HTMLElement;
     if (marqueeTrack && event.bestPhotos.length > 0) {
-      // Dupliquer pour l'effet marquee
       const all = [...event.bestPhotos, ...event.bestPhotos];
-      marqueeTrack.innerHTML = all.map(p => 
+      marqueeTrack.innerHTML = all.map(p =>
         `<img src="${p}" alt="Souvenir" style="width:110px;height:72px;border-radius:.65rem;object-fit:cover;flex-shrink:0;">`
       ).join('');
     }
+  }
+
+  // À propos - injecter image et textes
+  if (event.aboutImage) {
+    setImg('#about-cover-image', event.aboutImage);
+  }
+  if (event.aboutTitle) {
+    setText('#about-card-title', event.aboutTitle);
+  }
+  if (event.aboutStory1) {
+    setText('#about-story-1', event.aboutStory1);
+  }
+  if (event.aboutStory2) {
+    setText('#about-story-2', event.aboutStory2);
   }
 
   // Support email
@@ -638,7 +663,7 @@ function getOriginalHTML(): string {
 
       <!-- 3. À propos -->
       <section style="padding:0 16px;margin-top:24px;">
-        <div id="about-section-card" style="position:relative;border-radius:16px;overflow:hidden;height:112px;box-shadow:0 1px 2px rgba(0,0,0,0.05);background:#111827;cursor:pointer;" onclick="this.querySelector('#about-toggle-detail').style.display = this.querySelector('#about-toggle-detail').style.display === 'block' ? 'none' : 'block'">
+        <div id="about-section-card" style="position:relative;border-radius:16px;overflow:hidden;height:112px;box-shadow:0 1px 2px rgba(0,0,0,0.05);background:#111827;cursor:pointer;" onclick="var d=document.getElementById('about-toggle-detail');if(d)d.style.display=d.style.display==='block'?'none':'block'">
           <img id="about-cover-image" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Couple" style="width:100%;height:100%;object-fit:cover;opacity:0.6;">
           <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 24px;">
             <div style="color:white;">
@@ -800,7 +825,7 @@ function getOriginalHTML(): string {
 
       <!-- 9. RSVP Button -->
       <section style="padding:0 16px;margin-top:24px;">
-        <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
+        <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;" onclick="var m=encodeURIComponent('Bonjour, je confirme ma présence !');window.open('https://wa.me/?text='+m,'_blank')">
           <span style="width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
             <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </span>

@@ -73,32 +73,8 @@ export default function DashboardPage() {
       .replace(/^-+|-+$/g, '')
       + '-' + Date.now().toString(36).slice(-4);
 
-    // Mode Supabase réel
-    if (isSupabaseReady() && user?.id) {
-      try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        const { error } = await supabase.from('events').insert({
-          slug,
-          title: newEventName.trim(),
-          user_id: user.id,
-          event_type: 'wedding',
-          is_published: false,
-        });
-
-        if (!error) {
-          setNewEventName('');
-          setShowCreateInput(false);
-          loadEvents();
-          return;
-        }
-      } catch (err) {
-        console.error('Erreur création Supabase:', err);
-      }
-    }
-
-    // Fallback IndexedDB
-    const newEvent: EventWithSettings = {
+    // Toujours créer en local d'abord (fiable, instantané)
+    const localEvent: EventWithSettings = {
       id: 'event_' + Date.now(),
       slug,
       title: newEventName.trim(),
@@ -112,7 +88,32 @@ export default function DashboardPage() {
       updated_at: new Date().toISOString(),
     };
 
-    await saveEvent(user.id, newEvent);
+    await saveEvent(user.id, localEvent);
+
+    // Essayer Supabase en arrière-plan (ne bloque jamais la création)
+    if (isSupabaseReady()) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        await supabase.from('events').upsert({
+          id: localEvent.id,
+          slug,
+          title: newEventName.trim(),
+          user_id: user.id,
+          event_type: 'wedding',
+          event_date: new Date().toISOString(),
+          location: '',
+          description: '',
+          is_published: false,
+          view_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'slug' });
+      } catch (err) {
+        console.error('Erreur sauvegarde Supabase:', err);
+      }
+    }
+
     setNewEventName('');
     setShowCreateInput(false);
     loadEvents();

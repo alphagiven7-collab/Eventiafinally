@@ -204,6 +204,27 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     if (countEl) countEl.textContent = `${event.practicalInfo.length} infos`;
   }
 
+  // Best Photos - injecter les photos uploadées
+  if (event.bestPhotos && event.bestPhotos.length > 0) {
+    // Remplacer la grille statique
+    const gridContainer = root.querySelector('.best-photos-shell > div[style*="grid-template-columns:repeat(2,1fr)"]') as HTMLElement;
+    if (gridContainer) {
+      const photos = event.bestPhotos.slice(0, 6);
+      gridContainer.innerHTML = photos.slice(0, 2).map(p => 
+        `<img src="${p}" style="height:160px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo">`
+      ).join('');
+    }
+    // Remplacer le marquee
+    const marqueeTrack = root.querySelector('.premium-marquee-track') as HTMLElement;
+    if (marqueeTrack && event.bestPhotos.length > 0) {
+      // Dupliquer pour l'effet marquee
+      const all = [...event.bestPhotos, ...event.bestPhotos];
+      marqueeTrack.innerHTML = all.map(p => 
+        `<img src="${p}" alt="Souvenir" style="width:110px;height:72px;border-radius:.65rem;object-fit:cover;flex-shrink:0;">`
+      ).join('');
+    }
+  }
+
   // Support email
   if (event.links?.supportEmail) {
     const el = root.querySelector('#support-email-link') as HTMLAnchorElement;

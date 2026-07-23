@@ -18,6 +18,8 @@ export default function DashboardPage() {
   const [newEventName, setNewEventName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<EventWithSettings | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   // Charger les événements
   const loadEvents = useCallback(async () => {
@@ -63,60 +65,70 @@ export default function DashboardPage() {
 
   // Créer un événement
   const handleCreateEvent = async () => {
-    if (!newEventName.trim() || !user?.id) return;
-
-    const slug = newEventName
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      + '-' + Date.now().toString(36).slice(-4);
-
-    // Toujours créer en local d'abord (fiable, instantané)
-    const localEvent: EventWithSettings = {
-      id: 'event_' + Date.now(),
-      slug,
-      title: newEventName.trim(),
-      user_id: user.id,
-      type: 'wedding',
-      event_date: new Date().toISOString(),
-      location: '',
-      is_published: false,
-      view_count: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    await saveEvent(user.id, localEvent);
-
-    // Essayer Supabase en arrière-plan (ne bloque jamais la création)
-    if (isSupabaseReady()) {
-      try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        await supabase.from('events').upsert({
-          id: localEvent.id,
-          slug,
-          title: newEventName.trim(),
-          user_id: user.id,
-          event_type: 'wedding',
-          event_date: new Date().toISOString(),
-          location: '',
-          description: '',
-          is_published: false,
-          view_count: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'slug' });
-      } catch (err) {
-        console.error('Erreur sauvegarde Supabase:', err);
-      }
+    setCreateError('');
+    if (!newEventName.trim()) {
+      setCreateError('Veuillez saisir un nom d\'événement.');
+      return;
     }
+    if (!user?.id) {
+      setCreateError('Vous devez être connecté pour créer un événement. Rafraîchissez la page.');
+      return;
+    }
+    setCreating(true);
 
-    setNewEventName('');
-    setShowCreateInput(false);
-    loadEvents();
+    try {
+      const slug = newEventName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        + '-' + Date.now().toString(36).slice(-4);
+
+      const localEvent: EventWithSettings = {
+        id: 'event_' + Date.now(),
+        slug,
+        title: newEventName.trim(),
+        user_id: user.id,
+        type: 'wedding',
+        event_date: new Date().toISOString(),
+        location: '',
+        is_published: false,
+        view_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      await saveEvent(user.id, localEvent);
+
+      if (isSupabaseReady()) {
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          await supabase.from('events').upsert({
+            id: localEvent.id, slug,
+            title: newEventName.trim(),
+            user_id: user.id,
+            event_type: 'wedding',
+            event_date: new Date().toISOString(),
+            location: '', description: '',
+            is_published: false, view_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'slug' });
+        } catch (err) {
+          console.error('Erreur Supabase:', err);
+        }
+      }
+
+      setNewEventName('');
+      setShowCreateInput(false);
+      await loadEvents();
+    } catch (err) {
+      console.error('Erreur création:', err);
+      setCreateError('Erreur lors de la création. Rafraîchissez et réessayez.');
+    }
+    setCreating(false);
   };
 
   // Supprimer un événement
@@ -186,6 +198,11 @@ export default function DashboardPage() {
           {/* Formulaire création rapide */}
           {showCreateInput && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+              {createError && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                  <p className="text-xs text-red-600 dark:text-red-400">{createError}</p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -198,9 +215,10 @@ export default function DashboardPage() {
                 />
                 <button
                   onClick={handleCreateEvent}
-                  className="px-5 py-3 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95"
+                  disabled={creating}
+                  className="px-5 py-3 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95 disabled:opacity-50"
                 >
-                  Créer
+                  {creating ? 'Création...' : 'Créer'}
                 </button>
                 <button
                   onClick={() => setShowCreateInput(false)}

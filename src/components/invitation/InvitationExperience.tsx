@@ -411,13 +411,16 @@ function initDrinkMenu(root: HTMLElement) {
 }
 
 function initMusic(root: HTMLElement, event: EventWithSettings) {
-  if (!event.ambiance?.enabled || !event.ambiance?.musicUrl) return;
+  // Si la musique n'est pas activée, ne rien faire
+  if (!event.ambiance?.enabled) return;
 
   const btn = root.querySelector('#music-toggle-btn') as HTMLElement;
   const audio = root.querySelector('#background-music') as HTMLAudioElement;
   if (!btn || !audio) return;
 
-  audio.src = event.ambiance.musicUrl;
+  // Musique par défaut si aucune n'est uploadée (libre de droits)
+  const defaultMusic = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+  audio.src = event.ambiance.musicUrl || defaultMusic;
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
   btn.style.display = 'flex';

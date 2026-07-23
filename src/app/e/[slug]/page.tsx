@@ -90,14 +90,27 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     return () => { cancelled = true; };
   }, [slug, user?.id]);
 
-  // Récupérer le nom depuis l'URL (paramètre guest)
+  // Récupérer le nom et le token depuis l'URL (paramètres guest et token)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const guestParam = params.get('guest');
+      const tokenParam = params.get('token');
       if (guestParam) {
-        // Si un token est dans l'URL, on considère que l'invité a déjà "ouvert" son invitation
-        // dans une vraie app, on vérifierait le token dans Supabase
+        // Vérifier le token si présent (sécurise l'accès)
+        if (tokenParam) {
+          const storedGuests = localStorage.getItem(`invitia_guests_${slug}`);
+          if (storedGuests) {
+            try {
+              const guests = JSON.parse(storedGuests);
+              const found = guests.find((g: any) => g.token === tokenParam);
+              if (!found) {
+                // Token invalide — on ignore le guest name
+                return;
+              }
+            } catch {}
+          }
+        }
         localStorage.setItem(`guest_${slug}`, guestParam);
         setIsGateOpen(true);
       }

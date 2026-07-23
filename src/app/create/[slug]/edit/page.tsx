@@ -833,6 +833,14 @@ function EditEventContent() {
             >
               Aperçu
             </a>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : https://eventiafinally.vercel.app/e/${event.slug}`)}`}
+              target="_blank"
+              rel="noopener"
+              className="px-3 py-2 border border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-xs hover:bg-green-100 dark:hover:bg-green-900/30 transition font-medium flex items-center gap-1"
+            >
+              📱 Partager
+            </a>
             <button
               onClick={handleSave}
               disabled={saving}

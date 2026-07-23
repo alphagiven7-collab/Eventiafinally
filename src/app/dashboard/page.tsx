@@ -7,7 +7,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { getUserEvents, saveEvent, deleteEvent, deletePhotos, migrateFromLocalStorage } from '@/lib/storage';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -294,6 +294,15 @@ export default function DashboardPage() {
                     >
                       <Users className="w-3.5 h-3.5" />
                       Invités
+                    </a>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : https://eventiafinally.vercel.app/e/${event.slug}`)}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      WhatsApp
                     </a>
                     <button
                       onClick={() => setDeleteTarget(event)}

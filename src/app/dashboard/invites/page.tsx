@@ -448,6 +448,28 @@ function GuestManagementContent() {
                               )}
                               <button onClick={() => setEditingGuest(g)} title="Modifier"
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition text-xs">✏️</button>
+                              <button
+                                onClick={() => {
+                                  const link = `${window.location.origin}/e/${events.find(e => e.id === selectedEventId)?.slug || ''}?guest=${encodeURIComponent(g.name)}&token=${g.token}`;
+                                  const canvas = document.createElement('canvas');
+                                  const qrSize = 256;
+                                  canvas.width = qrSize; canvas.height = qrSize;
+                                  const ctx = canvas.getContext('2d');
+                                  if (!ctx) return;
+                                  // Dessiner un QR simple (matrix code via API Google Charts)
+                                  const img = new Image();
+                                  img.crossOrigin = 'anonymous';
+                                  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(link)}`;
+                                  img.onload = () => {
+                                    ctx.drawImage(img, 0, 0);
+                                    const w = window.open('', '_blank');
+                                    if (w) {
+                                      w.document.write(`<title>QR - ${g.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${canvas.toDataURL()}" style="max-width:300px"><p style="margin-top:16px;font-size:14px;color:#333"><strong>${g.name}</strong></p><p style="font-size:12px;color:#666">${link}</p><p style="font-size:11px;color:#999;margin-top:8px">Table: ${g.table_number || '—'}</p></div>`);
+                                    }
+                                  };
+                                }}
+                                title="QR Code"
+                                className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs">🔲</button>
                               {g.phone && (
                                 <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', `${typeof window !== 'undefined' ? window.location.origin : ''}/e/${events.find(e => e.id === selectedEventId)?.slug || ''}?guest=${encodeURIComponent(g.name)}`))}`}
                                   target="_blank" rel="noopener" title="WhatsApp"
@@ -565,6 +587,11 @@ function GuestManagementContent() {
                   <input type="number" min={0} value={editingGuest.children || 0} onChange={(e) => setEditingGuest({ ...editingGuest, children: Number(e.target.value) })}
                     className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Table réservée</label>
+                <input value={editingGuest.table_number || ''} onChange={(e) => setEditingGuest({ ...editingGuest, table_number: e.target.value || undefined })}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Ex: Table 12" />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">

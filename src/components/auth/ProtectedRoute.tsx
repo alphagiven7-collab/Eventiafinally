@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { isSupabaseReady } from '@/config/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
 interface ProtectedRouteProps {
@@ -9,8 +11,8 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
 }
 
-export default function ProtectedRoute({ 
-  children, 
+export default function ProtectedRoute({
+  children,
   requireAdmin = false,
 }: ProtectedRouteProps) {
   const [authorized, setAuthorized] = useState(false);
@@ -25,22 +27,35 @@ export default function ProtectedRoute({
       return;
     }
 
-    // Vérifier admin via localStorage (mode démo)
-    if (requireAdmin) {
-      const stored = localStorage.getItem('invitia_user');
-      if (stored) {
-        const userData = JSON.parse(stored);
-        if (userData.role !== 'super_admin') {
-          router.push('/dashboard');
-          return;
-        }
-      } else {
-        router.push('/dashboard');
-        return;
-      }
+    if (!requireAdmin) {
+      setAuthorized(true);
+      return;
     }
 
-    setAuthorized(true);
+    if (!isSupabaseReady()) {
+      router.push('/dashboard');
+      return;
+    }
+
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data?.role === 'super_admin') {
+          setAuthorized(true);
+          return;
+        }
+        router.push('/dashboard');
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, router, requireAdmin, authLoading]);
 
   if (!authorized) {

@@ -1,18 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthActions } from '@/providers/auth-provider';
+import { safeNextPath } from '@/lib/auth/redirect';
 import { Sparkles, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get('redirect'));
   const { signup, signInWithGoogle } = useAuthActions();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -23,21 +27,30 @@ export default function RegisterPage() {
     }
     setLoading(true);
     setError('');
+    setInfo('');
     const result = await signup(email, password, name);
     if (result?.error) {
       setError(result.error);
-    } else {
-      router.push('/dashboard');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    if (result?.needsConfirmation) {
+      setInfo('Compte créé. Ouvrez le lien reçu par email, puis connectez-vous.');
+      setLoading(false);
+      return;
+    }
+    router.push(nextPath);
+    router.refresh();
   };
 
   const handleGoogleSignUp = async () => {
     setLoading(true);
     setError('');
-    const result = await signInWithGoogle();
-    if (result?.error) setError(result.error);
-    setLoading(false);
+    const result = await signInWithGoogle(nextPath);
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,6 +97,11 @@ export default function RegisterPage() {
                 <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}
+            {info && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                <p className="text-sm text-amber-800 dark:text-amber-200">{info}</p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nom complet</label>
@@ -125,5 +143,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950" />}>
+      <RegisterForm />
+    </Suspense>
   );
 }

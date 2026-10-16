@@ -15,7 +15,8 @@ import {
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { getUserEvents, saveEvent } from '@/lib/storage';
+import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
+import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -550,55 +551,25 @@ function EditEventContent() {
     let cancelled = false;
 
     async function loadEvent() {
-      // 1. TOUJOURS charger les données locales en premier (instantané)
-      const localEvt = getEventBySlug(slug);
-      if (localEvt && !cancelled) {
-        populateFields(localEvt);
-      }
-
-      // 2. Charger depuis localStorage si connecté
-      if (user?.id && !cancelled) {
+      if (isSupabaseReady()) {
         try {
-          const userEvts = await getUserEvents(user.id);
-          const found = userEvts.find((e) => e.slug === slug);
-          if (found && !cancelled) {
-            populateFields(found);
-          }
-        } catch {}
-      }
-
-      // Si déjà trouvé localement, arrêter ici (pas besoin de Supabase)
-      if (localEvt) return;
-
-      // 3. Essayer Supabase en arrière-plan avec timeout 8s
-      if (isSupabaseReady() && !cancelled) {
-        try {
-          const timeoutPromise = new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 8000)
-          );
-          const fetchPromise = (async () => {
-            const supabase = createClient();
-            const { data } = await supabase
-              .from('events')
-              .select('*')
-              .eq('slug', slug)
-              .single();
-            return data;
-          })();
-          const data = await Promise.race([fetchPromise, timeoutPromise]);
-          if (data && !cancelled) {
-            populateFields(data as EventWithSettings);
+          const hosted = await fetchInvitationBySlug(createClient(), slug);
+          if (hosted && !cancelled) {
+            populateFields(hosted);
             return;
           }
         } catch {
-          // Supabase injoignable ou timeout
+          // L'exemple statique peut encore s'ouvrir hors ligne.
         }
       }
 
-      // 4. Rien trouvé → arrêter le loading
-      if (!cancelled) {
-        setLoading(false);
+      const demo = getEventBySlug(slug);
+      if (demo && !cancelled) {
+        populateFields(demo);
+        return;
       }
+
+      if (!cancelled) setLoading(false);
     }
 
     function populateFields(evt: EventWithSettings) {
@@ -743,35 +714,24 @@ function EditEventContent() {
       updated_at: new Date().toISOString(),
     };
 
-    // Sauvegarde locale
-    if (user?.id) {
-      await saveEvent(user.id, updatedEvent);
+    if (!user?.id || !isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      setSaving(false);
+      return;
     }
 
-    // Sauvegarde Supabase
-    if (isSupabaseReady() && event?.id) {
-      try {
-        const supabase = createClient();
-        await supabase
-          .from('events')
-          .update({
-            title,
-            subtitle,
-            event_date: new Date(eventDate).toISOString(),
-            event_time: eventTime || null,
-            location,
-            address: address || null,
-            description: description || null,
-            cover_image: coverPhotos[0] || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', event.id);
-      } catch (err) {
-        console.error('Erreur sauvegarde Supabase:', err);
-      }
+    const result = await publishInvitation(createClient(), {
+      ...updatedEvent,
+      user_id: user.id,
+      is_published: true,
+    });
+    if (result.error) {
+      addToast('error', result.error);
+      setSaving(false);
+      return;
     }
 
-    addToast('success', 'Modifications enregistrées !');
+    addToast('success', 'Invitation publiée.');
     router.push(`/e/${event?.slug || slug}`);
     setSaving(false);
   }, [

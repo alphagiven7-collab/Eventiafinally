@@ -48,7 +48,7 @@ export default function HomePage() {
               <ThemeToggle />
               {!loading && user ? (
                 <Link href="/dashboard" className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                  {(user.user_metadata?.name || 'U').charAt(0).toUpperCase()}
+                  {(user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'U').charAt(0).toUpperCase()}
                 </Link>
               ) : (
                 <Link href="/auth/login" className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl shadow-md shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-lg transition-all active:scale-95">

@@ -53,7 +53,9 @@ function ProfileContent() {
           
           <div>
             <label className="text-sm text-gray-500">Nom</label>
-            <p className="text-gray-900 dark:text-white font-medium">{profile?.full_name || user?.user_metadata?.name || '-'}</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {profile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || '-'}
+            </p>
           </div>
           
           <div>

@@ -6,12 +6,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
 import { EventWithSettings, EventInput, GuestInput } from '@/types';
-
-// ============================================
-// Événements statiques (fallback)
-// ============================================
-
-import { events as staticEvents, getEventBySlug } from '@/data/events';
+import { fetchInvitationBySlug, listInvitations, publishInvitation } from '@/lib/events/store';
+import { getEventBySlug } from '@/data/events';
 
 // ============================================
 // Récupération
@@ -21,15 +17,8 @@ export async function fetchEvent(slug: string): Promise<EventWithSettings | null
   if (!isSupabaseReady()) return getEventBySlug(slug);
 
   try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('events')
-      .select('*, event_settings(*)')
-      .eq('slug', slug)
-      .single();
-
-    if (error || !data) return getEventBySlug(slug);
-    return data as EventWithSettings;
+    const hosted = await fetchInvitationBySlug(createClient(), slug);
+    return hosted ?? getEventBySlug(slug);
   } catch {
     return getEventBySlug(slug);
   }
@@ -37,15 +26,7 @@ export async function fetchEvent(slug: string): Promise<EventWithSettings | null
 
 export async function fetchUserEvents(userId: string): Promise<EventWithSettings[]> {
   if (!isSupabaseReady()) return [];
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from('events')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  return (data as EventWithSettings[]) || [];
+  return listInvitations(createClient(), userId);
 }
 
 // ============================================
@@ -53,6 +34,8 @@ export async function fetchUserEvents(userId: string): Promise<EventWithSettings
 // ============================================
 
 export async function createEvent(input: EventInput & { userId: string }): Promise<string | null> {
+  if (!isSupabaseReady()) return null;
+
   const slug = input.title
     .toLowerCase()
     .normalize('NFD')
@@ -61,26 +44,28 @@ export async function createEvent(input: EventInput & { userId: string }): Promi
     .replace(/^-+|-+$/g, '')
     + '-' + Date.now().toString(36).slice(-4);
 
-  if (!isSupabaseReady()) return slug;
-
-  const supabase = createClient();
-  const { error } = await supabase.from('events').insert({
+  const now = new Date().toISOString();
+  const result = await publishInvitation(createClient(), {
+    id: crypto.randomUUID(),
     slug,
     title: input.title,
-    user_id: input.userId,
-    event_type: input.eventType,
+    subtitle: input.subtitle,
+    type: input.eventType,
     event_date: input.eventDate,
-    event_time: input.eventTime || null,
+    event_time: input.eventTime,
     location: input.location,
-    address: input.address || null,
-    description: input.description || null,
+    address: input.address,
+    description: input.description,
+    cover_image: input.coverImage,
+    user_id: input.userId,
     is_published: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    view_count: 0,
+    created_at: now,
+    updated_at: now,
   });
 
-  if (error) {
-    console.error('Erreur création événement:', error);
+  if (result.error) {
+    console.error('Erreur création événement:', result.error);
     return null;
   }
   return slug;

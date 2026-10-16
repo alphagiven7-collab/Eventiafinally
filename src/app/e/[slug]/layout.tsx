@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getEventBySlug } from '@/data/events';
+import { readPublicInvitation } from '@/lib/events/read-public';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -8,7 +8,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const event = getEventBySlug(slug);
+  const event = await readPublicInvitation(slug);
 
   if (!event) {
     return {
@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const image = event.bestPhotos?.[0] || event.cover_image || event.branding?.ogShareImage || event.branding?.heroImage || '';
+  const rawImage = event.bestPhotos?.[0] || event.cover_image || event.branding?.ogShareImage || event.branding?.heroImage || '';
+  const image = rawImage.startsWith('http') ? rawImage : '';
   const title = `${event.title} | Invitia`;
   const description = event.metaDescription || event.welcomeMessage || `Découvrez l'invitation de ${event.title} sur Invitia.`;
 

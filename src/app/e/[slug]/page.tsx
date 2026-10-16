@@ -5,16 +5,11 @@ import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { getEventBySlug } from '@/data/events';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
-import { getEventIdentity, getPalette } from '@/constants/design-language';
-import { useTheme } from 'next-themes';
-import { getUserEvents } from '@/lib/storage';
-import { useAuth } from '@/providers/auth-provider';
+import { createClient } from '@/lib/supabase/client';
+import { fetchInvitationBySlug } from '@/lib/events/store';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-  const { user } = useAuth();
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [guestName, setGuestName] = useState<string | null>(null);
@@ -27,59 +22,22 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     let cancelled = false;
 
     async function loadEvent() {
-      // 1. TOUJOURS charger d'abord les événements locaux (instantané, pas d'appel réseau)
-      const hardcoded = getEventBySlug(slug);
-      if (hardcoded && !cancelled) {
-        setEvent(hardcoded);
-        setLoading(false);
-      }
-
-      if (typeof window !== 'undefined' && user?.id) {
-        const userEvts = await getUserEvents(user.id);
-        const found = userEvts.find((e) => e.slug === slug);
-        if (found && !cancelled) {
-          setEvent(found);
-          setLoading(false);
-        }
-      }
-
-      // Si on a déjà trouvé l'événement localement, on arrête ici
-      if (!cancelled && (hardcoded || (typeof window !== 'undefined' && user?.id && (await getUserEvents(user.id)).find((e) => e.slug === slug)))) {
-        setLoading(false);
-        return;
-      }
-
-      // 2. Essayer Supabase en arrière-plan avec timeout (ne bloque jamais l'UI)
       if (isSupabaseReady()) {
         try {
-          const timeoutPromise = new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 5000)
-          );
-
-          const fetchPromise = (async () => {
-            const { createClient } = await import('@/lib/supabase/client');
-            const supabase = createClient();
-            const { data } = await supabase
-              .from('events')
-              .select('*')
-              .eq('slug', slug)
-              .single();
-            return data;
-          })();
-
-          const data = await Promise.race([fetchPromise, timeoutPromise]);
-          if (data && !cancelled) {
-            setEvent(data as EventWithSettings);
+          const hosted = await fetchInvitationBySlug(createClient(), slug);
+          if (hosted && !cancelled) {
+            setEvent(hosted);
             setLoading(false);
             return;
           }
         } catch {
-          // Supabase injoignable ou timeout — on continue
+          // L'exemple statique reste disponible si le serveur ne répond pas.
         }
       }
 
-      // 3. Rien trouvé
+      const demo = getEventBySlug(slug);
       if (!cancelled) {
+        setEvent(demo);
         setLoading(false);
       }
     }
@@ -88,7 +46,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     loadEvent();
 
     return () => { cancelled = true; };
-  }, [slug, user?.id]);
+  }, [slug]);
 
   // Récupérer le nom et le token depuis l'URL (paramètres guest et token)
   useEffect(() => {

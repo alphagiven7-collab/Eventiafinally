@@ -6,7 +6,9 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
-import { getUserEvents, saveEvent, deleteEvent, deletePhotos, migrateFromLocalStorage } from '@/lib/storage';
+import { createClient } from '@/lib/supabase/client';
+import { deleteInvitation, listInvitations, publishInvitation } from '@/lib/events/store';
+import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -24,39 +26,22 @@ export default function DashboardPage() {
   // Charger les événements
   const loadEvents = useCallback(async () => {
     if (!user?.id) return;
-
-    // Mode Supabase réel
-    if (isSupabaseReady()) {
-      try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('events')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          setEvents(data as EventWithSettings[]);
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Erreur chargement Supabase:', err);
-      }
+    if (!isSupabaseReady()) {
+      setEvents([]);
+      setCreateError(SUPABASE_REQUIRED);
+      setLoading(false);
+      return;
     }
 
-    // Fallback IndexedDB (filtré par userId)
     try {
-      await migrateFromLocalStorage(user.id);
-      const userEvents = await getUserEvents(user.id);
-      setEvents(userEvents);
+      const rows = await listInvitations(createClient(), user.id);
+      setEvents(rows);
     } catch (err) {
-      console.error('Erreur chargement IndexedDB:', err);
+      console.error('Erreur chargement Supabase:', err);
       setEvents([]);
     }
     setLoading(false);
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -85,7 +70,7 @@ export default function DashboardPage() {
         .replace(/^-+|-+$/g, '')
         + '-' + Date.now().toString(36).slice(-4);
 
-      const eventId = crypto.randomUUID ? crypto.randomUUID() : 'event_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      const eventId = crypto.randomUUID();
       const localEvent: EventWithSettings = {
         id: eventId,
         slug,
@@ -100,26 +85,17 @@ export default function DashboardPage() {
         updated_at: new Date().toISOString(),
       };
 
-      await saveEvent(user.id, localEvent);
+      if (!isSupabaseReady()) {
+        setCreateError(SUPABASE_REQUIRED);
+        setCreating(false);
+        return;
+      }
 
-      if (isSupabaseReady()) {
-        try {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          await supabase.from('events').upsert({
-            id: localEvent.id, slug,
-            title: newEventName.trim(),
-            user_id: user.id,
-            event_type: 'wedding',
-            event_date: new Date().toISOString(),
-            location: '', description: '',
-            is_published: false, view_count: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'slug' });
-        } catch (err) {
-          console.error('Erreur Supabase:', err);
-        }
+      const result = await publishInvitation(createClient(), localEvent);
+      if (result.error) {
+        setCreateError(result.error);
+        setCreating(false);
+        return;
       }
 
       setNewEventName('');
@@ -138,19 +114,14 @@ export default function DashboardPage() {
     setDeleting(true);
 
     try {
-      // Supabase
-      if (isSupabaseReady()) {
-        try {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          await supabase.from('events').delete().eq('id', deleteTarget.id);
-        } catch {}
+      if (!isSupabaseReady()) {
+        setDeleting(false);
+        return;
       }
-
-      // IndexedDB
-      await deleteEvent(user.id, deleteTarget.id);
-      await deletePhotos(deleteTarget.id);
-
+      const result = await deleteInvitation(createClient(), deleteTarget.id);
+      if (result.error) {
+        console.error(result.error);
+      }
       setDeleteTarget(null);
       loadEvents();
     } catch (err) {

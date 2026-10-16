@@ -8,8 +8,11 @@ import { useToast } from '@/components/ui';
 import PhotoUploader from '@/components/ui/photo-uploader';
 import { Music, Upload, X } from 'lucide-react';
 import { getEventIdentity } from '@/constants/design-language';
-import { EventType, ProgramItem, PracticalInfoItem } from '@/types';
-import { saveEvent } from '@/lib/storage';
+import { EventType, EventWithSettings, ProgramItem, PracticalInfoItem } from '@/types';
+import { isSupabaseReady } from '@/config/supabase';
+import { createClient } from '@/lib/supabase/client';
+import { publishInvitation } from '@/lib/events/store';
+import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -378,8 +381,8 @@ function CreateEventContent() {
       .replace(/^-+|-+$/g, '')
       + '-' + Date.now().toString(36).slice(-4);
 
-    const newEvent = {
-      id: 'event_' + Date.now(),
+    const newEvent: EventWithSettings = {
+      id: crypto.randomUUID(),
       slug,
       title: formData.title,
       subtitle: formData.subtitle,
@@ -450,18 +453,27 @@ function CreateEventContent() {
         guestbook: false,
       },
       adminCode: adminCode || undefined,
-      user_id: user?.id || 'demo_user',
-      is_published: false,
+      user_id: user?.id,
+      is_published: true,
       view_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (user?.id) {
-      await saveEvent(user.id, newEvent as any);
+    if (!user?.id || !isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      setLoading(false);
+      return;
     }
 
-    addToast('success', 'Événement créé ! Redirection vers l\'aperçu...');
+    const result = await publishInvitation(createClient(), { ...newEvent, user_id: user.id });
+    if (result.error) {
+      addToast('error', result.error);
+      setLoading(false);
+      return;
+    }
+
+    addToast('success', 'Invitation publiée. Le lien est ouvert pour vos invités.');
     router.push(`/e/${slug}`);
     setLoading(false);
   };

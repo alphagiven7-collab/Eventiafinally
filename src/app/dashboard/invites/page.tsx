@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
-import { getUserEvents } from '@/lib/storage';
+import { listInvitations } from '@/lib/events/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 
@@ -41,7 +41,12 @@ function GuestManagementContent() {
     async function load() {
       if (!user?.id) { setLoading(false); return; }
       try {
-        const evts = await getUserEvents(user.id);
+        if (!isSupabaseReady()) {
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
+        const evts = await listInvitations(createClient(), user.id);
         setEvents(evts);
         if (evts.length > 0) setSelectedEventId(evts[0].id);
       } catch {}

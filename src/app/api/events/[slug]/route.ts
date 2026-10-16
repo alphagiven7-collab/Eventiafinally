@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { EventWithSettings } from '@/types';
-import { getEventBySlug } from '@/data/events';
+import { readPublicInvitation } from '@/lib/events/read-public';
 
 export async function GET(
   request: Request,
@@ -8,17 +7,15 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    
-    // Utiliser la fonction getEventBySlug (plus compatible avec Next.js 16)
-    const event = getEventBySlug(slug);
-    
+    const event = await readPublicInvitation(slug);
+
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(event);
   } catch (error) {
     console.error('Error in /api/events/[slug]:', error);

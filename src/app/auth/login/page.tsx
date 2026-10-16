@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthActions } from '@/providers/auth-provider';
+import { useAuthActions, SUPABASE_REQUIRED } from '@/providers/auth-provider';
+import { safeNextPath } from '@/lib/auth/redirect';
+import { isSupabaseReady } from '@/config/supabase';
 import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get('redirect'));
   const { login, signInWithGoogle } = useAuthActions();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -21,18 +25,21 @@ export default function LoginPage() {
     const result = await login(email, password);
     if (result?.error) {
       setError(result.error);
-    } else {
-      router.push('/dashboard');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    router.push(nextPath);
+    router.refresh();
   };
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
-    const result = await signInWithGoogle();
-    if (result?.error) setError(result.error);
-    setLoading(false);
+    const result = await signInWithGoogle(nextPath);
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,6 +83,11 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {!isSupabaseReady() && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                <p className="text-sm text-amber-800 dark:text-amber-200">{SUPABASE_REQUIRED}</p>
+              </div>
+            )}
             {error && (
               <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl">
                 <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -104,6 +116,11 @@ export default function LoginPage() {
                   className="w-full pl-11 pr-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 outline-none transition"
                 />
               </div>
+              <div className="mt-2 text-right">
+                <Link href="/auth/forgot" className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400">
+                  Mot de passe oublié
+                </Link>
+              </div>
             </div>
 
             <button
@@ -127,5 +144,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

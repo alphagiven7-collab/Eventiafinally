@@ -3,11 +3,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
+import { translateAuthError } from '@/lib/auth/redirect';
 import { Session, User } from '@supabase/supabase-js';
-
-// ============================================
-// Auth Context
-// ============================================
 
 interface AuthContextType {
   user: User | null;
@@ -25,95 +22,42 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// ============================================
-// Helper - Cookie pour le middleware
-// ============================================
-
-function setSessionCookie(value: string) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `invitia_session=${value}; path=/; max-age=86400; SameSite=Lax`;
-}
-
-function clearSessionCookie() {
-  if (typeof document === 'undefined') return;
-  document.cookie = 'invitia_session=; path=/; max-age=0';
-}
-
-// ============================================
-// Supabase Auth Provider
-// ============================================
+export const SUPABASE_REQUIRED = 'Configurez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local.';
 
 export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => isSupabaseReady());
 
   useEffect(() => {
+    if (!isSupabaseReady()) return;
+
     let cancelled = false;
+    const supabase = createClient();
 
-    async function init() {
-      // Toujours charger le localStorage d'abord (instantané, jamais bloquant)
-      const stored = localStorage.getItem('invitia_demo_user');
-      if (stored && !cancelled) {
-        const userData = JSON.parse(stored);
-        setUser({ id: userData.id, email: userData.email, user_metadata: userData.user_metadata } as User);
-        setSessionCookie(userData.id);
-      }
-
-      // Arrêter immédiatement le loading — on a déjà les données locales
+    const timeout = window.setTimeout(() => {
       if (!cancelled) setLoading(false);
+    }, 8000);
 
-      // Si Supabase est dispo, synchroniser en arrière-plan (ne bloque jamais l'UI)
-      if (!isSupabaseReady()) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    });
 
-      try {
-        const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (cancelled) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    });
 
-        // Race avec timeout 5s pour ne jamais bloquer
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 5000)
-        );
-
-        const sessionPromise = supabase.auth.getSession();
-        const result = await Promise.race([sessionPromise, timeoutPromise]);
-
-        if (result && !cancelled && result.data?.session?.user) {
-          setSession(result.data.session);
-          setUser(result.data.session.user);
-          setSessionCookie(result.data.session.user.id);
-        }
-
-        // Écouter les changements d'auth — avec guard anti-boucle
-        let lastEvent = '';
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (_event, authSession) => {
-            if (cancelled) return;
-            // Éviter les re-renders en boucle : ignorer les événements identiques
-            const eventKey = `${_event}-${authSession?.user?.id ?? 'null'}`;
-            if (eventKey === lastEvent) return;
-            lastEvent = eventKey;
-
-            setUser(authSession?.user ?? null);
-            setSession(authSession);
-            if (authSession?.user) {
-              setSessionCookie(authSession.user.id);
-            } else {
-              clearSessionCookie();
-            }
-          }
-        );
-
-        return () => {
-          cancelled = true;
-          subscription.unsubscribe();
-        };
-      } catch {
-        // Supabase injoignable — on garde les données localStorage déjà chargées
-      }
-    }
-
-    init();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
@@ -134,67 +78,34 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
   );
 }
 
-// ============================================
-// Auth Actions Hook
-// ============================================
-
 export function useAuthActions() {
   const { user, session } = useAuth();
 
   const login = async (email: string, password: string) => {
-    if (!isSupabaseReady()) {
-      // Mode démo localStorage
-      const users = JSON.parse(localStorage.getItem('invitia_demo_users') || '[]');
-      const found = users.find((u: any) => u.email === email && u.password === password);
-      if (!found) return { error: 'Email ou mot de passe incorrect (mode démo).' };
-      const { password: _, ...userData } = found;
-      localStorage.setItem('invitia_demo_user', JSON.stringify(userData));
-      setSessionCookie(userData.id);
-      window.location.href = '/dashboard';
-      return { error: null };
-    }
-
+    if (!isSupabaseReady()) return { error: SUPABASE_REQUIRED };
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    if (data.user) {
-      setSessionCookie(data.user.id);
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: translateAuthError(error.message) };
     return { error: null };
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    if (!isSupabaseReady()) {
-      // Mode démo localStorage
-      const users = JSON.parse(localStorage.getItem('invitia_demo_users') || '[]');
-      if (users.find((u: any) => u.email === email)) {
-        return { error: 'Cet email est déjà utilisé (mode démo).' };
-      }
-      const newUser = {
-        id: 'demo_' + Date.now(),
-        email,
-        user_metadata: { name },
-        created_at: new Date().toISOString(),
-      };
-      users.push({ ...newUser, password });
-      localStorage.setItem('invitia_demo_users', JSON.stringify(users));
-      localStorage.setItem('invitia_demo_user', JSON.stringify(newUser));
-      setSessionCookie(newUser.id);
-      window.location.href = '/dashboard';
-      return { error: null };
+    if (!isSupabaseReady()) return { error: SUPABASE_REQUIRED, needsConfirmation: false };
+    if (password.length < 8) {
+      return { error: 'Le mot de passe doit contenir au moins 8 caractères.', needsConfirmation: false };
     }
-
     const supabase = createClient();
+    const redirect = `${window.location.origin}/auth/callback?redirect=/dashboard`;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: redirect,
+      },
     });
-    if (error) return { error: error.message };
-    if (data.user) {
-      setSessionCookie(data.user.id);
-    }
-    return { error: null };
+    if (error) return { error: translateAuthError(error.message), needsConfirmation: false };
+    return { error: null, needsConfirmation: !data.session };
   };
 
   const logout = async () => {
@@ -202,25 +113,38 @@ export function useAuthActions() {
       const supabase = createClient();
       await supabase.auth.signOut();
     }
-    localStorage.removeItem('invitia_demo_user');
-    clearSessionCookie();
     window.location.href = '/';
   };
 
-  const signInWithGoogle = async () => {
-    if (!isSupabaseReady()) {
-      return { error: 'Google Sign-In nécessite Supabase configuré.' };
-    }
+  const signInWithGoogle = async (nextPath = '/dashboard') => {
+    if (!isSupabaseReady()) return { error: SUPABASE_REQUIRED };
     const supabase = createClient();
+    const redirectTo = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(nextPath)}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo },
     });
-    if (error) return { error: error.message };
+    if (error) return { error: translateAuthError(error.message) };
     return { error: null };
   };
 
-  return { login, signup, logout, signInWithGoogle, user, session };
+  const requestPasswordReset = async (email: string) => {
+    if (!isSupabaseReady()) return { error: SUPABASE_REQUIRED };
+    const supabase = createClient();
+    const redirectTo = `${window.location.origin}/auth/callback?redirect=/auth/update-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { error: translateAuthError(error.message) };
+    return { error: null };
+  };
+
+  const updatePassword = async (password: string) => {
+    if (!isSupabaseReady()) return { error: SUPABASE_REQUIRED };
+    if (password.length < 8) return { error: 'Le mot de passe doit contenir au moins 8 caractères.' };
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: translateAuthError(error.message) };
+    return { error: null };
+  };
+
+  return { login, signup, logout, signInWithGoogle, requestPasswordReset, updatePassword, user, session };
 }

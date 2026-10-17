@@ -80,14 +80,14 @@ export default function HomePage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link href="/create" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
-                  <Send className="w-4 h-4" /> Essayer gratuitement
+                  <Send className="w-4 h-4" /> Créer mon invitation
                 </Link>
                 <Link href="/e/yanick-keren" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-rose-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-sm hover:border-rose-400 dark:hover:border-rose-500 transition-all active:scale-95">
                   <Heart className="w-4 h-4 text-rose-500" /> Decouvrir un exemple
                 </Link>
               </div>
               <div className="mt-10 grid grid-cols-3 gap-4">
-                {[{ value: '3 min', label: 'Pour creer' },{ value: '2000+', label: 'Invitations envoyees' },{ value: '100%', label: 'Souvenirs' }].map((stat) => (
+                {[{ value: '0,30 $', label: 'Par invité' },{ value: '3 min', label: 'Pour créer' },{ value: '1 lien', label: 'Par personne' }].map((stat) => (
                   <div key={stat.label} className="text-center">
                     <p className="text-xl font-extrabold bg-gradient-to-r from-rose-500 to-blue-500 bg-clip-text text-transparent">{stat.value}</p>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stat.label}</p>
@@ -159,7 +159,7 @@ export default function HomePage() {
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 text-center">Ce qui fait la difference</h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: Shield, label: 'Gratuit', desc: 'Sans carte, sans pub' },
+                { icon: Shield, label: '0,30 $', desc: 'Par invité, sans forfait' },
                 { icon: Zap, label: '3 minutes', desc: "Le temps d'un cafe" },
                 { icon: Heart, label: 'Emotion', desc: 'Pas juste un carton' },
                 { icon: Users, label: 'WhatsApp', desc: 'La ou sont vos invites' },
@@ -216,7 +216,7 @@ export default function HomePage() {
             <div className="p-6 bg-gradient-to-br from-rose-500 to-blue-600 rounded-3xl shadow-xl shadow-rose-200/50 dark:shadow-rose-900/30">
               <Gift className="w-8 h-8 text-white mx-auto mb-3" />
               <h3 className="text-lg font-extrabold text-white mb-2 drop-shadow-lg">Votre evenement merite la plus belle des invitations</h3>
-              <p className="text-xs text-white/90 mb-5 drop-shadow-md">Gratuit. 3 minutes. Aucune carte bancaire demandee.</p>
+              <p className="text-xs text-white/90 mb-5 drop-shadow-md">0,30 $ par invité. 3 minutes. Sans abonnement.</p>
               <Link href="/create" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-gray-900 rounded-2xl font-bold text-sm hover:shadow-2xl transition-all active:scale-95">
                 <Sparkles className="w-4 h-4 text-rose-500" /> Commencer mon invitation
               </Link>

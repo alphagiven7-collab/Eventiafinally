@@ -13,7 +13,7 @@ export default function LandingFeatures() {
           { icon: Clock, title: '3 minutes chrono', desc: 'Pas de designer, pas de galère', color: 'from-emerald-400 to-emerald-500' },
           { icon: MessageCircle, title: 'WhatsApp 1 clic', desc: 'Tes invités cliquent et c\'est fait', color: 'from-green-400 to-green-500' },
           { icon: Users, title: 'RSVP automatique', desc: 'Plus d\'appels pour relancer', color: 'from-teal-400 to-teal-500' },
-          { icon: Shield, title: '100% gratuit', desc: 'Pas de carte bancaire', color: 'from-cyan-400 to-cyan-500' },
+          { icon: Shield, title: '0,30 $', desc: 'Par invité, sans forfait', color: 'from-cyan-400 to-cyan-500' },
         ].map((feat, i) => (
           <div key={i} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
             <div className={`w-10 h-10 bg-gradient-to-br ${feat.color} rounded-xl flex items-center justify-center mb-3 shadow-sm`}>

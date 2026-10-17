@@ -9,6 +9,7 @@ import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { listInvitations } from '@/lib/events/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
+import { formatUsd, invitationTotalUsd } from '@/constants/pricing';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 
@@ -107,11 +108,6 @@ function GuestManagementContent() {
   // Ajouter un invité
   const handleAddGuest = async () => {
     if (!newName.trim()) { addToast('error', 'Le nom est obligatoire'); return; }
-    // Limite 20 invités en mode gratuit
-    if (guests.length >= 20) {
-      addToast('error', 'Limite de 20 invités atteinte. Passez à Premium pour plus.');
-      return;
-    }
     const guest: Guest = {
       id: 'guest_' + Date.now(),
       event_id: selectedEventId,
@@ -323,6 +319,7 @@ function GuestManagementContent() {
               { label: 'En attente', value: stats.pending, color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' },
               { label: 'Adultes', value: stats.adults, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' },
               { label: 'Enfants', value: stats.children, color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' },
+              { label: 'Total à 0,30 $', value: formatUsd(invitationTotalUsd(stats.total)), color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
             ].map(s => (
               <div key={s.label} className={`rounded-2xl p-4 ${s.color}`}>
                 <p className="text-2xl font-bold">{s.value}</p>

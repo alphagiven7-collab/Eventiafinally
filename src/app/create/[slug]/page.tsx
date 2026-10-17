@@ -9,10 +9,7 @@ import PhotoUploader from '@/components/ui/photo-uploader';
 import { Music, Upload, X } from 'lucide-react';
 import { getEventIdentity } from '@/constants/design-language';
 import { EventType, EventWithSettings, ProgramItem, PracticalInfoItem } from '@/types';
-import { isSupabaseReady } from '@/config/supabase';
-import { createClient } from '@/lib/supabase/client';
-import { publishInvitation } from '@/lib/events/store';
-import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
+import { writeLiveDemo } from '@/lib/demo/session';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -454,27 +451,21 @@ function CreateEventContent() {
       },
       adminCode: adminCode || undefined,
       user_id: user?.id,
-      is_published: true,
+      is_published: false,
       view_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (!user?.id || !isSupabaseReady()) {
-      addToast('error', SUPABASE_REQUIRED);
+    const saved = writeLiveDemo({ event: newEvent, guests: [] });
+    if (saved.error) {
+      addToast('error', saved.error);
       setLoading(false);
       return;
     }
 
-    const result = await publishInvitation(createClient(), { ...newEvent, user_id: user.id });
-    if (result.error) {
-      addToast('error', result.error);
-      setLoading(false);
-      return;
-    }
-
-    addToast('success', 'Invitation publiée. Le lien est ouvert pour vos invités.');
-    router.push(`/e/${slug}`);
+    addToast('success', 'Démo prête sur cet écran. Elle n\'est pas enregistrée et ne se partage pas.');
+    router.push('/demo');
     setLoading(false);
   };
 
@@ -725,7 +716,7 @@ function CreateEventContent() {
           {/* BOUTON */}
           <button type="submit" disabled={loading}
             className="w-full py-4 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-base shadow-xl shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50">
-            {loading ? 'Création...' : 'Créer et voir l\'aperçu'}
+            {loading ? 'Création...' : 'Voir la démo sur cet écran'}
           </button>
         </form>
       </main>

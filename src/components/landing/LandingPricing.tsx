@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { formatUsd, invitationTotalUsd, PRICE_PER_GUEST_USD } from '@/constants/pricing';
+import { formatUsd, PRICE_PER_GUEST_USD } from '@/constants/pricing';
 
 export default function LandingPricing() {
   const unit = formatUsd(PRICE_PER_GUEST_USD);
@@ -14,8 +14,8 @@ export default function LandingPricing() {
       <div className="p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h4 className="text-sm font-bold text-gray-900">Par invité</h4>
-            <p className="text-[10px] text-gray-500">Le total suit la liste</p>
+            <h4 className="text-sm font-bold text-gray-900">Démo, puis invitation</h4>
+            <p className="text-[10px] text-gray-500">10 invités sur votre écran, sans lien</p>
           </div>
           <div className="text-right">
             <span className="text-xl font-bold text-gray-900">{unit}</span>
@@ -24,8 +24,8 @@ export default function LandingPricing() {
         </div>
         <ul className="space-y-2 mb-4">
           {[
-            `10 invités = ${formatUsd(invitationTotalUsd(10))}`,
-            `100 invités = ${formatUsd(invitationTotalUsd(100))}`,
+            `Démo : 10 invités, non enregistrée`,
+            `Partage : ${unit} par invité`,
             'RSVP, photos, musique et QR inclus',
             'Sans abonnement',
           ].map((feature) => (

@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { deleteInvitation, listInvitations, publishInvitation } from '@/lib/events/store';
+import { deleteInvitation, listInvitations } from '@/lib/events/store';
+import { writeLiveDemo } from '@/lib/demo/session';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
   const [events, setEvents] = useState<EventWithSettings[]>([]);
@@ -85,22 +88,16 @@ export default function DashboardPage() {
         updated_at: new Date().toISOString(),
       };
 
-      if (!isSupabaseReady()) {
-        setCreateError(SUPABASE_REQUIRED);
-        setCreating(false);
-        return;
-      }
-
-      const result = await publishInvitation(createClient(), localEvent);
-      if (result.error) {
-        setCreateError(result.error);
+      const saved = writeLiveDemo({ event: localEvent, guests: [] });
+      if (saved.error) {
+        setCreateError(saved.error);
         setCreating(false);
         return;
       }
 
       setNewEventName('');
       setShowCreateInput(false);
-      await loadEvents();
+      router.push('/demo');
     } catch (err) {
       console.error('Erreur création:', err);
       setCreateError('Erreur lors de la création. Rafraîchissez et réessayez.');
@@ -141,8 +138,8 @@ export default function DashboardPage() {
                 <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">0,30 $ par invité</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">Le total suit le nombre de personnes sur la liste</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Démo : 10 invités, sans partage</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">Au-delà, 0,30 $ par invité pour enregistrer et envoyer le lien</p>
               </div>
             </div>
             <a href="/pricing" className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition shadow-sm">

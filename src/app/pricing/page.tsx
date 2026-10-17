@@ -32,8 +32,24 @@ export default function PricingPage() {
             {unit} <span className="text-gray-500 dark:text-gray-400 font-semibold text-xl">par invité</span>
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Vous payez le nombre de personnes invitées. Pas d&apos;abonnement, pas de forfait.
+            La démo est gratuite, limitée à 10 invités, visible seulement par vous. Elle n&apos;est pas enregistrée et ne se partage pas. L&apos;invitation envoyée coûte {unit} par invité.
           </p>
+        </div>
+
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
+          <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Démo gratuite</p>
+          <ul className="mt-2 space-y-1 text-xs text-amber-900 dark:text-amber-200">
+            <li>10 invités maximum, puis la saisie est bloquée</li>
+            <li>Consultation en direct sur votre écran seulement</li>
+            <li>Aucun enregistrement, aucun lien à envoyer</li>
+          </ul>
+          <button
+            type="button"
+            onClick={() => router.push('/create/wedding')}
+            className="mt-4 px-4 py-2 bg-amber-950 text-white rounded-xl text-xs font-semibold"
+          >
+            Tester la démo
+          </button>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-sm p-6 mb-6">
@@ -117,7 +133,8 @@ export default function PricingPage() {
             {[
               { q: 'Comment est calculé le prix ?', a: `Chaque personne sur la liste coûte ${unit}. Cent invités coûtent ${formatUsd(invitationTotalUsd(100))}.` },
               { q: 'Y a-t-il un abonnement ?', a: 'Non. Vous payez une fois, selon le nombre d\'invités de l\'événement.' },
-              { q: 'Y a-t-il un plafond d\'invités ?', a: 'Non. La liste peut grandir, le total aussi, toujours à 0,30 $ par personne.' },
+              { q: 'Y a-t-il un plafond d\'invités ?', a: 'Sur la démo, oui : 10 invités. Au-delà, il faut l\'invitation enregistrée, à 0,30 $ par personne, sans plafond.' },
+              { q: 'Puis-je envoyer la démo ?', a: 'Non. La démo reste sur l\'écran qui l\'a créée. Fermer l\'onglet l\'efface. Le lien public existe seulement après enregistrement.' },
               { q: 'Comment payer ?', a: 'Pour l\'instant, par WhatsApp, Mobile Money ou virement. Le montant correspond au nombre d\'invités.' },
             ].map((faq) => (
               <div key={faq.q} className="border-b border-gray-100 dark:border-gray-700 pb-4 last:border-0 last:pb-0">

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Guest } from '@/types';
 import { Check, X } from 'lucide-react';
 import QRScanner from '@/components/checkin/QRScanner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { isSupabaseReady } from '@/config/supabase';
+import { createClient } from '@/lib/supabase/client';
+import { lookupGuestByToken, PublicGuest, submitGuestRsvp, tokenFromInviteLink } from '@/lib/guests/store';
 
 export default function CheckInPage() {
   return (
@@ -19,76 +21,36 @@ function CheckInContent() {
   const [tokenInput, setTokenInput] = useState('');
   const [checkinResult, setCheckinResult] = useState<{
     success: boolean;
-    guest?: Guest;
+    guest?: PublicGuest;
     message?: string;
   } | null>(null);
   const [scanning, setScanning] = useState(false);
 
-  const verifyToken = (token: string): Guest | null => {
-    if (typeof window === 'undefined') return null;
-    const storedGuests = localStorage.getItem('guests_yanick-keren');
-    if (storedGuests) {
-      const guests: Guest[] = JSON.parse(storedGuests);
-      return guests.find(g => g.token === token) || null;
+  const confirmArrival = async (raw: string) => {
+    const token = tokenFromInviteLink(raw);
+    if (!token || !isSupabaseReady()) {
+      setCheckinResult({ success: false, message: 'Invité introuvable. Le lien doit venir de la liste enregistrée.' });
+      return;
     }
-    return null;
-  };
-
-  const updateGuestStatus = (guestId: string, status: string) => {
-    if (typeof window === 'undefined') return;
-    const storedGuests = localStorage.getItem('guests_yanick-keren');
-    if (storedGuests) {
-      const guests: Guest[] = JSON.parse(storedGuests);
-      const updated = guests.map(g => 
-        g.id === guestId ? { ...g, status: status as any, updated_at: new Date().toISOString() } : g
-      );
-      localStorage.setItem('guests_yanick-keren', JSON.stringify(updated));
+    const guest = await lookupGuestByToken(createClient(), token);
+    if (!guest) {
+      setCheckinResult({ success: false, message: 'Token invalide ou invité non trouvé' });
+      return;
     }
+    await submitGuestRsvp(createClient(), { token: guest.token, status: 'confirmed', adults: guest.adults, children: guest.children });
+    setCheckinResult({ success: true, guest });
+    setTimeout(() => setCheckinResult(null), 3000);
   };
 
   const handleManualCheckin = () => {
     if (!tokenInput.trim()) return;
-    
-    const guest = verifyToken(tokenInput);
-    if (guest) {
-      // Enregistrer le check-in
-      const checkins = JSON.parse(localStorage.getItem('checkins_yanick-keren') || '[]');
-      checkins.push({
-        guest_id: guest.id,
-        guest_name: guest.name,
-        checked_at: new Date().toISOString()
-      });
-      localStorage.setItem('checkins_yanick-keren', JSON.stringify(checkins));
-      
-      // Mettre à jour le statut
-      updateGuestStatus(guest.id, 'confirmed');
-      
-      setCheckinResult({ success: true, guest });
-    } else {
-      setCheckinResult({ success: false, message: 'Token invalide ou invité non trouvé' });
-    }
-    
-    setTimeout(() => setCheckinResult(null), 3000);
+    void confirmArrival(tokenInput);
     setTokenInput('');
   };
 
   const handleScanSuccess = (decodedText: string) => {
     setScanning(false);
-    const guest = verifyToken(decodedText);
-    if (guest) {
-      const checkins = JSON.parse(localStorage.getItem('checkins_yanick-keren') || '[]');
-      checkins.push({
-        guest_id: guest.id,
-        guest_name: guest.name,
-        checked_at: new Date().toISOString()
-      });
-      localStorage.setItem('checkins_yanick-keren', JSON.stringify(checkins));
-      updateGuestStatus(guest.id, 'confirmed');
-      setCheckinResult({ success: true, guest });
-    } else {
-      setCheckinResult({ success: false, message: 'Token invalide ou invité non trouvé' });
-    }
-    setTimeout(() => setCheckinResult(null), 3000);
+    void confirmArrival(decodedText);
   };
 
   return (

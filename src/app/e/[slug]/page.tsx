@@ -7,15 +7,13 @@ import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug } from '@/lib/events/store';
+import { lookupGuestByToken, PublicGuest } from '@/lib/guests/store';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guestName, setGuestName] = useState<string | null>(null);
-  const [isGateOpen, setIsGateOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
@@ -48,51 +46,21 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     return () => { cancelled = true; };
   }, [slug]);
 
-  // Récupérer le nom et le token depuis l'URL (paramètres guest et token)
+  // Le lien personnel est vérifié sur le serveur, pas dans ce navigateur.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const guestParam = params.get('guest');
-      const tokenParam = params.get('token');
-      if (guestParam) {
-        // Vérifier le token si présent (sécurise l'accès)
-        if (tokenParam) {
-          const storedGuests = localStorage.getItem(`invitia_guests_${slug}`);
-          if (storedGuests) {
-            try {
-              const guests = JSON.parse(storedGuests);
-              const found = guests.find((g: any) => g.token === tokenParam);
-              if (!found) {
-                // Token invalide — on ignore le guest name
-                return;
-              }
-            } catch {}
-          }
-        }
-        localStorage.setItem(`guest_${slug}`, guestParam);
-        setIsGateOpen(true);
-      }
-    }
+    if (typeof window === 'undefined' || !isSupabaseReady()) return;
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (!token) return;
+    let cancelled = false;
+    lookupGuestByToken(createClient(), token).then((guest) => {
+      if (!cancelled) setResolvedGuest(guest);
+    });
+    return () => { cancelled = true; };
   }, [slug]);
 
-  // Vérifier si l'invité a déjà ouvert l'invitation
-  useEffect(() => {
-    if (typeof window !== 'undefined' && slug) {
-      const storedGuest = localStorage.getItem(`guest_${slug}`);
-      if (storedGuest) {
-        setIsGateOpen(true);
-        setGuestName(storedGuest);
-      }
-    }
-  }, [slug]);
-
-  const handleGateOpen = (name: string) => {
-    setGuestName(name);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`guest_${slug}`, name);
-    }
-    setIsGateOpen(true);
-  };
+  const matchedGuest = resolvedGuest && event && resolvedGuest.event_id === event.id
+    ? resolvedGuest
+    : null;
 
   if (loading) {
     return (
@@ -117,5 +85,12 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     );
   }
 
-  return <InvitationExperience event={event} guestName={guestName || undefined} />;
+  return (
+    <InvitationExperience
+      event={event}
+      guestName={matchedGuest?.name}
+      guestToken={matchedGuest?.token}
+      guestStatus={matchedGuest?.status}
+    />
+  );
 }

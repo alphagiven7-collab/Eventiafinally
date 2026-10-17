@@ -1,0 +1,242 @@
+import { SupabaseClient } from '@supabase/supabase-js';
+import { FREE_GUEST_LIMIT, freeGuestLimitMessage } from '@/constants/pricing';
+import { isUuid } from '@/lib/events/store';
+import { Guest, GuestStatus } from '@/types';
+
+type GuestRow = {
+  id: string;
+  event_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  group_name: string | null;
+  adults: number | null;
+  children: number | null;
+  status: GuestStatus;
+  token: string;
+  message: string | null;
+  table_number: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicGuest = {
+  id: string;
+  event_id: string;
+  name: string;
+  status: GuestStatus;
+  adults: number;
+  children: number;
+  token: string;
+};
+
+export type GuestDraft = {
+  name: string;
+  phone?: string;
+  email?: string;
+  group?: string;
+  adults?: number;
+  children?: number;
+  tableNumber?: string;
+};
+
+const MIGRATION_HINT = 'La base doit être mise à jour. Exécutez supabase/migrations/007_hosted_guests.sql dans le SQL Editor de Supabase.';
+
+export function guestInvitePath(slug: string, guest: Pick<Guest, 'name' | 'token'>): string {
+  const params = new URLSearchParams({ guest: guest.name, token: guest.token });
+  return `/e/${slug}?${params.toString()}`;
+}
+
+export function tokenFromInviteLink(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed);
+    return url.searchParams.get('token') || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+export function explainGuestError(message: string): string {
+  if (message.includes('FREE_GUEST_LIMIT')) return freeGuestLimitMessage();
+  if (/group_name|table_number|schema cache|lookup_guest_by_token|submit_guest_rsvp|column/i.test(message)) {
+    return MIGRATION_HINT;
+  }
+  if (message.includes('GUEST_NOT_FOUND')) return 'Ce lien personnel ne correspond à aucun invité.';
+  if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n\'est pas encore publiée.';
+  return message;
+}
+
+export function toGuest(row: GuestRow): Guest {
+  return {
+    id: row.id,
+    event_id: row.event_id,
+    name: row.name,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    group: row.group_name ?? undefined,
+    status: row.status,
+    adults: row.adults ?? 1,
+    children: row.children ?? 0,
+    table_number: row.table_number ?? undefined,
+    message: row.message ?? undefined,
+    token: row.token,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function newToken(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function draftRow(eventId: string, draft: GuestDraft) {
+  return {
+    id: crypto.randomUUID(),
+    event_id: eventId,
+    name: draft.name.trim(),
+    phone: draft.phone?.trim() || null,
+    email: draft.email?.trim() || null,
+    group_name: draft.group?.trim() || null,
+    adults: draft.adults ?? 1,
+    children: draft.children ?? 0,
+    table_number: draft.tableNumber?.trim() || null,
+    status: 'pending' as const,
+    token: newToken(),
+  };
+}
+
+export async function listGuests(client: SupabaseClient, eventId: string): Promise<{ guests: Guest[]; error?: string }> {
+  const { data, error } = await client
+    .from('guests')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false });
+
+  if (error) return { guests: [], error: explainGuestError(error.message) };
+  return { guests: ((data ?? []) as GuestRow[]).map(toGuest) };
+}
+
+export async function countGuests(client: SupabaseClient, eventId: string): Promise<number> {
+  const { count, error } = await client
+    .from('guests')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', eventId);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function addGuest(
+  client: SupabaseClient,
+  eventId: string,
+  draft: GuestDraft,
+): Promise<{ guest?: Guest; error?: string }> {
+  if (!isUuid(eventId)) return { error: 'Enregistrez d\'abord l\'invitation pour ajouter des invités.' };
+  if (!draft.name.trim()) return { error: 'Le nom est obligatoire.' };
+
+  const taken = await countGuests(client, eventId);
+  if (taken >= FREE_GUEST_LIMIT) return { error: freeGuestLimitMessage() };
+
+  const { data, error } = await client
+    .from('guests')
+    .insert(draftRow(eventId, draft))
+    .select('*')
+    .single();
+
+  if (error) return { error: explainGuestError(error.message) };
+  return { guest: toGuest(data as GuestRow) };
+}
+
+export async function addGuests(
+  client: SupabaseClient,
+  eventId: string,
+  drafts: GuestDraft[],
+): Promise<{ guests: Guest[]; error?: string; truncated: boolean }> {
+  if (!isUuid(eventId)) return { guests: [], error: 'Enregistrez d\'abord l\'invitation pour ajouter des invités.', truncated: false };
+
+  const named = drafts.filter((draft) => draft.name.trim());
+  if (named.length === 0) return { guests: [], error: 'Aucun invité trouvé dans le fichier.', truncated: false };
+
+  const taken = await countGuests(client, eventId);
+  const room = FREE_GUEST_LIMIT - taken;
+  if (room <= 0) return { guests: [], error: freeGuestLimitMessage(), truncated: true };
+
+  const accepted = named.slice(0, room);
+  const { data, error } = await client
+    .from('guests')
+    .insert(accepted.map((draft) => draftRow(eventId, draft)))
+    .select('*');
+
+  if (error) return { guests: [], error: explainGuestError(error.message), truncated: accepted.length < named.length };
+  return {
+    guests: ((data ?? []) as GuestRow[]).map(toGuest),
+    truncated: accepted.length < named.length,
+    error: accepted.length < named.length ? freeGuestLimitMessage() : undefined,
+  };
+}
+
+export async function updateGuest(
+  client: SupabaseClient,
+  guest: Guest,
+): Promise<{ guest?: Guest; error?: string }> {
+  const { data, error } = await client
+    .from('guests')
+    .update({
+      name: guest.name.trim(),
+      phone: guest.phone?.trim() || null,
+      email: guest.email?.trim() || null,
+      group_name: guest.group?.trim() || null,
+      status: guest.status,
+      adults: guest.adults ?? 1,
+      children: guest.children ?? 0,
+      table_number: guest.table_number?.trim() || null,
+      message: guest.message?.trim() || null,
+    })
+    .eq('id', guest.id)
+    .select('*')
+    .single();
+
+  if (error) return { error: explainGuestError(error.message) };
+  return { guest: toGuest(data as GuestRow) };
+}
+
+export async function deleteGuest(client: SupabaseClient, guestId: string): Promise<{ error?: string }> {
+  const { error } = await client.from('guests').delete().eq('id', guestId);
+  if (error) return { error: explainGuestError(error.message) };
+  return {};
+}
+
+export async function lookupGuestByToken(client: SupabaseClient, token: string): Promise<PublicGuest | null> {
+  const { data, error } = await client.rpc('lookup_guest_by_token', { p_token: token });
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+  const row = data[0] as PublicGuest;
+  return {
+    id: row.id,
+    event_id: row.event_id,
+    name: row.name,
+    status: row.status,
+    adults: row.adults ?? 1,
+    children: row.children ?? 0,
+    token: row.token,
+  };
+}
+
+export async function submitGuestRsvp(
+  client: SupabaseClient,
+  input: { token: string; status: 'confirmed' | 'declined'; adults?: number; children?: number; message?: string },
+): Promise<{ name?: string; status?: string; error?: string }> {
+  const { data, error } = await client.rpc('submit_guest_rsvp', {
+    p_token: input.token,
+    p_status: input.status,
+    p_adults: input.adults ?? 1,
+    p_children: input.children ?? 0,
+    p_message: input.message ?? null,
+  });
+
+  if (error) return { error: explainGuestError(error.message) };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { name: row?.guest_name, status: row?.guest_status };
+}

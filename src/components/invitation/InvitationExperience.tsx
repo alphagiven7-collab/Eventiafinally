@@ -1,14 +1,22 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { EventWithSettings } from '@/types';
+import { EventWithSettings, GuestStatus } from '@/types';
+import { isSupabaseReady } from '@/config/supabase';
+import { createClient } from '@/lib/supabase/client';
+import { submitGuestRsvp } from '@/lib/guests/store';
 
 /**
  * Ce composant injecte le HTML original du modèle invitation_mariage
  * pour garantir une reproduction pixel-par-pixel.
  * Il charge les CSS et JS originaux et hydrate les données depuis l'événement.
  */
-export default function InvitationExperience({ event, guestName }: { event: EventWithSettings; guestName?: string }) {
+export default function InvitationExperience({ event, guestName, guestToken, guestStatus }: {
+  event: EventWithSettings;
+  guestName?: string;
+  guestToken?: string;
+  guestStatus?: GuestStatus;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,11 +54,14 @@ export default function InvitationExperience({ event, guestName }: { event: Even
     // Initialiser la musique de fond
     initMusic(root, event);
 
+    const detachRsvp = initRsvp(root, guestToken, guestStatus);
+
     return () => {
+      detachRsvp();
       style.remove();
       tailwind.remove();
     };
-  }, [event, guestName]);
+  }, [event, guestName, guestToken, guestStatus]);
 
   return (
     <div ref={containerRef} className="invitation-experience-root">
@@ -295,6 +306,49 @@ function initCountdown(dateStr: string) {
 
   update();
   setInterval(update, 1000);
+}
+
+function initRsvp(root: HTMLElement, guestToken?: string, guestStatus?: GuestStatus) {
+  const note = root.querySelector('#rsvp-status-note');
+  const confirmBtn = root.querySelector('#confirm-presence-btn') as HTMLButtonElement | null;
+  const reserveBtn = root.querySelector('#reserve-deadline-btn') as HTMLButtonElement | null;
+  const declineBtn = root.querySelector('#decline-presence-btn') as HTMLButtonElement | null;
+
+  const setNote = (text: string) => {
+    if (note) note.textContent = text;
+  };
+
+  if (guestStatus === 'confirmed') setNote('Votre présence est déjà enregistrée.');
+  if (guestStatus === 'declined') setNote('Votre absence est déjà enregistrée.');
+
+  const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
+    if (!guestToken || !isSupabaseReady()) {
+      setNote('Ouvrez le lien personnel reçu pour enregistrer votre réponse.');
+      return;
+    }
+    if (button) button.disabled = true;
+    const result = await submitGuestRsvp(createClient(), { token: guestToken, status });
+    if (button) button.disabled = false;
+    if (result.error) {
+      setNote(result.error);
+      return;
+    }
+    setNote(status === 'confirmed' ? 'Présence enregistrée. Merci.' : 'Absence enregistrée. Merci.');
+  };
+
+  const onConfirm = () => { void respond('confirmed', confirmBtn); };
+  const onReserve = () => { void respond('confirmed', reserveBtn); };
+  const onDecline = () => { void respond('declined', declineBtn); };
+
+  confirmBtn?.addEventListener('click', onConfirm);
+  reserveBtn?.addEventListener('click', onReserve);
+  declineBtn?.addEventListener('click', onDecline);
+
+  return () => {
+    confirmBtn?.removeEventListener('click', onConfirm);
+    reserveBtn?.removeEventListener('click', onReserve);
+    declineBtn?.removeEventListener('click', onDecline);
+  };
 }
 
 function initGate(root: HTMLElement, guestName?: string) {
@@ -825,12 +879,16 @@ function getOriginalHTML(): string {
 
       <!-- 9. RSVP Button -->
       <section style="padding:0 16px;margin-top:24px;">
-        <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;" onclick="var m=encodeURIComponent('Bonjour, je confirme ma présence !');window.open('https://wa.me/?text='+m,'_blank')">
+        <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);padding:16px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
           <span style="width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
             <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </span>
           <span style="font-weight:600;font-size:14px;">Confirmer ma présence</span>
         </button>
+        <button id="decline-presence-btn" type="button" style="width:100%;margin-top:8px;border-radius:12px;padding:12px;background:white;color:#6b7280;border:1px solid #e5e7eb;font-size:13px;cursor:pointer;">
+          Je ne pourrai pas venir
+        </button>
+        <p id="rsvp-status-note" style="margin-top:8px;text-align:center;font-size:12px;color:#374151;min-height:1rem;"></p>
       </section>
 
       <!-- 10. Menu des boissons -->

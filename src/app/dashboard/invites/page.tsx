@@ -7,9 +7,11 @@ import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { listInvitations } from '@/lib/events/store';
+import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { FREE_GUEST_LIMIT, freeGuestLimitMessage } from '@/constants/pricing';
+import { FREE_GUEST_LIMIT } from '@/constants/pricing';
+import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 
@@ -56,34 +58,23 @@ function GuestManagementContent() {
     load();
   }, [user?.id]);
 
-  // Charger les invités
+  // Charger les invités enregistrés pour cette invitation
   useEffect(() => {
     if (!selectedEventId) return;
+    let cancelled = false;
     async function loadGuests() {
-      if (isSupabaseReady()) {
-        try {
-          const supabase = createClient();
-          const { data } = await supabase
-            .from('guests')
-            .select('*')
-            .eq('event_id', selectedEventId)
-            .order('created_at', { ascending: false });
-          if (data) { setGuests(data as Guest[]); return; }
-        } catch {}
+      if (!isSupabaseReady()) {
+        if (!cancelled) setGuests([]);
+        return;
       }
-      // Fallback localStorage
-      try {
-        const stored = localStorage.getItem(`invitia_guests_${selectedEventId}`);
-        if (stored) setGuests(JSON.parse(stored));
-        else setGuests([]);
-      } catch { setGuests([]); }
+      const result = await listGuests(createClient(), selectedEventId);
+      if (cancelled) return;
+      if (result.error) addToast('error', result.error);
+      setGuests(result.guests);
     }
     loadGuests();
-  }, [selectedEventId]);
-
-  const saveGuestsToStorage = (updated: Guest[]) => {
-    try { localStorage.setItem(`invitia_guests_${selectedEventId}`, JSON.stringify(updated)); } catch {}
-  };
+    return () => { cancelled = true; };
+  }, [selectedEventId, addToast]);
 
   // Stats
   const stats = {
@@ -105,80 +96,57 @@ function GuestManagementContent() {
     return true;
   });
 
+  const personalLink = (guest: Guest) => {
+    const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
+    return `${window.location.origin}${guestInvitePath(slug, guest)}`;
+  };
+
   // Ajouter un invité
   const handleAddGuest = async () => {
-    if (!newName.trim()) { addToast('error', 'Le nom est obligatoire'); return; }
-    if (guests.length >= FREE_GUEST_LIMIT) {
-      addToast('error', freeGuestLimitMessage());
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const result = await addGuest(createClient(), selectedEventId, {
+      name: newName,
+      phone: newPhone,
+      email: newEmail,
+      group: newGroup,
+    });
+    if (result.error || !result.guest) {
+      addToast('error', result.error || 'Invité non enregistré');
       return;
     }
-    const guest: Guest = {
-      id: 'guest_' + Date.now(),
-      event_id: selectedEventId,
-      name: newName.trim(),
-      phone: newPhone.trim() || undefined,
-      email: newEmail.trim() || undefined,
-      group: newGroup.trim() || undefined,
-      status: 'pending',
-      adults: 1,
-      children: 0,
-      token: Math.random().toString(36).slice(2, 10),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    const updated = [guest, ...guests];
-    setGuests(updated);
-    saveGuestsToStorage(updated);
-    if (isSupabaseReady()) {
-      try { await createClient().from('guests').insert(guest); } catch {}
-    }
+    setGuests((current) => [result.guest!, ...current]);
     setNewName(''); setNewPhone(''); setNewEmail(''); setNewGroup('');
     setShowAddForm(false);
-    addToast('success', `${guest.name} ajouté(e) !`);
+    addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
   };
 
   // Supprimer un invité
   const handleDelete = async (id: string) => {
-    const updated = guests.filter(g => g.id !== id);
-    setGuests(updated);
-    saveGuestsToStorage(updated);
-    if (isSupabaseReady()) {
-      try { await createClient().from('guests').delete().eq('id', id); } catch {}
-    }
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const result = await deleteGuest(createClient(), id);
+    if (result.error) { addToast('error', result.error); return; }
+    setGuests((current) => current.filter((guest) => guest.id !== id));
     addToast('success', 'Invité supprimé');
   };
 
   // Modifier statut
   const handleStatusChange = async (id: string, status: GuestStatus) => {
-    const updated = guests.map(g => g.id === id ? { ...g, status, updated_at: new Date().toISOString() } : g);
-    setGuests(updated);
-    saveGuestsToStorage(updated);
-    if (isSupabaseReady()) {
-      try { await createClient().from('guests').update({ status }).eq('id', id); } catch {}
-    }
+    const current = guests.find((guest) => guest.id === id);
+    if (!current || !isSupabaseReady()) return;
+    const result = await updateGuest(createClient(), { ...current, status });
+    if (result.error || !result.guest) { addToast('error', result.error || 'Statut non enregistré'); return; }
+    setGuests((list) => list.map((guest) => guest.id === id ? result.guest! : guest));
   };
 
   // Sauvegarder édition
   const handleSaveEdit = async () => {
     if (!editingGuest) return;
-    const updated = guests.map(g => g.id === editingGuest.id ? { ...editingGuest, updated_at: new Date().toISOString() } : g);
-    setGuests(updated);
-    saveGuestsToStorage(updated);
-    if (isSupabaseReady()) {
-      try {
-        await createClient().from('guests').update({
-          name: editingGuest.name,
-          phone: editingGuest.phone,
-          email: editingGuest.email,
-          group: editingGuest.group,
-          status: editingGuest.status,
-          adults: editingGuest.adults,
-          children: editingGuest.children,
-        }).eq('id', editingGuest.id);
-      } catch {}
-    }
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const result = await updateGuest(createClient(), editingGuest);
+    if (result.error || !result.guest) { addToast('error', result.error || 'Invité non enregistré'); return; }
+    setGuests((list) => list.map((guest) => guest.id === result.guest!.id ? result.guest! : guest));
     setEditingGuest(null);
-    addToast('success', 'Invité modifié');
+    addToast('success', 'Invité enregistré');
   };
 
   // Import CSV
@@ -209,25 +177,27 @@ function GuestManagementContent() {
       };
     }).filter(g => g.name !== 'Sans nom' || g.phone);
 
-    if (newGuests.length === 0) { addToast('error', 'Aucun invité trouvé dans le fichier'); return; }
-
-    const room = FREE_GUEST_LIMIT - guests.length;
-    if (room <= 0) {
-      addToast('error', freeGuestLimitMessage());
+    if (!isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
       e.target.value = '';
       return;
     }
-    const accepted = newGuests.slice(0, room);
-    const updated = [...accepted, ...guests];
-    setGuests(updated);
-    saveGuestsToStorage(updated);
-    if (isSupabaseReady()) {
-      try { await createClient().from('guests').insert(accepted); } catch {}
+
+    const result = await addGuests(createClient(), selectedEventId, newGuests.map((guest) => ({
+      name: guest.name,
+      phone: guest.phone,
+      email: guest.email,
+      group: guest.group,
+    })));
+    if (result.guests.length > 0) {
+      setGuests((current) => [...result.guests, ...current]);
     }
-    if (accepted.length < newGuests.length) {
-      addToast('error', `${accepted.length} invité(s) importé(s). ${freeGuestLimitMessage()}`);
+    if (result.error) {
+      addToast('error', result.guests.length > 0
+        ? `${result.guests.length} invité(s) enregistré(s). ${result.error}`
+        : result.error);
     } else {
-      addToast('success', `${accepted.length} invités importés !`);
+      addToast('success', `${result.guests.length} invités enregistrés.`);
     }
     e.target.value = '';
   };
@@ -367,7 +337,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Ajouter un invité</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Offre gratuite : {guests.length}/{FREE_GUEST_LIMIT} invités. Le lien de l&apos;invitation est déjà partageable.
+                  Offre gratuite : {guests.length}/{FREE_GUEST_LIMIT} invités enregistrés. Chaque lien personnel s&apos;ouvre sur un autre téléphone.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -475,7 +445,7 @@ function GuestManagementContent() {
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition text-xs">✏️</button>
                               <button
                                 onClick={() => {
-                                  const link = `${window.location.origin}/e/${events.find(e => e.id === selectedEventId)?.slug || ''}?guest=${encodeURIComponent(g.name)}&token=${g.token}`;
+                                  const link = personalLink(g);
                                   const canvas = document.createElement('canvas');
                                   const qrSize = 256;
                                   canvas.width = qrSize; canvas.height = qrSize;
@@ -496,7 +466,7 @@ function GuestManagementContent() {
                                 title="QR Code"
                                 className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs">🔲</button>
                               {g.phone && (
-                                <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', `${typeof window !== 'undefined' ? window.location.origin : ''}/e/${events.find(e => e.id === selectedEventId)?.slug || ''}?guest=${encodeURIComponent(g.name)}`))}`}
+                                <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', personalLink(g)))}`}
                                   target="_blank" rel="noopener" title="WhatsApp"
                                   className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs">💬</a>
                               )}

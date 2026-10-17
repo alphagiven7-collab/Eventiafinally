@@ -9,7 +9,7 @@ import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { listInvitations } from '@/lib/events/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { formatUsd, invitationTotalUsd } from '@/constants/pricing';
+import { FREE_GUEST_LIMIT, freeGuestLimitMessage } from '@/constants/pricing';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 
@@ -108,6 +108,10 @@ function GuestManagementContent() {
   // Ajouter un invité
   const handleAddGuest = async () => {
     if (!newName.trim()) { addToast('error', 'Le nom est obligatoire'); return; }
+    if (guests.length >= FREE_GUEST_LIMIT) {
+      addToast('error', freeGuestLimitMessage());
+      return;
+    }
     const guest: Guest = {
       id: 'guest_' + Date.now(),
       event_id: selectedEventId,
@@ -207,13 +211,24 @@ function GuestManagementContent() {
 
     if (newGuests.length === 0) { addToast('error', 'Aucun invité trouvé dans le fichier'); return; }
 
-    const updated = [...newGuests, ...guests];
+    const room = FREE_GUEST_LIMIT - guests.length;
+    if (room <= 0) {
+      addToast('error', freeGuestLimitMessage());
+      e.target.value = '';
+      return;
+    }
+    const accepted = newGuests.slice(0, room);
+    const updated = [...accepted, ...guests];
     setGuests(updated);
     saveGuestsToStorage(updated);
     if (isSupabaseReady()) {
-      try { await createClient().from('guests').insert(newGuests); } catch {}
+      try { await createClient().from('guests').insert(accepted); } catch {}
     }
-    addToast('success', `${newGuests.length} invités importés !`);
+    if (accepted.length < newGuests.length) {
+      addToast('error', `${accepted.length} invité(s) importé(s). ${freeGuestLimitMessage()}`);
+    } else {
+      addToast('success', `${accepted.length} invités importés !`);
+    }
     e.target.value = '';
   };
 
@@ -319,7 +334,7 @@ function GuestManagementContent() {
               { label: 'En attente', value: stats.pending, color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' },
               { label: 'Adultes', value: stats.adults, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' },
               { label: 'Enfants', value: stats.children, color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' },
-              { label: 'Total à 0,30 $', value: formatUsd(invitationTotalUsd(stats.total)), color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
+              { label: 'Offre gratuite', value: `${Math.min(stats.total, FREE_GUEST_LIMIT)}/${FREE_GUEST_LIMIT}`, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
             ].map(s => (
               <div key={s.label} className={`rounded-2xl p-4 ${s.color}`}>
                 <p className="text-2xl font-bold">{s.value}</p>
@@ -351,6 +366,9 @@ function GuestManagementContent() {
             {showAddForm && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Ajouter un invité</h2>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                  Offre gratuite : {guests.length}/{FREE_GUEST_LIMIT} invités. Le lien de l&apos;invitation est déjà partageable.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nom complet *</label>

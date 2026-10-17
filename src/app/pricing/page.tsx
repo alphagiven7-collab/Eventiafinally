@@ -32,23 +32,23 @@ export default function PricingPage() {
             {unit} <span className="text-gray-500 dark:text-gray-400 font-semibold text-xl">par invité</span>
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            La démo est gratuite, limitée à 10 invités, visible seulement par vous. Elle n&apos;est pas enregistrée et ne se partage pas. L&apos;invitation envoyée coûte {unit} par invité.
+            L&apos;offre gratuite partage 5 invités avec un vrai lien. Au-delà, chaque invité supplémentaire coûte {unit}.
           </p>
         </div>
 
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-5 mb-6">
-          <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Démo gratuite</p>
+          <p className="text-sm font-bold text-amber-950 dark:text-amber-100">Offre gratuite</p>
           <ul className="mt-2 space-y-1 text-xs text-amber-900 dark:text-amber-200">
-            <li>10 invités maximum, puis la saisie est bloquée</li>
-            <li>Consultation en direct sur votre écran seulement</li>
-            <li>Aucun enregistrement, aucun lien à envoyer</li>
+            <li>5 invités, avec un lien que vous pouvez envoyer</li>
+            <li>L&apos;invitation est enregistrée et s&apos;ouvre sur un autre téléphone</li>
+            <li>Le 6e invité est bloqué tant que le supplément n&apos;est pas pris</li>
           </ul>
           <button
             type="button"
             onClick={() => router.push('/create/wedding')}
             className="mt-4 px-4 py-2 bg-amber-950 text-white rounded-xl text-xs font-semibold"
           >
-            Tester la démo
+            Créer le lien gratuit
           </button>
         </div>
 
@@ -65,7 +65,7 @@ export default function PricingPage() {
             className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-rose-400"
           />
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            {guests} × {unit}
+            5 invités offerts, puis {Math.max(0, guests - 5)} × {unit}
           </p>
           <p className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 mt-1">{formatUsd(total)}</p>
           <ul className="mt-6 space-y-2">
@@ -131,10 +131,10 @@ export default function PricingPage() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">Questions fréquentes</h2>
           <div className="space-y-4">
             {[
-              { q: 'Comment est calculé le prix ?', a: `Chaque personne sur la liste coûte ${unit}. Cent invités coûtent ${formatUsd(invitationTotalUsd(100))}.` },
-              { q: 'Y a-t-il un abonnement ?', a: 'Non. Vous payez une fois, selon le nombre d\'invités de l\'événement.' },
-              { q: 'Y a-t-il un plafond d\'invités ?', a: 'Sur la démo, oui : 10 invités. Au-delà, il faut l\'invitation enregistrée, à 0,30 $ par personne, sans plafond.' },
-              { q: 'Puis-je envoyer la démo ?', a: 'Non. La démo reste sur l\'écran qui l\'a créée. Fermer l\'onglet l\'efface. Le lien public existe seulement après enregistrement.' },
+              { q: 'Comment est calculé le prix ?', a: `Les 5 premiers invités sont gratuits et le lien est partageable. Chaque personne au-delà coûte ${unit}.` },
+              { q: 'Y a-t-il un abonnement ?', a: 'Non. L\'offre gratuite reste à 5 invités. Le supplément se paie une fois, par invité en plus.' },
+              { q: 'Le lien gratuit fonctionne-t-il vraiment ?', a: 'Oui. L\'invitation est enregistrée. La personne qui reçoit le lien l\'ouvre sur son téléphone.' },
+              { q: 'Que se passe-t-il au 6e invité ?', a: `L'ajout est bloqué. Pour continuer, chaque invité supplémentaire coûte ${unit}.` },
               { q: 'Comment payer ?', a: 'Pour l\'instant, par WhatsApp, Mobile Money ou virement. Le montant correspond au nombre d\'invités.' },
             ].map((faq) => (
               <div key={faq.q} className="border-b border-gray-100 dark:border-gray-700 pb-4 last:border-0 last:pb-0">

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/components/ui';
-import { useAuth } from '@/providers/auth-provider';
+import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
-import { Music, Upload, X } from 'lucide-react';
+import InvitationExperience from '@/components/invitation/InvitationExperience';
+import { compressImageFile, formatDataUrlSize } from '@/lib/utils/image-compression';
+import { Music, Upload, X, Eye, EyeOff, Share2, ExternalLink, Check } from 'lucide-react';
 import {
   EventWithSettings,
   ProgramItem,
@@ -16,7 +18,6 @@ import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
-import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -47,7 +48,9 @@ function Section({
             <span className="text-lg">{icon}</span>
             <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</h2>
           </div>
-          {subtitle && !open && <p className="text-[10px] text-gray-400 dark:text-gray-500 ml-8">{subtitle}</p>}
+          {subtitle && !open && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-8">{subtitle}</p>
+          )}
         </div>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -61,7 +64,11 @@ function Section({
       </button>
       {open && (
         <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
-          {subtitle && <p className="text-[11px] text-gray-400 dark:text-gray-500 italic mb-1 -mx-5 px-5 py-2.5 bg-gray-50/50 dark:bg-gray-700/30">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 italic mb-2 -mx-5 px-5 py-2.5 bg-gray-50/50 dark:bg-gray-700/30">
+              {subtitle}
+            </p>
+          )}
           {children}
         </div>
       )}
@@ -98,7 +105,11 @@ function Field({
       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
         {label} {required && <span className="text-rose-500">*</span>}
       </label>
-      {help && <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 leading-relaxed">{help}</p>}
+      {help && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 leading-relaxed">
+          {help}
+        </p>
+      )}
       {rows ? (
         <textarea
           value={value}
@@ -121,7 +132,7 @@ function Field({
 }
 
 /* ─────────────────────────────────────────────
-   Uploader audio local (base64)
+   Uploader audio local
    ───────────────────────────────────────────── */
 function AudioUploader({
   value,
@@ -130,7 +141,7 @@ function AudioUploader({
   value: string;
   onChange: (dataUrl: string) => void;
 }) {
-  const fileInputRef = useState<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
 
@@ -149,15 +160,16 @@ function AudioUploader({
       alert("Erreur lors de l'import du fichier audio.");
     }
     setUploading(false);
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   return (
     <div className="space-y-2">
       <input
+        ref={inputRef}
         type="file"
         accept="audio/*"
         className="hidden"
-        id="audio-upload-input"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleFile(file);
@@ -170,24 +182,28 @@ function AudioUploader({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-              {fileName || 'Fichier audio chargé'}
+              {fileName || 'Musique personnalisée'}
             </p>
             <audio src={value} controls className="w-full h-8 mt-1" />
           </div>
           <button
             type="button"
-            onClick={() => { onChange(''); setFileName(''); }}
+            onClick={() => {
+              onChange('');
+              setFileName('');
+            }}
             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       ) : (
-        <label
-          htmlFor="audio-upload-input"
-          className="flex items-center gap-3 p-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition"
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition text-left"
         >
-          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
             {uploading ? (
               <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
             ) : (
@@ -196,18 +212,18 @@ function AudioUploader({
           </div>
           <div>
             <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
-              {uploading ? 'Import en cours...' : 'Touchez pour importer un fichier audio'}
+              {uploading ? 'Import en cours...' : 'Importer un fichier audio (ou laisser la musique par défaut)'}
             </p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">MP3, OGG, WAV • Max 10 Mo</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">MP3, OGG, WAV</p>
           </div>
-        </label>
+        </button>
       )}
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────
-   Uploader image unique (pour Hero, Welcome, About, Map)
+   Uploader image unique avec réduction & conversion automatique
    ───────────────────────────────────────────── */
 function SingleImageUploader({
   label,
@@ -221,82 +237,83 @@ function SingleImageUploader({
   onChange: (dataUrl: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     setUploading(true);
     try {
-      // @ts-ignore
-      const imageCompression = (await import('browser-image-compression')).default;
-      const options = {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1600,
-        useWebWorker: true,
-        fileType: 'image/webp',
-        initialQuality: 0.85,
-      };
-      let result: File | Blob;
-      try {
-        result = await imageCompression(file, options);
-      } catch {
-        result = file;
-      }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(result);
+      const dataUrl = await compressImageFile(file, {
+        maxWidthOrHeight: 1100,
+        quality: 0.78,
+        maxBytes: 170 * 1024,
       });
       onChange(dataUrl);
     } catch {
       alert("Erreur lors de l'import de l'image.");
     }
     setUploading(false);
+    if (inputRef.current) inputRef.current.value = '';
   };
+
+  const sizeInfo = formatDataUrlSize(value);
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-        {label}
-      </label>
-      {help && <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 leading-relaxed">{help}</p>}
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </label>
+        {sizeInfo && (
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+            Optimisée ({sizeInfo})
+          </span>
+        )}
+      </div>
+      {help && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
+          {help}
+        </p>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+        }}
+      />
       {value ? (
-        <div className="relative group">
-          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-36">
+        <div className="space-y-2">
+          <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 h-40 bg-gray-100 dark:bg-gray-800">
             <img src={value} alt={label} className="w-full h-full object-cover" />
           </div>
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-xl">
-            <label className="px-3 py-2 bg-white/90 rounded-lg text-xs font-medium cursor-pointer hover:bg-white transition">
-              Changer
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
-            </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg text-xs font-medium transition"
+            >
+              {uploading ? 'Conversion...' : 'Changer la photo'}
+            </button>
             <button
               type="button"
               onClick={() => onChange('')}
-              className="px-3 py-2 bg-red-500/90 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition"
+              className="py-2 px-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium transition"
             >
               Supprimer
             </button>
           </div>
         </div>
       ) : (
-        <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="w-full flex flex-col items-center gap-2 p-5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition"
+        >
           <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
             {uploading ? (
               <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -305,10 +322,12 @@ function SingleImageUploader({
             )}
           </div>
           <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
-            {uploading ? 'Compression en cours...' : 'Touchez pour importer une image'}
+            {uploading ? 'Réduction et conversion en cours...' : 'Touchez pour ajouter une photo'}
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500">JPG, PNG, HEIC</p>
-        </label>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">
+            Convertie automatiquement pour s&apos;afficher rapidement
+          </p>
+        </button>
       )}
     </div>
   );
@@ -333,42 +352,40 @@ function ProgramEditor({
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
 
   return (
-    <div className="space-y-3 mt-3">
+    <div className="space-y-2.5 mt-2">
       {items.map((item, i) => (
         <div
           key={i}
-          className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600"
+          className="flex gap-2 items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600"
         >
-          <div className="flex-1 grid grid-cols-3 gap-2">
-            <input
-              type="text"
-              value={item.time}
-              onChange={(e) => updateItem(i, 'time', e.target.value)}
-              placeholder="19h30"
-              className="px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-            <input
-              type="text"
-              value={item.title}
-              onChange={(e) => updateItem(i, 'title', e.target.value)}
-              placeholder="Cérémonie"
-              className="col-span-2 px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            />
-          </div>
+          <input
+            type="text"
+            value={item.time}
+            onChange={(e) => updateItem(i, 'time', e.target.value)}
+            placeholder="16h00"
+            className="w-20 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+          <input
+            type="text"
+            value={item.title}
+            onChange={(e) => updateItem(i, 'title', e.target.value)}
+            placeholder="Cérémonie, Cocktail, Dîner..."
+            className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
           <select
             value={item.color}
             onChange={(e) => updateItem(i, 'color', e.target.value)}
             className="px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
-            <option value="pink">🌹 Rose</option>
-            <option value="blue">💙 Bleu</option>
-            <option value="green">💚 Vert</option>
-            <option value="purple">💜 Violet</option>
+            <option value="pink">🌹</option>
+            <option value="blue">💙</option>
+            <option value="green">💚</option>
+            <option value="purple">💜</option>
           </select>
           <button
             type="button"
             onClick={() => removeItem(i)}
-            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
           >
             ✕
           </button>
@@ -379,7 +396,7 @@ function ProgramEditor({
         onClick={addItem}
         className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500 transition"
       >
-        + Ajouter une étape
+        + Ajouter une étape au programme
       </button>
     </div>
   );
@@ -404,7 +421,7 @@ function PracticalInfoEditor({
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
 
   return (
-    <div className="space-y-3 mt-3">
+    <div className="space-y-2.5 mt-2">
       {items.map((item, i) => (
         <div
           key={i}
@@ -416,21 +433,21 @@ function PracticalInfoEditor({
               onChange={(e) => updateItem(i, 'icon', e.target.value)}
               className="px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
-              <option value="car">🚗 Voiture</option>
+              <option value="car">🚗 Accès / Parking</option>
               <option value="bed">🏨 Hébergement</option>
-              <option value="wine">🍷 Bar</option>
+              <option value="wine">🍷 Réception</option>
             </select>
             <input
               type="text"
               value={item.title}
               onChange={(e) => updateItem(i, 'title', e.target.value)}
-              placeholder="Titre (ex: Parking)"
-              className="flex-1 px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              placeholder="Titre (ex: Parking gratuit)"
+              className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
             <button
               type="button"
               onClick={() => removeItem(i)}
-              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
             >
               ✕
             </button>
@@ -438,9 +455,9 @@ function PracticalInfoEditor({
           <textarea
             value={item.text}
             onChange={(e) => updateItem(i, 'text', e.target.value)}
-            placeholder="Description..."
+            placeholder="Détails pour vos invités..."
             rows={2}
-            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
+            className="w-full px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
           />
         </div>
       ))}
@@ -449,11 +466,22 @@ function PracticalInfoEditor({
         onClick={addItem}
         className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500 transition"
       >
-        + Ajouter une info
+        + Ajouter une info pratique
       </button>
     </div>
   );
 }
+
+/* ─────────────────────────────────────────────
+   Palettes d'harmonies rapides
+   ───────────────────────────────────────────── */
+const COLOR_PRESETS = [
+  { name: 'Rose & Framboise', primary: '#db2777', accent: '#be185d', rsvp: '#ec4899' },
+  { name: 'Or & Champagne', primary: '#b45309', accent: '#92400e', rsvp: '#d97706' },
+  { name: 'Sauge & Émeraude', primary: '#047857', accent: '#065f46', rsvp: '#10b981' },
+  { name: 'Bleu Nuit & Royal', primary: '#1d4ed8', accent: '#1e40af', rsvp: '#2563eb' },
+  { name: 'Terracotta & Figue', primary: '#c2410c', accent: '#9a3412', rsvp: '#ea580c' },
+];
 
 /* ═══════════════════════════════════════════════
    PAGE PRINCIPALE
@@ -468,8 +496,10 @@ function EditEventContent() {
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-  // ── Informations générales ──
+  // ── 1. L'essentiel (Qui, Quand, Où) ──
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [coupleLeft, setCoupleLeft] = useState('');
@@ -478,75 +508,48 @@ function EditEventContent() {
   const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
-  const [description, setDescription] = useState('');
-  const [metaDescription, setMetaDescription] = useState('');
+  const [mapLink, setMapLink] = useState('');
+  const [venueMapImage, setVenueMapImage] = useState('');
 
-  // ── Welcome Gate ──
-  const [welcomeMessage, setWelcomeMessage] = useState('');
-  const [gateHint, setGateHint] = useState('');
-
-  // ── Hero / Images ──
-  const [heroImage, setHeroImage] = useState('');
-  const [welcomeImage, setWelcomeImage] = useState('');
-  const [coverPhotos, setCoverPhotos] = useState<string[]>([]);
-
-  // ── Texte d'invitation ──
+  // ── 2. Texte de la carte & Couleurs ──
   const [inviteIntro, setInviteIntro] = useState('');
   const [inviteSecondary, setInviteSecondary] = useState('');
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
-
-  // ── Couleurs / Branding ──
-  const [primaryColor, setPrimaryColor] = useState('#4caf50');
-  const [accentColor, setAccentColor] = useState('#ec4899');
+  const [primaryColor, setPrimaryColor] = useState('#db2777');
+  const [accentColor, setAccentColor] = useState('#be185d');
   const [rsvpButtonColor, setRsvpButtonColor] = useState('#ec4899');
 
-  // ── À propos ──
-  const [aboutTitle, setAboutTitle] = useState('');
-  const [aboutStory1, setAboutStory1] = useState('');
-  const [aboutStory2, setAboutStory2] = useState('');
-  const [aboutImage, setAboutImage] = useState('');
-
-  // ── Programme ──
-  const [programSectionTitle, setProgramSectionTitle] = useState('');
-  const [program, setProgram] = useState<ProgramItem[]>([]);
-
-  // ── Lieu / Venue ──
-  const [venue, setVenue] = useState('');
-  const [venueAddress, setVenueAddress] = useState('');
-  const [venueMapImage, setVenueMapImage] = useState('');
-  const [venueMapLink, setVenueMapLink] = useState('');
-
-  // ── Dress Code ──
-  const [dressCodeTitle, setDressCodeTitle] = useState('');
-  const [dressImages, setDressImages] = useState<string[]>([]);
-
-  // ── Infos pratiques ──
-  const [practicalSectionTitle, setPracticalSectionTitle] = useState('');
-  const [practicalInfo, setPracticalInfo] = useState<PracticalInfoItem[]>([]);
-
-  // ── Musique / Ambiance ──
+  // ── 3. Photos & Musique ──
+  const [heroImage, setHeroImage] = useState('');
+  const [coverPhotos, setCoverPhotos] = useState<string[]>([]);
+  const [secGallery, setSecGallery] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [musicUrl, setMusicUrl] = useState('');
   const [musicVolume, setMusicVolume] = useState(35);
 
-  // ── Liens ──
+  // ── 4. Programme, Tenue & Infos ──
+  const [secCountdown, setSecCountdown] = useState(true);
+  const [programSectionTitle, setProgramSectionTitle] = useState('');
+  const [program, setProgram] = useState<ProgramItem[]>([]);
+  const [secDressCode, setSecDressCode] = useState(true);
+  const [dressCodeTitle, setDressCodeTitle] = useState('');
+  const [dressImages, setDressImages] = useState<string[]>([]);
+  const [practicalSectionTitle, setPracticalSectionTitle] = useState('');
+  const [practicalInfo, setPracticalInfo] = useState<PracticalInfoItem[]>([]);
+
+  // ── 5. Notre histoire & Contact (optionnels) ──
+  const [aboutTitle, setAboutTitle] = useState('');
+  const [aboutStory1, setAboutStory1] = useState('');
+  const [aboutStory2, setAboutStory2] = useState('');
+  const [aboutImage, setAboutImage] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
-  const [mapLink, setMapLink] = useState('');
   const [donationLink, setDonationLink] = useState('');
   const [whatsappDonation, setWhatsappDonation] = useState('');
   const [whatsappDonationMessage, setWhatsappDonationMessage] = useState('');
 
-  // ── Sections toggle ──
-  const [secGallery, setSecGallery] = useState(true);
-  const [secCountdown, setSecCountdown] = useState(true);
-  const [secDressCode, setSecDressCode] = useState(true);
-
-  // ── Admin ──
-  const [adminCode, setAdminCode] = useState('');
-
-  /* ── Chargement de l'événement (local-first, Supabase en arrière-plan) ── */
+  /* ── Chargement de l'événement ── */
   useEffect(() => {
     let cancelled = false;
 
@@ -559,7 +562,7 @@ function EditEventContent() {
             return;
           }
         } catch {
-          // L'exemple statique peut encore s'ouvrir hors ligne.
+          // Repli démo si hors ligne
         }
       }
 
@@ -580,82 +583,75 @@ function EditEventContent() {
       setCoupleRight(evt.coupleRight || '');
       setEventDate(evt.event_date ? new Date(evt.event_date).toISOString().split('T')[0] : '');
       setEventTime(evt.event_time || '');
-      setLocation(evt.location || '');
-      setAddress(evt.address || '');
-      setDescription(evt.description || '');
-      setMetaDescription(evt.metaDescription || '');
-      setWelcomeMessage(evt.welcomeMessage || '');
-      setGateHint(evt.gateHint || '');
-      setHeroImage(evt.heroImage || evt.branding?.heroImage || '');
-      setWelcomeImage(evt.welcomeImage || evt.branding?.welcomeImage || '');
+      setLocation(evt.venue || evt.location || '');
+      setAddress(evt.venueDetails?.address || evt.address || '');
+      setMapLink(evt.links?.map || evt.mapLink || '');
+      setVenueMapImage(evt.venueDetails?.mapImage || evt.mapImage || '');
+
+      setHeroImage(evt.heroImage || evt.hero_image || evt.branding?.heroImage || '');
       setCoverPhotos(evt.bestPhotos || (evt.cover_image ? [evt.cover_image] : []));
       setInviteIntro(evt.inviteIntro || '');
       setInviteSecondary(evt.inviteSecondary || '');
       setMainText(evt.mainText || '');
       setReserveText(evt.reserveText || '');
       setRsvpDeadlineText(evt.rsvpDeadlineText || '');
-      setPrimaryColor(evt.branding?.primaryColor || '#4caf50');
-      setAccentColor(evt.branding?.accentColor || '#ec4899');
+
+      setPrimaryColor(evt.branding?.primaryColor || '#db2777');
+      setAccentColor(evt.branding?.accentColor || '#be185d');
       setRsvpButtonColor(evt.rsvpButtonColor || '#ec4899');
+
       setAboutTitle(evt.aboutTitle || '');
       setAboutStory1(evt.aboutStory1 || '');
       setAboutStory2(evt.aboutStory2 || '');
       setAboutImage(evt.aboutImage || '');
+
       setProgramSectionTitle(evt.programSectionTitle || '');
       setProgram(evt.program || []);
-      setVenue(evt.venue || '');
-      setVenueAddress(evt.venueDetails?.address || '');
-      setVenueMapImage(evt.venueDetails?.mapImage || '');
-      setVenueMapLink(evt.links?.map || evt.mapLink || '');
       setDressCodeTitle(evt.dressCodeTitle || '');
       setDressImages(evt.dressImages || []);
       setPracticalSectionTitle(evt.practicalSectionTitle || '');
       setPracticalInfo(evt.practicalInfo || []);
+
       setMusicEnabled(evt.ambiance?.enabled || false);
       setMusicUrl(evt.ambiance?.musicUrl || '');
       setMusicVolume(Math.round((evt.ambiance?.volume || 0.35) * 100));
+
       setSupportEmail(evt.links?.supportEmail || evt.supportEmail || '');
-      setMapLink(evt.links?.map || evt.mapLink || '');
       setDonationLink(evt.links?.donation || '');
-      setWhatsappDonation(evt.links?.whatsappDonation || '');
+      setWhatsappDonation(evt.links?.whatsappDonation || evt.whatsappDonationPhone || '');
       setWhatsappDonationMessage(evt.links?.donationWhatsAppMessage || '');
+
       setSecGallery(evt.sections?.gallery !== false);
       setSecCountdown(evt.sections?.countdown !== false);
       setSecDressCode(evt.sections?.dressCode !== false);
-      setAdminCode(evt.adminCode || '');
       setLoading(false);
     }
 
     loadEvent();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [slug, user?.id]);
 
-  /* ── Sauvegarde ── */
-  const handleSave = useCallback(async () => {
-    if (!title || !eventDate || !location) {
-      addToast('error', 'Titre, date et lieu sont obligatoires.');
-      return;
-    }
-    setSaving(true);
-
-    const updatedEvent: EventWithSettings = {
-      ...event!,
-      title,
-      subtitle,
+  /* ── Objet événement construit en direct (pour l'aperçu ET la sauvegarde) ── */
+  const liveEvent = useMemo<EventWithSettings | null>(() => {
+    if (!event) return null;
+    const primaryCover = heroImage || coverPhotos[0] || event.cover_image || '';
+    return {
+      ...event,
+      title: title || 'Votre événement',
+      subtitle: subtitle || undefined,
       coupleLeft: coupleLeft || undefined,
       coupleRight: coupleRight || undefined,
-      event_date: new Date(eventDate).toISOString(),
+      event_date: eventDate ? new Date(eventDate).toISOString() : event.event_date,
       event_time: eventTime || undefined,
-      location,
+      location: location || 'Lieu de réception',
+      venue: location || undefined,
       address: address || undefined,
-      description: description || undefined,
-      metaDescription: metaDescription || undefined,
-      cover_image: coverPhotos[0] || '',
+      cover_image: primaryCover,
+      hero_image: primaryCover || undefined,
+      heroImage: primaryCover || undefined,
       bestPhotos: coverPhotos,
-      heroImage: heroImage || undefined,
-      welcomeImage: welcomeImage || undefined,
-      welcomeMessage: welcomeMessage || undefined,
-      gateHint: gateHint || undefined,
       inviteIntro: inviteIntro || undefined,
       inviteSecondary: inviteSecondary || undefined,
       mainText: mainText || undefined,
@@ -665,9 +661,9 @@ function EditEventContent() {
       branding: {
         primaryColor,
         accentColor,
-        heroImage: heroImage || '',
-        welcomeImage: welcomeImage || '',
-        ogShareImage: coverPhotos[0] || '',
+        heroImage: primaryCover,
+        welcomeImage: primaryCover,
+        ogShareImage: primaryCover,
       },
       aboutTitle: aboutTitle || undefined,
       aboutStory1: aboutStory1 || undefined,
@@ -675,17 +671,13 @@ function EditEventContent() {
       aboutImage: aboutImage || undefined,
       programSectionTitle: programSectionTitle || undefined,
       program: program.length > 0 ? program : undefined,
-      venue: venue || undefined,
-      venueDetails:
-        venue || venueAddress || venueMapImage
-          ? {
-              title: venue || location,
-              address: venueAddress || address || '',
-              lat: '',
-              lng: '',
-              mapImage: venueMapImage || '',
-            }
-          : undefined,
+      venueDetails: {
+        title: location || 'Lieu de réception',
+        address: address || '',
+        lat: '',
+        lng: '',
+        mapImage: venueMapImage || '',
+      },
       dressCodeTitle: dressCodeTitle || undefined,
       dressImages: dressImages.length > 0 ? dressImages : undefined,
       practicalSectionTitle: practicalSectionTitle || undefined,
@@ -706,47 +698,120 @@ function EditEventContent() {
         gallery: secGallery,
         countdown: secCountdown,
         dressCode: secDressCode,
-        quiz: event?.sections?.quiz || false,
-        donation: event?.sections?.donation || false,
-        guestbook: event?.sections?.guestbook || false,
+        quiz: event.sections?.quiz || false,
+        donation: Boolean(donationLink || whatsappDonation),
+        guestbook: event.sections?.guestbook || false,
       },
-      adminCode: adminCode || undefined,
-      updated_at: new Date().toISOString(),
     };
-
-    if (!user?.id || !isSupabaseReady()) {
-      addToast('error', SUPABASE_REQUIRED);
-      setSaving(false);
-      return;
-    }
-
-    const result = await publishInvitation(createClient(), {
-      ...updatedEvent,
-      user_id: user.id,
-      is_published: true,
-    });
-    if (result.error) {
-      addToast('error', result.error);
-      setSaving(false);
-      return;
-    }
-
-    addToast('success', 'Invitation publiée.');
-    router.push(`/e/${event?.slug || slug}`);
-    setSaving(false);
   }, [
-    title, subtitle, coupleLeft, coupleRight, eventDate, eventTime, location, address,
-    description, metaDescription, coverPhotos, heroImage, welcomeImage, welcomeMessage,
-    gateHint, inviteIntro, inviteSecondary, mainText, reserveText, rsvpDeadlineText,
-    rsvpButtonColor, primaryColor, accentColor, aboutTitle, aboutStory1, aboutStory2,
-    aboutImage, programSectionTitle, program, venue, venueAddress, venueMapImage,
-    venueMapLink, dressCodeTitle, dressImages, practicalSectionTitle, practicalInfo,
-    musicEnabled, musicUrl, musicVolume, supportEmail, mapLink, donationLink,
-    whatsappDonation, whatsappDonationMessage, secGallery, secCountdown, secDressCode,
-    adminCode, event, slug, user?.id, addToast, router,
+    event,
+    title,
+    subtitle,
+    coupleLeft,
+    coupleRight,
+    eventDate,
+    eventTime,
+    location,
+    address,
+    mapLink,
+    venueMapImage,
+    heroImage,
+    coverPhotos,
+    inviteIntro,
+    inviteSecondary,
+    mainText,
+    reserveText,
+    rsvpDeadlineText,
+    rsvpButtonColor,
+    primaryColor,
+    accentColor,
+    aboutTitle,
+    aboutStory1,
+    aboutStory2,
+    aboutImage,
+    programSectionTitle,
+    program,
+    dressCodeTitle,
+    dressImages,
+    practicalSectionTitle,
+    practicalInfo,
+    musicEnabled,
+    musicUrl,
+    musicVolume,
+    supportEmail,
+    donationLink,
+    whatsappDonation,
+    whatsappDonationMessage,
+    secGallery,
+    secCountdown,
+    secDressCode,
   ]);
 
-  /* ── Loading / Not found ── */
+  /* ── Sauvegarde sur Supabase ── */
+  const handleSave = useCallback(
+    async (redirectAfterSave = false) => {
+      if (!liveEvent) return;
+      if (!title.trim() || !eventDate || !location.trim()) {
+        addToast('error', 'Le nom de l’événement, la date et le lieu sont obligatoires.');
+        return;
+      }
+      if (!user?.id || !isSupabaseReady()) {
+        addToast('error', SUPABASE_REQUIRED);
+        return;
+      }
+
+      setSaving(true);
+      const result = await publishInvitation(createClient(), {
+        ...liveEvent,
+        user_id: user.id,
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      });
+      setSaving(false);
+
+      if (result.error) {
+        addToast('error', result.error);
+        return;
+      }
+
+      addToast('success', 'Invitation enregistrée et publiée !');
+      if (redirectAfterSave) {
+        router.push(`/e/${liveEvent.slug}`);
+      }
+    },
+    [liveEvent, title, eventDate, location, user?.id, addToast, router]
+  );
+
+  /* ── Partage du lien public réel ── */
+  const handleShare = useCallback(async () => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://eventiafinally.vercel.app';
+    const publicUrl = `${origin}/e/${event?.slug || slug}`;
+    const shareText = `Tu es invité(e) à "${title || event?.title}" ! Découvre ton invitation ici : ${publicUrl}`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: title || event?.title || 'Invitation',
+          text: shareText,
+          url: publicUrl,
+        });
+        return;
+      } catch {
+        // Repli copie / WhatsApp
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopiedLink(true);
+      addToast('success', 'Lien de l’invitation copié !');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
+    }
+  }, [event?.slug, event?.title, slug, title, addToast]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -755,641 +820,541 @@ function EditEventContent() {
     );
   }
 
-  if (!event) {
+  if (!event || !liveEvent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <p className="text-xl text-gray-500 dark:text-gray-400">Événement introuvable</p>
           <button
+            type="button"
             onClick={() => router.push('/dashboard')}
             className="mt-4 text-rose-600 dark:text-rose-400 hover:underline"
           >
-            Retour au dashboard
+            Retour au tableau de bord
           </button>
         </div>
       </div>
     );
   }
 
-  /* ── Render ── */
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50/70 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
       {/* Header sticky */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-b border-rose-100 dark:border-gray-700">
-        <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-              Modifier : {event.title}
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+              {title || event.title}
             </h1>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Personnalisez votre invitation
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Personnalisation en 5 étapes simples
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMobilePreview((v) => !v)}
+              className="lg:hidden px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              {showMobilePreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span>{showMobilePreview ? 'Éditer' : 'Aperçu'}</span>
+            </button>
             <a
               href={`/e/${event.slug}`}
               target="_blank"
-              className="px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
-              Aperçu
-            </a>
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : https://eventiafinally.vercel.app/e/${event.slug}`)}`}
-              target="_blank"
-              rel="noopener"
-              className="px-3 py-2 border border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-xs hover:bg-green-100 dark:hover:bg-green-900/30 transition font-medium flex items-center gap-1"
-            >
-              📱 Partager
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Voir la page</span>
             </a>
             <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-lg text-xs font-medium hover:shadow-lg transition disabled:opacity-50"
+              type="button"
+              onClick={handleShare}
+              className="px-3 py-2 border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-emerald-100 transition"
             >
-              {saving ? '...' : 'Sauvegarder'}
+              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{copiedLink ? 'Copié' : 'Partager'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow-md transition disabled:opacity-50"
+            >
+              {saving ? 'Enregistrement...' : 'Sauvegarder'}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 py-6 space-y-4">
-        {/* ═══════ 1. LES DÉTAILS DE VOTRE ÉVÉNEMENT ═══════ */}
-        <Section
-          title="Les détails de votre événement"
-          subtitle="Commençons par l'essentiel : qui, quand et où !"
-          icon="📝"
-          defaultOpen
+      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Colonne de gauche : les 5 sections de personnalisation */}
+        <main
+          className={`lg:col-span-7 space-y-4 ${
+            showMobilePreview ? 'hidden lg:block' : 'block'
+          }`}
         >
-          <div className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
+          <Section
+            title="1. L'essentiel : Qui, Quand et Où"
+            subtitle="Les prénoms, la date et le lieu de réception"
+            icon="💍"
+            defaultOpen
+          >
+            <div className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Nom de votre événement"
+                  value={title}
+                  onChange={setTitle}
+                  required
+                  placeholder="Ex: Mariage de Marie & Pierre"
+                />
+                <Field
+                  label="Phrase d'accroche (sous le titre)"
+                  value={subtitle}
+                  onChange={setSubtitle}
+                  placeholder="Ex: Célébrons notre union"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Premier prénom"
+                  value={coupleLeft}
+                  onChange={setCoupleLeft}
+                  placeholder="Ex: Marie"
+                />
+                <Field
+                  label="Second prénom"
+                  value={coupleRight}
+                  onChange={setCoupleRight}
+                  placeholder="Ex: Pierre"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Date de l'événement"
+                  value={eventDate}
+                  onChange={setEventDate}
+                  type="date"
+                  required
+                />
+                <Field
+                  label="Heure (ex: 16h00 ou 19h30 - 23h30)"
+                  value={eventTime}
+                  onChange={setEventTime}
+                  placeholder="Ex: 16h00"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Nom du lieu ou de la salle"
+                  value={location}
+                  onChange={setLocation}
+                  required
+                  placeholder="Ex: Domaine des Roses, Paris"
+                />
+                <Field
+                  label="Adresse complète"
+                  value={address}
+                  onChange={setAddress}
+                  placeholder="Ex: 12 Avenue des Champs, Paris"
+                />
+              </div>
               <Field
-                label="Nom de votre événement"
-                help="Ex: Le mariage de Marie & Pierre"
-                value={title}
-                onChange={setTitle}
-                required
-                placeholder="Ex: Le mariage de Marie & Pierre"
-              />
-              <Field
-                label="Petit mot d'accroche"
-                help="Une phrase courte qui apparaîtra sous le titre"
-                value={subtitle}
-                onChange={setSubtitle}
-                placeholder="Ex: Célébrons notre amour"
+                label="Lien Google Maps (optionnel)"
+                help="Si vous le laissez vide, le bouton « Itinéraire » cherchera automatiquement votre adresse sur Google Maps."
+                value={mapLink}
+                onChange={setMapLink}
+                placeholder="https://maps.google.com/..."
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Prénom de la première personne"
-                help="Sera affiché à gauche dans l'invitation"
-                value={coupleLeft}
-                onChange={setCoupleLeft}
-                placeholder="Ex: Marie"
-              />
-              <Field
-                label="Prénom de la deuxième personne"
-                help="Sera affiché à droite dans l'invitation"
-                value={coupleRight}
-                onChange={setCoupleRight}
-                placeholder="Ex: Pierre"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field
-                label="Date de l'événement"
-                help="Le grand jour !"
-                value={eventDate}
-                onChange={setEventDate}
-                type="date"
-                required
-              />
-              <Field
-                label="Heure de début"
-                value={eventTime}
-                onChange={setEventTime}
-                type="time"
-              />
-              <Field
-                label="Ville ou lieu"
-                help="Ex: Paris, Château de Versailles..."
-                value={location}
-                onChange={setLocation}
-                required
-                placeholder="Ex: Paris"
-              />
-            </div>
-            <Field
-              label="Adresse complète"
-              help="L'adresse exacte pour que vos invités puissent s'y rendre"
-              value={address}
-              onChange={setAddress}
-              placeholder="Ex: 123 rue de Paris, 75001 Paris"
-            />
-            <Field
-              label="Description de l'événement"
-              help="Quelques mots sur votre événement (optionnel)"
-              value={description}
-              onChange={setDescription}
-              rows={3}
-              placeholder="Ex: Nous sommes heureux de vous convier à notre célébration..."
-            />
-            <Field
-              label="Description pour Google"
-              help="Si vous partagez le lien sur les réseaux, c'est ce texte qui apparaîtra (optionnel)"
-              value={metaDescription}
-              onChange={setMetaDescription}
-              rows={2}
-              placeholder="Ex: Le mariage de Marie et Pierre - 15 mars 2026 à Paris"
-            />
-          </div>
-        </Section>
+          </Section>
 
-        {/* ═══════ 2. VOS PHOTOS ═══════ */}
-        <Section
-          title="Vos photos"
-          subtitle="Ajoutez les photos qui rendront votre invitation unique"
-          icon="📸"
-        >
-          <div className="space-y-4 pt-4">
-            <SingleImageUploader
-              label="Photo de couverture (celle en haut)"
-              value={heroImage}
-              onChange={setHeroImage}
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
-              C'est la grande image que vos invités verront en arrivant sur votre invitation
-            </p>
-            <SingleImageUploader
-              label="Photo d'accueil (avant d'ouvrir l'invitation)"
-              value={welcomeImage}
-              onChange={setWelcomeImage}
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
-              C'est l'image de fond que vos invités verront avant de saisir leur nom
-            </p>
-            <PhotoUploader
-              onPhotosChange={setCoverPhotos}
-              existingPhotos={coverPhotos}
-              maxPhotos={5}
-              label="Votre galerie de photos (max 5)"
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
-              La première photo sera utilisée comme image de partage sur les réseaux sociaux
-            </p>
-          </div>
-        </Section>
-
-        {/* ═══════ 3. MESSAGE D'ACCUEIL ═══════ */}
-        <Section
-          title="Message d'accueil"
-          subtitle="C'est ce que vos invités verront avant de découvrir l'invitation"
-          icon="🚪"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Votre message de bienvenue"
-              help="Écrivez quelques mots chaleureux pour accueillir vos invités"
-              value={welcomeMessage}
-              onChange={setWelcomeMessage}
-              rows={3}
-              placeholder="Ex: Nous sommes ravis de vous inviter à célébrer notre union..."
-            />
-            <Field
-              label="Invitation à entrer son nom"
-              help="Le texte qui apparaît sous le message pour demander aux invités de saisir leur prénom"
-              value={gateHint}
-              onChange={setGateHint}
-              placeholder="Ex: Entrez votre prénom pour ouvrir votre invitation"
-            />
-          </div>
-        </Section>
-
-        {/* ═══════ 4. CONTENU DE L'INVITATION ═══════ */}
-        <Section
-          title="Contenu de l'invitation"
-          subtitle="Rédigez le texte que vos invités liront sur la carte d'invitation"
-          icon="💌"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Texte d'introduction"
-              help="Écrivez le texte qui apparaîtra sur la carte d'invitation. Tapez {'{couple}'} pour insérer automatiquement les prénoms."
-              value={inviteIntro}
-              onChange={setInviteIntro}
-              rows={3}
-              placeholder="Ex: Nous avons la joie de vous inviter au mariage de {couple}..."
-            />
-            <Field
-              label="Texte complémentaire"
-              help="Un second paragraphe sur la carte (optionnel)"
-              value={inviteSecondary}
-              onChange={setInviteSecondary}
-              rows={3}
-              placeholder="Ex: Nous serions honorés de votre présence..."
-            />
-            <Field
-              label="Message personnel"
-              help="Un message qui sera affiché sous la carte d'invitation (optionnel)"
-              value={mainText}
-              onChange={setMainText}
-              rows={3}
-              placeholder="Ex: Venez célébrer ce moment unique avec nous..."
-            />
-            <Field
-              label="Texte du bouton de confirmation"
-              help="Le texte qui apparaît sur le bouton où vos invités confirment leur venue"
-              value={reserveText}
-              onChange={setReserveText}
-              placeholder="Ex: Confirmer ma présence"
-            />
-            <Field
-              label="Date limite pour confirmer"
-              help="Indiquez jusqu'à quand vos invités peuvent confirmer leur venue"
-              value={rsvpDeadlineText}
-              onChange={setRsvpDeadlineText}
-              placeholder="Ex: Merci de confirmer avant le 15 mars 2026"
-            />
-          </div>
-        </Section>
-
-        {/* ═══════ 5. LES COULEURS ═══════ */}
-        <Section
-          title="Les couleurs"
-          subtitle="Choisissez les couleurs qui reflètent votre style"
-          icon="🎨"
-        >
-          <div className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
+          <Section
+            title="2. Texte de la carte & Couleurs"
+            subtitle="Le mot d'invitation et l'harmonie de couleurs"
+            icon="💌"
+          >
+            <div className="space-y-4 pt-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Couleur dominante
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Harmonies de couleurs prêtes à l&apos;emploi
                 </label>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
-                  Utilisée pour les titres et les éléments principaux
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0"
-                  />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
+                <div className="flex flex-wrap gap-2">
+                  {COLOR_PRESETS.map((preset) => {
+                    const isSelected =
+                      primaryColor.toLowerCase() === preset.primary.toLowerCase() &&
+                      rsvpButtonColor.toLowerCase() === preset.rsvp.toLowerCase();
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setPrimaryColor(preset.primary);
+                          setAccentColor(preset.accent);
+                          setRsvpButtonColor(preset.rsvp);
+                        }}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          isSelected
+                            ? 'border-gray-900 dark:border-white bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                            : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/50"
+                          style={{ backgroundColor: preset.rsvp }}
+                        />
+                        <span>{preset.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Couleur secondaire
-                </label>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
-                  Utilisée pour les accents et les détails
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0"
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Couleur du bouton « Confirmer sa venue »
-              </label>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
-                C'est le bouton sur lequel vos invités cliqueront pour confirmer leur présence
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={rsvpButtonColor}
-                  onChange={(e) => setRsvpButtonColor(e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer border-0"
-                />
-                <input
-                  type="text"
-                  value={rsvpButtonColor}
-                  onChange={(e) => setRsvpButtonColor(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                  style={{ backgroundColor: rsvpButtonColor }}
-                >
-                  OK
-                </div>
-              </div>
-            </div>
-          </div>
-        </Section>
 
-        {/* ═══════ 6. NOTRE HISTOIRE ═══════ */}
-        <Section
-          title="Notre histoire"
-          subtitle="Racontez votre parcours à vos invités (optionnel)"
-          icon="💑"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Titre de cette section"
-              help="Ex: Comment tout a commencé..."
-              value={aboutTitle}
-              onChange={setAboutTitle}
-              placeholder="Ex: Notre histoire"
-            />
-            <Field
-              label="Comment vous vous êtes rencontrés"
-              help="Racontez les débuts de votre histoire"
-              value={aboutStory1}
-              onChange={setAboutStory1}
-              rows={3}
-              placeholder="Ex: Tout a commencé un soir d'été..."
-            />
-            <Field
-              label="La suite de votre histoire"
-              help="Le chapitre suivant (la demande, les projets...)"
-              value={aboutStory2}
-              onChange={setAboutStory2}
-              rows={3}
-              placeholder="Ex: Et puis un jour, la demande en mariage..."
-            />
-            <SingleImageUploader
-              label="Photo pour illustrer votre histoire"
-              value={aboutImage}
-              onChange={setAboutImage}
-            />
-          </div>
-        </Section>
-
-        {/* ═══════ 7. DÉROULÉ DE LA JOURNÉE ═══════ */}
-        <Section
-          title="Déroulé de la journée"
-          subtitle="Indiquez à vos invités comment se passera la journée"
-          icon="📅"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Titre de cette section"
-              help="Ex: Le programme, Déroulé de la journée..."
-              value={programSectionTitle}
-              onChange={setProgramSectionTitle}
-              placeholder="Ex: Déroulé de la journée"
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">
-              Ajoutez chaque étape avec l'heure et une courte description (ex: 14h - Cérémonie)
-            </p>
-            <ProgramEditor items={program} onChange={setProgram} />
-          </div>
-        </Section>
-
-        {/* ═══════ 8. OÙ ÇA SE PASSE ? ═══════ */}
-        <Section
-          title="Où ça se passe ?"
-          subtitle="Aidez vos invités à trouver le lieu de l'événement"
-          icon="📍"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Nom du lieu"
-              help="Ex: Château de Versailles, Mairie du 8ème, Salle des fêtes..."
-              value={venue}
-              onChange={setVenue}
-              placeholder="Ex: Château de Versailles"
-            />
-            <Field
-              label="Adresse complète"
-              help="L'adresse exacte pour le GPS de vos invités"
-              value={venueAddress}
-              onChange={setVenueAddress}
-              placeholder="Ex: Place d'Armes, 78000 Versailles"
-            />
-            <Field
-              label="Lien vers la carte (Google Maps)"
-              help="Collez ici le lien Google Maps pour que vos invités puissent s'y rendre facilement"
-              value={venueMapLink}
-              onChange={setVenueMapLink}
-              placeholder="Ex: https://maps.google.com/..."
-            />
-            <SingleImageUploader
-              label="Photo ou image du lieu"
-              help="Une photo du lieu ou une capture de carte"
-              value={venueMapImage}
-              onChange={setVenueMapImage}
-            />
-          </div>
-        </Section>
-
-        {/* ═══════ 9. TENUE VESTIMENTAIRE ═══════ */}
-        <Section
-          title="Tenue vestimentaire"
-          subtitle="Indiquez à vos invités comment s'habiller (optionnel)"
-          icon="👔"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Quelle tenue pour votre événement ?"
-              help="Ex: Tenue élégante, Tenue de soirée, Chic et décontracté..."
-              value={dressCodeTitle}
-              onChange={setDressCodeTitle}
-              placeholder="Ex: Tenue élégante"
-            />
-            <PhotoUploader
-              onPhotosChange={setDressImages}
-              existingPhotos={dressImages}
-              maxPhotos={8}
-              label="Photos d'inspiration pour la tenue"
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">
-              Ajoutez des photos pour donner des idées à vos invités
-            </p>
-            <div className="flex items-center gap-3">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={secDressCode}
-                  onChange={(e) => setSecDressCode(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500" />
-              </label>
-              <span className="text-xs text-gray-700 dark:text-gray-300">Afficher cette section sur l'invitation</span>
-            </div>
-          </div>
-        </Section>
-
-        {/* ═══════ 10. INFOS UTILES ═══════ */}
-        <Section
-          title="Infos utiles pour vos invités"
-          subtitle="Parking, hébergement, bar... tout ce qu'ils doivent savoir"
-          icon="ℹ️"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Titre de cette section"
-              help="Ex: Bon à savoir, Infos pratiques..."
-              value={practicalSectionTitle}
-              onChange={setPracticalSectionTitle}
-              placeholder="Ex: Informations pratiques"
-            />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">
-              Ajoutez les infos utiles pour vos invités (parking, hébergement, bar...)
-            </p>
-            <PracticalInfoEditor items={practicalInfo} onChange={setPracticalInfo} />
-          </div>
-        </Section>
-
-        {/* ═══════ 11. MUSIQUE ═══════ */}
-        <Section
-          title="Musique d'ambiance"
-          subtitle="Ajoutez une musique qui joue quand vos invités ouvrent l'invitation (optionnel)"
-          icon="🎵"
-        >
-          <div className="space-y-4 pt-4">
-            <div className="flex items-center gap-3">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={musicEnabled}
-                  onChange={(e) => setMusicEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500" />
-              </label>
-              <span className="text-xs text-gray-700 dark:text-gray-300">
-                Oui, je veux une musique de fond
-              </span>
-            </div>
-            {musicEnabled && (
-              <>
-                <AudioUploader value={musicUrl} onChange={setMusicUrl} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Volume ({musicVolume}%)
+                    Couleur des prénoms
                   </label>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">
-                    Réglez le volume pour que la musique soit agréable sans gêner la lecture
-                  </p>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={musicVolume}
-                    onChange={(e) => setMusicVolume(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => {
+                        setPrimaryColor(e.target.value);
+                        setAccentColor(e.target.value);
+                      }}
+                      className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200"
+                    />
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => {
+                        setPrimaryColor(e.target.value);
+                        setAccentColor(e.target.value);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
-        </Section>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Couleur du bouton de confirmation
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={rsvpButtonColor}
+                      onChange={(e) => setRsvpButtonColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200"
+                    />
+                    <input
+                      type="text"
+                      value={rsvpButtonColor}
+                      onChange={(e) => setRsvpButtonColor(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
 
-        {/* ═══════ 12. PAGES À AFFICHER ═══════ */}
-        <Section
-          title="Pages à afficher"
-          subtitle="Choisissez quelles sections vos invités verront sur l'invitation"
-          icon="👁️"
-        >
-          <div className="space-y-3 pt-4">
-            {[
-              { label: 'La galerie de photos', value: secGallery, setter: setSecGallery },
-              { label: 'Le compte à rebours avant le jour J', value: secCountdown, setter: setSecCountdown },
-              { label: 'Les indications sur la tenue', value: secDressCode, setter: setSecDressCode },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <label className="relative inline-flex items-center cursor-pointer">
+              <Field
+                label="Texte principal sur la carte"
+                help="Astuce : écrivez {couple} pour insérer automatiquement vos deux prénoms."
+                value={inviteIntro}
+                onChange={setInviteIntro}
+                rows={3}
+                placeholder="Ex: C'est avec une immense joie que nous vous convions au mariage de {couple}..."
+              />
+              <Field
+                label="Second paragraphe (optionnel)"
+                value={inviteSecondary}
+                onChange={setInviteSecondary}
+                rows={2}
+                placeholder="Ex: Votre présence à nos côtés sera notre plus beau cadeau."
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Texte du bouton de réponse"
+                  value={reserveText}
+                  onChange={setReserveText}
+                  placeholder="Confirmer ma présence"
+                />
+                <Field
+                  label="Date limite de réponse (optionnel)"
+                  value={rsvpDeadlineText}
+                  onChange={setRsvpDeadlineText}
+                  placeholder="Ex: Merci de confirmer avant le 15 mai"
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* ═══════ 3. PHOTOS & MUSIQUE ═══════ */}
+          <Section
+            title="3. Vos photos & Musique d'ambiance"
+            subtitle="Toutes les photos sont réduites et converties automatiquement"
+            icon="📸"
+          >
+            <div className="space-y-5 pt-4">
+              <SingleImageUploader
+                label="Photo de couverture (tout en haut de l'invitation)"
+                help="Si vous n'en mettez pas, la première photo de votre galerie sera utilisée."
+                value={heroImage}
+                onChange={setHeroImage}
+              />
+
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Afficher la galerie de photos sur l&apos;invitation
+                  </span>
                   <input
                     type="checkbox"
-                    checked={item.value}
-                    onChange={(e) => item.setter(e.target.checked)}
-                    className="sr-only peer"
+                    checked={secGallery}
+                    onChange={(e) => setSecGallery(e.target.checked)}
+                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
                   />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500" />
-                </label>
-                <span className="text-xs text-gray-700 dark:text-gray-300">{item.label}</span>
+                </div>
+                {secGallery && (
+                  <PhotoUploader
+                    onPhotosChange={setCoverPhotos}
+                    existingPhotos={coverPhotos}
+                    maxPhotos={6}
+                    label="Galerie de photos du couple"
+                  />
+                )}
               </div>
-            ))}
-          </div>
-        </Section>
 
-        {/* ═══════ 13. CONTACT & LIENS ═══════ */}
-        <Section
-          title="Contact et liens utiles"
-          subtitle="Comment vos invités peuvent vous joindre ou contribuer (optionnel)"
-          icon="📩"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Votre email de contact"
-              help="Les invités pourront vous envoyer un email depuis l'invitation"
-              value={supportEmail}
-              onChange={setSupportEmail}
-              type="email"
-              placeholder="Ex: marie.pierre@email.com"
-            />
-            <Field
-              label="Lien pour offrir un cadeau"
-              help="Si vous avez une cagnotte en ligne, collez le lien ici"
-              value={donationLink}
-              onChange={setDonationLink}
-              placeholder="Ex: https://www.cagnotte.com/..."
-            />
-            <Field
-              label="Numéro WhatsApp pour le cadeau"
-              help="Pour que vos invités puissent envoyer un message WhatsApp"
-              value={whatsappDonation}
-              onChange={setWhatsappDonation}
-              placeholder="Ex: +33612345678"
-            />
-            <Field
-              label="Message WhatsApp pré-rempli"
-              help="Le message que vos invités verront quand ils ouvriront WhatsApp"
-              value={whatsappDonationMessage}
-              onChange={setWhatsappDonationMessage}
-              rows={2}
-              placeholder="Ex: Bonjour ! Je souhaite contribuer au cadeau de mariage..."
-            />
-          </div>
-        </Section>
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Musique de fond à l&apos;ouverture
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      Un bouton discret permet à l&apos;invité de couper ou relancer la musique
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={musicEnabled}
+                    onChange={(e) => setMusicEnabled(e.target.checked)}
+                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                  />
+                </div>
+                {musicEnabled && (
+                  <div className="space-y-3">
+                    <AudioUploader value={musicUrl} onChange={setMusicUrl} />
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Volume ({musicVolume}%)
+                      </label>
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={musicVolume}
+                        onChange={(e) => setMusicVolume(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Section>
 
-        {/* ═══════ 14. SÉCURITÉ ═══════ */}
-        <Section
-          title="Sécurité de votre événement"
-          subtitle="Protégez l'accès à votre événement"
-          icon="🔒"
-        >
-          <div className="space-y-4 pt-4">
-            <Field
-              label="Mot de passe de l'événement"
-              help="Un code secret pour que vous seul puissiez modifier cet événement. Ne partagez ce code avec personne."
-              value={adminCode}
-              onChange={setAdminCode}
-              placeholder="Ex: mon-code-secret-2026"
-            />
-          </div>
-        </Section>
+          {/* ═══════ 4. PROGRAMME, TENUE & INFOS ═══════ */}
+          <Section
+            title="4. Programme, Tenue & Infos pratiques"
+            subtitle="Déroulé de la journée, dress code et conseils invités"
+            icon="📅"
+          >
+            <div className="space-y-5 pt-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Afficher le compte à rebours
+                </span>
+                <input
+                  type="checkbox"
+                  checked={secCountdown}
+                  onChange={(e) => setSecCountdown(e.target.checked)}
+                  className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                />
+              </div>
 
-        {/* ═══════ BOUTON SAUVEGARDER ═══════ */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-4 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-base shadow-xl shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50"
+              <div>
+                <Field
+                  label="Titre du programme"
+                  value={programSectionTitle}
+                  onChange={setProgramSectionTitle}
+                  placeholder="Programme de la journée"
+                />
+                <ProgramEditor items={program} onChange={setProgram} />
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Afficher la section Tenue vestimentaire (Dress code)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={secDressCode}
+                    onChange={(e) => setSecDressCode(e.target.checked)}
+                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                  />
+                </div>
+                {secDressCode && (
+                  <div className="space-y-3">
+                    <Field
+                      label="Indication de tenue"
+                      value={dressCodeTitle}
+                      onChange={setDressCodeTitle}
+                      placeholder="Ex: Tenue de soirée chic, Blanc & Doré..."
+                    />
+                    <PhotoUploader
+                      onPhotosChange={setDressImages}
+                      existingPhotos={dressImages}
+                      maxPhotos={6}
+                      label="Photos d'inspiration tenue (optionnel)"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Informations pratiques (parking, hôtel, enfants...)
+                </label>
+                <PracticalInfoEditor items={practicalInfo} onChange={setPracticalInfo} />
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+                <SingleImageUploader
+                  label="Photo du lieu ou plan d'accès (optionnel)"
+                  value={venueMapImage}
+                  onChange={setVenueMapImage}
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* ═══════ 5. NOTRE HISTOIRE & CONTACT (OPTIONNEL) ═══════ */}
+          <Section
+            title="5. Notre histoire, Cadeau & Contact (optionnel)"
+            subtitle="Ces blocs s'affichent uniquement si vous les remplissez"
+            icon="✨"
+          >
+            <div className="space-y-4 pt-4">
+              <Field
+                label="Titre de votre histoire"
+                value={aboutTitle}
+                onChange={setAboutTitle}
+                placeholder="Ex: Notre histoire"
+              />
+              <Field
+                label="Premier paragraphe (la rencontre...)"
+                value={aboutStory1}
+                onChange={setAboutStory1}
+                rows={3}
+                placeholder="Ex: Tout a commencé un soir d'été..."
+              />
+              <Field
+                label="Second paragraphe (la demande, aujourd'hui...)"
+                value={aboutStory2}
+                onChange={setAboutStory2}
+                rows={2}
+                placeholder="Ex: Et aujourd'hui nous écrivons ce nouveau chapitre avec vous."
+              />
+              <SingleImageUploader
+                label="Photo pour illustrer votre histoire"
+                value={aboutImage}
+                onChange={setAboutImage}
+              />
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                <Field
+                  label="Lien vers votre cagnotte ou liste de mariage"
+                  value={donationLink}
+                  onChange={setDonationLink}
+                  placeholder="https://..."
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field
+                    label="Numéro WhatsApp (pour vous écrire)"
+                    value={whatsappDonation}
+                    onChange={setWhatsappDonation}
+                    placeholder="Ex: +33612345678"
+                  />
+                  <Field
+                    label="Votre e-mail de contact"
+                    value={supportEmail}
+                    onChange={setSupportEmail}
+                    type="email"
+                    placeholder="Ex: couple@email.com"
+                  />
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Boutons d'action en bas */}
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="flex-1 py-3.5 px-5 bg-white dark:bg-gray-800 border border-rose-200 dark:border-gray-700 text-rose-600 dark:text-rose-400 rounded-2xl font-semibold text-sm hover:bg-rose-50 transition disabled:opacity-50"
+            >
+              {saving ? 'Enregistrement...' : 'Sauvegarder les modifications'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave(true)}
+              disabled={saving}
+              className="flex-1 py-3.5 px-5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-200/60 dark:shadow-rose-950/40 hover:shadow-xl transition disabled:opacity-50"
+            >
+              {saving ? 'Publication...' : "Sauvegarder et ouvrir l'invitation ›"}
+            </button>
+          </div>
+        </main>
+
+        {/* Colonne de droite : Aperçu en direct du modèle */}
+        <aside
+          className={`lg:col-span-5 lg:sticky lg:top-20 ${
+            showMobilePreview ? 'block' : 'hidden lg:block'
+          }`}
         >
-          {saving ? 'Sauvegarde...' : 'Sauvegarder et voir l\'aperçu'}
-        </button>
-      </main>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="ml-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  Aperçu en direct
+                </span>
+              </div>
+              <a
+                href={`/e/${event.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-rose-600 dark:text-rose-400 font-medium hover:underline"
+              >
+                Plein écran ↗
+              </a>
+            </div>
+            <div className="max-h-[78vh] overflow-y-auto">
+              <InvitationExperience event={liveEvent} guestName="Invité(e)" />
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

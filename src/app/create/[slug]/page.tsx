@@ -473,8 +473,8 @@ function CreateEventContent() {
       return;
     }
 
-    addToast('success', 'Invitation publiée. Le lien peut être envoyé.');
-    router.push(`/e/${slug}`);
+    addToast('success', 'Invitation créée. Personnalisez-la avant de l\'envoyer.');
+    router.push(`/create/${slug}/edit`);
     setLoading(false);
   };
 

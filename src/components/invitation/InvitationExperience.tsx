@@ -352,60 +352,16 @@ function initRsvp(root: HTMLElement, guestToken?: string, guestStatus?: GuestSta
 }
 
 function initGate(root: HTMLElement, guestName?: string) {
-  const gate = root.querySelector('#welcome-gate') as HTMLElement;
-  const mainView = root.querySelector('#main-view') as HTMLElement;
-  const enterBtn = root.querySelector('#gate-enter-btn') as HTMLButtonElement;
-  const nameInput = root.querySelector('#gate-guest-name-input') as HTMLInputElement;
-
-  if (!gate || !mainView) return;
-
-  function openMainView() {
-    gate.style.opacity = '0';
-    gate.style.pointerEvents = 'none';
-    setTimeout(() => {
-      gate.style.display = 'none';
-      mainView.style.display = 'block';
-      requestAnimationFrame(() => {
-        mainView.style.opacity = '1';
-      });
-    }, 500);
+  const gate = root.querySelector('#welcome-gate') as HTMLElement | null;
+  const mainView = root.querySelector('#main-view') as HTMLElement | null;
+  if (gate) gate.style.display = 'none';
+  if (mainView) {
+    mainView.style.display = 'block';
+    mainView.style.opacity = '1';
   }
-
-  // Si déjà un guest name (passé en props), ouvrir directement
   if (guestName) {
     const displayEl = root.querySelector('#display-guest-name');
     if (displayEl) displayEl.textContent = guestName;
-    openMainView();
-    return;
-  }
-
-  // Vérifier le localStorage
-  try {
-    const stored = localStorage.getItem('invitia_guest_name');
-    if (stored) {
-      const displayEl = root.querySelector('#display-guest-name');
-      if (displayEl) displayEl.textContent = stored;
-      openMainView();
-      return;
-    }
-  } catch {}
-
-  // Sinon, gérer le clic sur le bouton
-  if (enterBtn && nameInput) {
-    enterBtn.addEventListener('click', () => {
-      const name = nameInput.value.trim();
-      if (name) {
-        const displayEl = root.querySelector('#display-guest-name');
-        if (displayEl) displayEl.textContent = name;
-        try { localStorage.setItem('invitia_guest_name', name); } catch {}
-        openMainView();
-      }
-    });
-
-    // Enter key
-    nameInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') enterBtn.click();
-    });
   }
 }
 
@@ -524,17 +480,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
     updateBtn();
   });
 
-  // Autoplay après ouverture du gate
-  const observer = new MutationObserver(() => {
-    const gate = root.querySelector('#welcome-gate') as HTMLElement;
-    const mainView = root.querySelector('#main-view') as HTMLElement;
-    if (gate?.style.display === 'none' && mainView?.style.display === 'block') {
-      audio.play().catch(() => {});
-      observer.disconnect();
-    }
-  });
-  const gate = root.querySelector('#welcome-gate');
-  if (gate) observer.observe(gate, { attributes: true, attributeFilter: ['style'] });
+  audio.play().catch(() => {});
 
   audio.addEventListener('play', updateBtn);
   audio.addEventListener('pause', updateBtn);
@@ -648,7 +594,7 @@ function getOriginalHTML(): string {
     </div>
 
     <!-- Welcome Gate -->
-    <div id="welcome-gate" class="fixed inset-0 z-[100] welcome-gate-bg backdrop-blur-sm flex items-center justify-center px-5 transition-opacity duration-500">
+    <div id="welcome-gate" class="fixed inset-0 z-[100] welcome-gate-bg backdrop-blur-sm flex items-center justify-center px-5 transition-opacity duration-500" style="display:none;">
       <div class="w-full max-w-sm welcome-envelope-shell rounded-3xl p-6 text-center" style="position:relative;">
         <div style="position:relative;z-index:10;">
           <div class="envelope-seal mx-auto mb-4">♥</div>
@@ -674,7 +620,7 @@ function getOriginalHTML(): string {
     </div>
 
     <!-- Main View -->
-    <main id="main-view" style="max-width:28rem;margin:0 auto;background:#fafafa;min-height:100vh;position:relative;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);overflow:hidden;padding-bottom:40px;display:none;opacity:0;transition:opacity 0.5s;">
+    <main id="main-view" style="max-width:28rem;margin:0 auto;background:#fafafa;min-height:100vh;position:relative;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);overflow:hidden;padding-bottom:40px;display:block;opacity:1;">
 
       <!-- 1. Hero -->
       <header class="hero-bg" style="height:60vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;padding:0 16px;">

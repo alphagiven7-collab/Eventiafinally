@@ -102,7 +102,7 @@ export default function DashboardPage() {
 
       setNewEventName('');
       setShowCreateInput(false);
-      router.push(`/e/${slug}`);
+      router.push(`/create/${slug}/edit`);
     } catch (err) {
       console.error('Erreur création:', err);
       setCreateError('Erreur lors de la création. Rafraîchissez et réessayez.');

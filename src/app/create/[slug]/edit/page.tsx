@@ -637,9 +637,13 @@ function EditEventContent() {
   const liveEvent = useMemo<EventWithSettings | null>(() => {
     if (!event) return null;
     const primaryCover = heroImage || coverPhotos[0] || event.cover_image || '';
+    const autoTitle =
+      coupleLeft.trim() && coupleRight.trim()
+        ? `Mariage de ${coupleLeft.trim()} & ${coupleRight.trim()}`
+        : title.trim() || coupleLeft.trim() || coupleRight.trim() || event.title || 'Votre événement';
     return {
       ...event,
-      title: title || 'Votre événement',
+      title: autoTitle,
       subtitle: subtitle || undefined,
       coupleLeft: coupleLeft || undefined,
       coupleRight: coupleRight || undefined,
@@ -653,9 +657,9 @@ function EditEventContent() {
       heroImage: primaryCover || undefined,
       bestPhotos: coverPhotos,
       inviteIntro: inviteIntro || undefined,
-      inviteSecondary: inviteSecondary || undefined,
-      mainText: mainText || undefined,
-      reserveText: reserveText || undefined,
+      inviteSecondary: undefined,
+      mainText: undefined,
+      reserveText: undefined,
       rsvpDeadlineText: rsvpDeadlineText || undefined,
       rsvpButtonColor: rsvpButtonColor || undefined,
       branding: {
@@ -665,11 +669,11 @@ function EditEventContent() {
         welcomeImage: primaryCover,
         ogShareImage: primaryCover,
       },
-      aboutTitle: aboutTitle || undefined,
+      aboutTitle: undefined,
       aboutStory1: aboutStory1 || undefined,
-      aboutStory2: aboutStory2 || undefined,
+      aboutStory2: undefined,
       aboutImage: aboutImage || undefined,
-      programSectionTitle: programSectionTitle || undefined,
+      programSectionTitle: undefined,
       program: program.length > 0 ? program : undefined,
       venueDetails: {
         title: location || 'Lieu de réception',
@@ -680,7 +684,7 @@ function EditEventContent() {
       },
       dressCodeTitle: dressCodeTitle || undefined,
       dressImages: dressImages.length > 0 ? dressImages : undefined,
-      practicalSectionTitle: practicalSectionTitle || undefined,
+      practicalSectionTitle: undefined,
       practicalInfo: practicalInfo.length > 0 ? practicalInfo : undefined,
       ambiance: musicEnabled
         ? { enabled: true, musicUrl, volume: musicVolume / 100 }
@@ -690,7 +694,7 @@ function EditEventContent() {
         supportEmail: supportEmail || undefined,
         donation: donationLink || undefined,
         whatsappDonation: whatsappDonation || undefined,
-        donationWhatsAppMessage: whatsappDonationMessage || undefined,
+        donationWhatsAppMessage: undefined,
       },
       supportEmail: supportEmail || undefined,
       mapLink: mapLink || undefined,
@@ -718,22 +722,15 @@ function EditEventContent() {
     heroImage,
     coverPhotos,
     inviteIntro,
-    inviteSecondary,
-    mainText,
-    reserveText,
     rsvpDeadlineText,
     rsvpButtonColor,
     primaryColor,
     accentColor,
-    aboutTitle,
     aboutStory1,
-    aboutStory2,
     aboutImage,
-    programSectionTitle,
     program,
     dressCodeTitle,
     dressImages,
-    practicalSectionTitle,
     practicalInfo,
     musicEnabled,
     musicUrl,
@@ -741,7 +738,6 @@ function EditEventContent() {
     supportEmail,
     donationLink,
     whatsappDonation,
-    whatsappDonationMessage,
     secGallery,
     secCountdown,
     secDressCode,
@@ -751,8 +747,8 @@ function EditEventContent() {
   const handleSave = useCallback(
     async (redirectAfterSave = false) => {
       if (!liveEvent) return;
-      if (!title.trim() || !eventDate || !location.trim()) {
-        addToast('error', 'Le nom de l’événement, la date et le lieu sont obligatoires.');
+      if (!eventDate || !location.trim()) {
+        addToast('error', 'La date et le lieu sont obligatoires.');
         return;
       }
       if (!user?.id || !isSupabaseReady()) {
@@ -779,7 +775,7 @@ function EditEventContent() {
         router.push(`/e/${liveEvent.slug}`);
       }
     },
-    [liveEvent, title, eventDate, location, user?.id, addToast, router]
+    [liveEvent, eventDate, location, user?.id, addToast, router]
   );
 
   /* ── Partage du lien public réel ── */
@@ -905,24 +901,10 @@ function EditEventContent() {
             <div className="space-y-4 pt-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Nom de votre événement"
-                  value={title}
-                  onChange={setTitle}
-                  required
-                  placeholder="Ex: Mariage de Marie & Pierre"
-                />
-                <Field
-                  label="Phrase d'accroche (sous le titre)"
-                  value={subtitle}
-                  onChange={setSubtitle}
-                  placeholder="Ex: Célébrons notre union"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
                   label="Premier prénom"
                   value={coupleLeft}
                   onChange={setCoupleLeft}
+                  required
                   placeholder="Ex: Marie"
                 />
                 <Field
@@ -932,6 +914,12 @@ function EditEventContent() {
                   placeholder="Ex: Pierre"
                 />
               </div>
+              <Field
+                label="Phrase d'accroche sous le titre (optionnel)"
+                value={subtitle}
+                onChange={setSubtitle}
+                placeholder="Ex: Célébrons notre union"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Date de l'événement"
@@ -941,7 +929,7 @@ function EditEventContent() {
                   required
                 />
                 <Field
-                  label="Heure (ex: 16h00 ou 19h30 - 23h30)"
+                  label="Heure (ex: 16h00)"
                   value={eventTime}
                   onChange={setEventTime}
                   placeholder="Ex: 16h00"
@@ -962,13 +950,6 @@ function EditEventContent() {
                   placeholder="Ex: 12 Avenue des Champs, Paris"
                 />
               </div>
-              <Field
-                label="Lien Google Maps (optionnel)"
-                help="Si vous le laissez vide, le bouton « Itinéraire » cherchera automatiquement votre adresse sur Google Maps."
-                value={mapLink}
-                onChange={setMapLink}
-                placeholder="https://maps.google.com/..."
-              />
             </div>
           </Section>
 
@@ -981,7 +962,7 @@ function EditEventContent() {
             <div className="space-y-4 pt-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Harmonies de couleurs prêtes à l&apos;emploi
+                  Choisissez l&apos;harmonie de couleurs
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {COLOR_PRESETS.map((preset) => {
@@ -997,7 +978,7 @@ function EditEventContent() {
                           setAccentColor(preset.accent);
                           setRsvpButtonColor(preset.rsvp);
                         }}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border transition ${
                           isSelected
                             ? 'border-gray-900 dark:border-white bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                             : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400'
@@ -1014,55 +995,8 @@ function EditEventContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Couleur des prénoms
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => {
-                        setPrimaryColor(e.target.value);
-                        setAccentColor(e.target.value);
-                      }}
-                      className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200"
-                    />
-                    <input
-                      type="text"
-                      value={primaryColor}
-                      onChange={(e) => {
-                        setPrimaryColor(e.target.value);
-                        setAccentColor(e.target.value);
-                      }}
-                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Couleur du bouton de confirmation
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={rsvpButtonColor}
-                      onChange={(e) => setRsvpButtonColor(e.target.value)}
-                      className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200"
-                    />
-                    <input
-                      type="text"
-                      value={rsvpButtonColor}
-                      onChange={(e) => setRsvpButtonColor(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                </div>
-              </div>
-
               <Field
-                label="Texte principal sur la carte"
+                label="Message d'invitation sur la carte"
                 help="Astuce : écrivez {couple} pour insérer automatiquement vos deux prénoms."
                 value={inviteIntro}
                 onChange={setInviteIntro}
@@ -1070,26 +1004,11 @@ function EditEventContent() {
                 placeholder="Ex: C'est avec une immense joie que nous vous convions au mariage de {couple}..."
               />
               <Field
-                label="Second paragraphe (optionnel)"
-                value={inviteSecondary}
-                onChange={setInviteSecondary}
-                rows={2}
-                placeholder="Ex: Votre présence à nos côtés sera notre plus beau cadeau."
+                label="Date limite de réponse (optionnel)"
+                value={rsvpDeadlineText}
+                onChange={setRsvpDeadlineText}
+                placeholder="Ex: Merci de confirmer avant le 15 mai"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
-                  label="Texte du bouton de réponse"
-                  value={reserveText}
-                  onChange={setReserveText}
-                  placeholder="Confirmer ma présence"
-                />
-                <Field
-                  label="Date limite de réponse (optionnel)"
-                  value={rsvpDeadlineText}
-                  onChange={setRsvpDeadlineText}
-                  placeholder="Ex: Merci de confirmer avant le 15 mai"
-                />
-              </div>
             </div>
           </Section>
 
@@ -1146,24 +1065,7 @@ function EditEventContent() {
                     className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
                   />
                 </div>
-                {musicEnabled && (
-                  <div className="space-y-3">
-                    <AudioUploader value={musicUrl} onChange={setMusicUrl} />
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Volume ({musicVolume}%)
-                      </label>
-                      <input
-                        type="range"
-                        min={10}
-                        max={100}
-                        value={musicVolume}
-                        onChange={(e) => setMusicVolume(Number(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                      />
-                    </div>
-                  </div>
-                )}
+                {musicEnabled && <AudioUploader value={musicUrl} onChange={setMusicUrl} />}
               </div>
             </div>
           </Section>
@@ -1188,12 +1090,9 @@ function EditEventContent() {
               </div>
 
               <div>
-                <Field
-                  label="Titre du programme"
-                  value={programSectionTitle}
-                  onChange={setProgramSectionTitle}
-                  placeholder="Programme de la journée"
-                />
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Déroulé de la journée (heures et étapes)
+                </label>
                 <ProgramEditor items={program} onChange={setProgram} />
               </div>
 
@@ -1233,14 +1132,6 @@ function EditEventContent() {
                 </label>
                 <PracticalInfoEditor items={practicalInfo} onChange={setPracticalInfo} />
               </div>
-
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-                <SingleImageUploader
-                  label="Photo du lieu ou plan d'accès (optionnel)"
-                  value={venueMapImage}
-                  onChange={setVenueMapImage}
-                />
-              </div>
             </div>
           </Section>
 
@@ -1252,27 +1143,14 @@ function EditEventContent() {
           >
             <div className="space-y-4 pt-4">
               <Field
-                label="Titre de votre histoire"
-                value={aboutTitle}
-                onChange={setAboutTitle}
-                placeholder="Ex: Notre histoire"
-              />
-              <Field
-                label="Premier paragraphe (la rencontre...)"
+                label="Racontez votre histoire"
                 value={aboutStory1}
                 onChange={setAboutStory1}
-                rows={3}
-                placeholder="Ex: Tout a commencé un soir d'été..."
-              />
-              <Field
-                label="Second paragraphe (la demande, aujourd'hui...)"
-                value={aboutStory2}
-                onChange={setAboutStory2}
-                rows={2}
-                placeholder="Ex: Et aujourd'hui nous écrivons ce nouveau chapitre avec vous."
+                rows={4}
+                placeholder="Ex: Tout a commencé un soir d'été... Et aujourd'hui nous écrivons ce nouveau chapitre avec vous."
               />
               <SingleImageUploader
-                label="Photo pour illustrer votre histoire"
+                label="Photo pour illustrer votre histoire (optionnel)"
                 value={aboutImage}
                 onChange={setAboutImage}
               />

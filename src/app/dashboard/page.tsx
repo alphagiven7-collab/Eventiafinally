@@ -312,13 +312,13 @@ export default function DashboardPage() {
                   </div>
                   <a
                     href={`/dashboard/invites?event=${event.id}`}
-                    className="mt-4 flex min-h-12 w-full items-center gap-3 rounded-xl bg-violet-600 px-4 py-2 text-white hover:bg-violet-700"
+                    className="mt-4 inline-flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-violet-600 px-4 py-2.5 text-center text-white shadow-md hover:bg-violet-700 active:scale-[0.99]"
                   >
-                    <Users className="w-5 h-5 shrink-0" />
-                    <span className="min-w-0 text-left">
-                      <span className="block text-sm font-bold">Invités</span>
-                      <span className="block text-[11px] font-medium leading-snug text-violet-100">Noms, tables et lien WhatsApp de chaque personne.</span>
+                    <span className="inline-flex items-center justify-center gap-2 text-sm font-bold">
+                      <Users className="w-4 h-4 shrink-0" />
+                      Ajouter vos invités
                     </span>
+                    <span className="text-[11px] font-medium leading-snug text-violet-100">Noms, tables et lien WhatsApp</span>
                   </a>
                   <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-2">
                     <a

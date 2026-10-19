@@ -310,7 +310,17 @@ export default function DashboardPage() {
                       {status.label}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <a
+                    href={`/dashboard/invites?event=${event.id}`}
+                    className="mt-4 flex min-h-12 w-full items-center gap-3 rounded-xl bg-violet-600 px-4 py-2 text-white hover:bg-violet-700"
+                  >
+                    <Users className="w-5 h-5 shrink-0" />
+                    <span className="min-w-0 text-left">
+                      <span className="block text-sm font-bold">Invités</span>
+                      <span className="block text-[11px] font-medium leading-snug text-violet-100">Noms, tables et lien WhatsApp de chaque personne.</span>
+                    </span>
+                  </a>
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-2">
                     <a
                       href={`/e/${event.slug}`}
                       target="_blank"
@@ -325,13 +335,6 @@ export default function DashboardPage() {
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       Modifier
-                    </a>
-                    <a
-                      href={`/dashboard/invites?event=${event.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition"
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      Invités
                     </a>
                     <button
                       type="button"

@@ -10,6 +10,7 @@ import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGu
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
+import { duplicateIdsToRemove, isCoupleName, normalizeGuestName, seatsAtTable } from '@/lib/guests/seating';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
-type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp';
+type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp' | 'duplicates';
 
 function GuestManagementContent() {
   const { user } = useAuth();
@@ -51,6 +52,8 @@ function GuestManagementContent() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newTable, setNewTable] = useState('');
+  const [newCouple, setNewCouple] = useState(false);
+  const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
   const [csvPreview, setCsvPreview] = useState<null | {
@@ -147,7 +150,21 @@ function GuestManagementContent() {
 
   const selectedEvent = events.find((event) => event.id === selectedEventId);
   const tables = selectedEvent?.tables || [];
-  const seatsUsed = (name: string) => guests.filter((guest) => guest.table_number === name).length;
+  const seatsUsed = (name: string) => guests.reduce((sum, guest) => (
+    guest.table_number === name ? sum + seatsAtTable(guest) : sum
+  ), 0);
+  const duplicateIds = duplicateIdsToRemove(guests);
+  const duplicateGroups = (() => {
+    const grouped = new Map<string, Guest[]>();
+    for (const guest of guests) {
+      const key = normalizeGuestName(guest.name);
+      if (!key) continue;
+      const list = grouped.get(key) ?? [];
+      list.push(guest);
+      grouped.set(key, list);
+    }
+    return [...grouped.values()].filter((group) => group.length > 1);
+  })();
 
   const saveTables = async (next: { name: string; seats: number }[]) => {
     if (!selectedEvent || !user?.id || !isSupabaseReady()) {
@@ -171,10 +188,12 @@ function GuestManagementContent() {
   const handleAddGuest = async () => {
     if (!newName.trim()) { addToast('error', 'Le nom est obligatoire.'); return; }
     if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const couple = newCouple || isCoupleName(newName);
     const result = await addGuest(createClient(), selectedEventId, {
       name: newName,
       phone: newPhone,
       tableNumber: newTable,
+      adults: couple ? 2 : 1,
     }, capacity);
     if (result.error || !result.guest) {
       addToast('error', result.error || 'Invité non enregistré');
@@ -183,6 +202,7 @@ function GuestManagementContent() {
     setGuests((current) => [result.guest!, ...current]);
     setNewName('');
     setNewPhone('');
+    setNewCouple(false);
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
     nameInputRef.current?.focus();
   };
@@ -203,6 +223,28 @@ function GuestManagementContent() {
       return;
     }
     setGuests((list) => list.map((item) => item.id === guest.id ? result.guest! : item));
+  };
+
+  const handleRemoveDuplicates = async () => {
+    if (duplicateIds.length === 0 || !isSupabaseReady()) {
+      if (!isSupabaseReady()) addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    setRemovingDuplicates(true);
+    const removed = new Set<string>();
+    for (const id of duplicateIds) {
+      const result = await deleteGuest(createClient(), id);
+      if (result.error) {
+        setRemovingDuplicates(false);
+        addToast('error', result.error);
+        if (removed.size > 0) setGuests((current) => current.filter((guest) => !removed.has(guest.id)));
+        return;
+      }
+      removed.add(id);
+    }
+    setGuests((current) => current.filter((guest) => !removed.has(guest.id)));
+    setRemovingDuplicates(false);
+    addToast('success', removed.size > 1 ? `${removed.size} doublons retirés.` : '1 doublon retiré.');
   };
 
   // Supprimer un invité
@@ -454,6 +496,15 @@ function GuestManagementContent() {
                     className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
+                <label className="flex items-center gap-2 min-h-11 text-xs text-gray-700 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    checked={newCouple || isCoupleName(newName)}
+                    onChange={(e) => setNewCouple(e.target.checked)}
+                    className="w-5 h-5 accent-violet-600"
+                  />
+                  Couple : 2 places lorsqu&apos;une table est choisie
+                </label>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   Seul le nom est obligatoire. {guests.length}/{capacity} places, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
                 </p>
@@ -517,7 +568,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Créez la table ici, puis choisissez-la sur la ligne de l&apos;invité.
+                  Créez la table ici, puis choisissez-la sur la ligne de l&apos;invité. Un couple compte pour 2 places.
                 </p>
                 <div className="flex gap-2 mb-3">
                   <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
@@ -565,6 +616,47 @@ function GuestManagementContent() {
               </div>
             )}
 
+            <button
+              type="button"
+              aria-expanded={openTool === 'duplicates'}
+              onClick={() => setOpenTool((current) => current === 'duplicates' ? null : 'duplicates')}
+              className={`w-full min-h-11 px-4 rounded-xl text-sm font-semibold inline-flex items-center justify-between gap-2 ${
+                openTool === 'duplicates'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100'
+              }`}
+            >
+              <span>Supprimer les doublons{duplicateIds.length > 0 ? ` · ${duplicateIds.length}` : ''}</span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition ${openTool === 'duplicates' ? 'rotate-180' : ''}`} />
+            </button>
+            {openTool === 'duplicates' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Noms en double</h2>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                  Une fiche est gardée, de préférence celle qui a déjà une table ou un téléphone. Les autres sont retirées.
+                </p>
+                {duplicateGroups.length === 0 ? (
+                  <p className="text-xs text-gray-600 dark:text-gray-300">Aucun doublon.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {duplicateGroups.map((group) => (
+                      <p key={group[0].id} className="text-xs text-gray-800 dark:text-gray-100">
+                        {group[0].name} · {group.length} fiches, {group.length - 1} à retirer
+                      </p>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => void handleRemoveDuplicates()}
+                      disabled={removingDuplicates}
+                      className="min-h-11 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold disabled:opacity-50"
+                    >
+                      {removingDuplicates ? 'Suppression...' : 'Retirer les doublons'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {openTool === 'whatsapp' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Message WhatsApp</h2>
@@ -603,7 +695,7 @@ function GuestManagementContent() {
                             <div>
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
                             <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
-                            <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
+                            <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}

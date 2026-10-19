@@ -50,6 +50,7 @@ export interface Event {
   hero_image?: string;
   welcome_image?: string;
   is_published: boolean;
+  isBlocked?: boolean;
   view_count: number;
   created_at: string;
   updated_at: string;

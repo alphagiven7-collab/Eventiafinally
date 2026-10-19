@@ -38,6 +38,7 @@ export type EventRow = {
   description?: string | null;
   cover_image?: string | null;
   is_published?: boolean | null;
+  is_blocked?: boolean | null;
   locale?: string | null;
   timezone?: string | null;
   admin_code?: string | null;
@@ -94,6 +95,7 @@ export function fromDatabase(row: EventRow): EventWithSettings {
     description: row.description ?? payload.description,
     cover_image: payload.cover_image || row.cover_image || '',
     is_published: Boolean(row.is_published),
+    isBlocked: Boolean(row.is_blocked),
     adminCode: row.admin_code ?? payload.adminCode,
     welcomeMessage: settings?.welcome_message ?? payload.welcomeMessage,
     gateHint: settings?.gate_hint ?? payload.gateHint,
@@ -168,9 +170,19 @@ export async function fetchInvitationMeta(
 export async function listInvitations(supabase: DbClient, userId: string): Promise<EventWithSettings[]> {
   const { data, error } = await supabase
     .from('events')
-    .select('id, user_id, slug, title, subtitle, event_type, event_date, event_time, location, address, is_published, created_at, updated_at')
+    .select('id, user_id, slug, title, subtitle, event_type, event_date, event_time, location, address, is_published, is_blocked, guest_limit, created_at, updated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
+
+  if (error && /is_blocked|guest_limit|column|schema cache/i.test(error.message)) {
+    const fallback = await supabase
+      .from('events')
+      .select('id, user_id, slug, title, subtitle, event_type, event_date, event_time, location, address, is_published, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (fallback.error || !fallback.data) return [];
+    return (fallback.data as EventRow[]).map(fromDatabase);
+  }
 
   if (error || !data) return [];
   return (data as EventRow[]).map(fromDatabase);
@@ -240,7 +252,9 @@ export async function publishInvitation(
 
   if (eventError) return { error: explainWriteError(eventError.message), id };
 
-  await supabase.from('events').update({ guest_limit: event.guestLimit ?? 3 }).eq('id', id);
+  if (typeof event.guestLimit === 'number') {
+    await supabase.from('events').update({ guest_limit: event.guestLimit }).eq('id', id);
+  }
 
   const { error: settingsError } = await supabase.from('event_settings').upsert({
     event_id: id,
@@ -269,6 +283,15 @@ export async function publishInvitation(
 
   if (settingsError) return { error: explainWriteError(settingsError.message), id };
   return { error: null, id };
+}
+
+export async function ownedEventCount(supabase: DbClient, userId: string): Promise<number | null> {
+  const { count, error } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (error) return null;
+  return count ?? 0;
 }
 
 export async function deleteInvitation(supabase: DbClient, eventId: string): Promise<{ error: string | null }> {

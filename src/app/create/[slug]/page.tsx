@@ -8,7 +8,9 @@ import { useToast } from '@/components/ui';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { publishInvitation } from '@/lib/events/store';
+import { ownedEventCount, publishInvitation } from '@/lib/events/store';
+import { FREE_EVENT_LIMIT } from '@/constants/pricing';
+import EventPermission from '@/components/account/EventPermission';
 import { Sparkles } from 'lucide-react';
 
 function Field({
@@ -54,6 +56,7 @@ function CreateEventContent() {
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsPermission, setNeedsPermission] = useState(false);
 
   const computedTitle =
     coupleLeft.trim() && coupleRight.trim()
@@ -73,6 +76,14 @@ function CreateEventContent() {
     }
 
     setLoading(true);
+    const already = await ownedEventCount(createClient(), user.id);
+    if (already != null && already >= FREE_EVENT_LIMIT) {
+      setNeedsPermission(true);
+      setLoading(false);
+      addToast('error', `Vous avez déjà ${FREE_EVENT_LIMIT} événements. Demandez la permission à l’admin.`);
+      return;
+    }
+
 
     const finalTitle = computedTitle || 'Notre Mariage';
     const slug =
@@ -166,6 +177,15 @@ function CreateEventContent() {
             Indiquez qui, quand et où. Vous ajouterez vos photos, couleurs et détails juste après avec l&apos;aperçu en direct.
           </p>
         </div>
+
+        {needsPermission && (
+          <div className="mb-4">
+            <EventPermission
+              email={user?.email}
+              name={typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : ''}
+            />
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit}

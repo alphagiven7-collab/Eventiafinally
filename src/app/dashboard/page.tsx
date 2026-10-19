@@ -8,13 +8,17 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { deleteInvitation, listInvitations, publishInvitation } from '@/lib/events/store';
+import { deleteInvitation, listInvitations, ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, Share2, Heart } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
-import { formatUsd, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
+import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
+import EventPermission from '@/components/account/EventPermission';
 
 function eventStatus(event: EventWithSettings) {
+  if (event.isBlocked) {
+    return { label: 'Bloqué', className: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' };
+  }
   if (!event.is_published) {
     return { label: 'Brouillon', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
   }
@@ -40,6 +44,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [needsPermission, setNeedsPermission] = useState(false);
   const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; pending: number }>>({});
 
   // Charger les événements
@@ -94,6 +99,13 @@ export default function DashboardPage() {
     }
     if (!user?.id) {
       setCreateError('Vous devez être connecté pour créer un événement. Rafraîchissez la page.');
+      return;
+    }
+    const already = await ownedEventCount(createClient(), user.id);
+    if ((already ?? events.length) >= FREE_EVENT_LIMIT) {
+      setNeedsPermission(true);
+      setShowCreateInput(false);
+      setCreateError(`Vous avez déjà ${FREE_EVENT_LIMIT} événements. Demandez la permission à l’admin pour en créer un autre.`);
       return;
     }
     setCreating(true);
@@ -202,7 +214,15 @@ export default function DashboardPage() {
                 Scanner le jour J
               </button>
               <button
-                onClick={() => setShowCreateInput(true)}
+                onClick={() => {
+                  if (events.length >= FREE_EVENT_LIMIT) {
+                    setNeedsPermission(true);
+                    setShowCreateInput(false);
+                    return;
+                  }
+                  setNeedsPermission(false);
+                  setShowCreateInput(true);
+                }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-95"
               >
                 <Plus className="w-4 h-4" />
@@ -212,6 +232,13 @@ export default function DashboardPage() {
           </div>
 
           {/* Formulaire création rapide */}
+          {needsPermission && (
+            <EventPermission
+              email={user?.email}
+              name={typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : ''}
+            />
+          )}
+
           {showCreateInput && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
               {createError && (
@@ -258,7 +285,15 @@ export default function DashboardPage() {
                 Aucune invitation pour le moment. Le premier enregistrement reste un brouillon.
               </p>
               <button
-                onClick={() => setShowCreateInput(true)}
+                onClick={() => {
+                  if (events.length >= FREE_EVENT_LIMIT) {
+                    setNeedsPermission(true);
+                    setShowCreateInput(false);
+                    return;
+                  }
+                  setNeedsPermission(false);
+                  setShowCreateInput(true);
+                }}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95"
               >
                 <Plus className="w-4 h-4" />
@@ -297,12 +332,16 @@ export default function DashboardPage() {
                             {event.location}
                           </span>
                         )}
-                        {counts && (
-                          <span className="inline-flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {counts.total} invités · {counts.confirmed} confirmés · {counts.pending} en attente
-                          </span>
-                        )}
+                        </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl bg-emerald-50 px-3 py-2 dark:bg-emerald-950/40">
+                          <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">{counts?.confirmed ?? 0}</p>
+                          <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200">Confirmés</p>
+                        </div>
+                        <div className="rounded-xl bg-amber-50 px-3 py-2 dark:bg-amber-950/40">
+                          <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-300">{counts?.pending ?? 0}</p>
+                          <p className="text-xs font-bold text-amber-800 dark:text-amber-200">En attente</p>
+                        </div>
                       </div>
                     </div>
 

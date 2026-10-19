@@ -6,6 +6,7 @@ import SupabaseProvider from '@/providers/auth-provider';
 import { I18nProvider } from '@/providers/i18n-provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { PWAActivator } from '@/providers/pwa-activator';
+import FreeWhatsAppButton from '@/components/account/FreeWhatsAppButton';
 
 export const metadata: Metadata = {
   title: {
@@ -47,6 +48,7 @@ export default function RootLayout({
             <SupabaseProvider>
               <ThemeProvider>
                 <PWAActivator />
+                <FreeWhatsAppButton />
                 {children}
               </ThemeProvider>
             </SupabaseProvider>

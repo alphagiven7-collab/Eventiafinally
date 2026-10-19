@@ -56,21 +56,35 @@ export default function UnlockEventPage() {
     }
     setSaving(true);
     const supabase = createClient();
-    const payload = {
-      guest_limit: totalPlaces,
-      payment_note: note.trim() || null,
-    };
-    let { error } = await supabase.from('events').update(payload).eq('id', result.id);
-    if (error && /payment_note|schema cache|column/i.test(error.message)) {
-      const retry = await supabase.from('events').update({ guest_limit: totalPlaces }).eq('id', result.id);
-      error = retry.error;
+    const noteValue = note.trim() || null;
+    const rpc = await supabase.rpc('admin_unlock_event', {
+      p_event_id: result.id,
+      p_guest_limit: totalPlaces,
+      p_note: noteValue,
+    });
+    if (rpc.error && /INVALID_LIMIT/i.test(rpc.error.message)) {
+      setSaving(false);
+      message.error('Indiquez au moins une place payée.');
+      return;
+    }
+    let failed = Boolean(rpc.error);
+    if (rpc.error && /function|schema cache|admin_unlock_event/i.test(rpc.error.message)) {
+      const direct = await supabase
+        .from('events')
+        .update({ guest_limit: totalPlaces, payment_note: noteValue })
+        .eq('id', result.id)
+        .select('id, guest_limit');
+      const retry = direct.error && /payment_note|schema cache|column/i.test(direct.error.message)
+        ? await supabase.from('events').update({ guest_limit: totalPlaces }).eq('id', result.id).select('id, guest_limit')
+        : direct;
+      failed = Boolean(retry.error) || !retry.data?.length || retry.data[0]?.guest_limit !== totalPlaces;
     }
     setSaving(false);
-    if (error) {
+    if (failed) {
       message.error('La limite n’a pas été enregistrée. Relancez le script d’accès dans Supabase.');
       return;
     }
-    message.success(`${result.title || 'Invitation'} : ${totalPlaces} places.`);
+    message.success(`${result.title || 'Invitation'} : ${totalPlaces} places débloquées.`);
     void query.refetch();
   };
 

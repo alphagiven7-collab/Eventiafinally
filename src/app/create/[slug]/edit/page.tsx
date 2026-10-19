@@ -873,7 +873,7 @@ function EditEventContent() {
         : liveEvent.brideMotifImage;
       const prepared: EventWithSettings = {
         ...liveEvent,
-        user_id: user.id,
+        user_id: liveEvent.user_id || user.id,
         is_published: mode === 'publish' ? true : mode === 'draft' ? false : Boolean(liveEvent.is_published),
         updated_at: new Date().toISOString(),
         heroImage: hero,

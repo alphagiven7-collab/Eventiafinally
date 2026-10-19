@@ -18,6 +18,16 @@ export function adminContactMessage(): string {
   return 'Bonjour, je vous contacte depuis les offres Eventia.';
 }
 
+export function adminEventPermissionMessage(email?: string | null, name?: string | null): string {
+  const lines = [
+    'Bonjour, j’ai déjà 3 événements sur Eventia.',
+    'Je demande la permission d’en créer un autre.',
+  ];
+  if (name?.trim()) lines.push('', `Nom : ${name.trim()}`);
+  if (email?.trim()) lines.push(`E-mail : ${email.trim()}`);
+  return lines.join('\n');
+}
+
 export function adminPaymentMessage(count: number, email?: string | null, name?: string | null): string {
   const paid = Math.max(0, Math.floor(count || 0));
   const places = guestCapacity(paid);

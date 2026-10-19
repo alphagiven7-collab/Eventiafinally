@@ -4,6 +4,9 @@ export const PRICE_PER_GUEST_USD = 0.3;
 /** Invitations d'essai, en plus du forfait choisi. */
 export const TRIAL_INVITATIONS = 3;
 
+/** Nombre d'événements qu'un compte peut créer avant de demander l'admin. */
+export const FREE_EVENT_LIMIT = 3;
+
 export const GUEST_PACKS = [50, 100, 200] as const;
 
 /** Ancien nom conservé : la limite sans forfait est l'essai de 3 invitations. */

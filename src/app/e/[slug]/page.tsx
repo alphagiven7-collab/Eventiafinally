@@ -73,6 +73,22 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     );
   }
 
+  if (event?.isBlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f4f4f6] dark:bg-[#0b0f19]">
+        <div className="text-center max-w-sm">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Invitation bloquée</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            Cette invitation n’est plus accessible. L’admin peut la rendre à nouveau disponible.
+          </p>
+          <a href="/" className="mt-4 inline-flex min-h-12 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-bold text-white">
+            Retour à Eventia
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#f4f4f6] dark:bg-[#0b0f19]">

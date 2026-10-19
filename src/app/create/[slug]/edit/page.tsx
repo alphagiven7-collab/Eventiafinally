@@ -154,7 +154,7 @@ function Field({
 /* ─────────────────────────────────────────────
    Uploader audio local
    ───────────────────────────────────────────── */
-const MAX_AUDIO_BYTES = 1_200_000;
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 
 function AudioUploader({
   value,
@@ -182,7 +182,7 @@ function AudioUploader({
     }
     if (file.size > MAX_AUDIO_BYTES) {
       const mega = (file.size / (1024 * 1024)).toFixed(1).replace('.', ',');
-      setError(`Ce fichier fait ${mega} Mo. L'invitation accepte un extrait jusqu'à 1,2 Mo.`);
+      setError(`Ce fichier fait ${mega} Mo. L'invitation accepte une musique jusqu'à 5 Mo.`);
       return;
     }
 
@@ -257,7 +257,7 @@ function AudioUploader({
                 {uploading ? 'Import en cours...' : 'Importer une musique'}
               </span>
               <span className="block text-[10px] text-gray-400 dark:text-gray-500">
-                MP3, M4A ou WAV, 1,2 Mo maximum. Un titre protégé du téléphone ne peut pas être lu.
+                MP3, M4A ou WAV, 5 Mo maximum. Un titre protégé du téléphone ne peut pas être lu.
               </span>
             </span>
           </span>

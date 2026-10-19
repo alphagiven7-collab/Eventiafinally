@@ -49,7 +49,7 @@ export type EventRow = {
 type DbClient = SupabaseClient;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MAX_PAYLOAD_CHARS = 4_000_000;
+const MAX_PAYLOAD_CHARS = 14_000_000;
 
 export function isUuid(value: string | undefined): boolean {
   return Boolean(value && UUID_RE.test(value));
@@ -146,10 +146,10 @@ export async function publishInvitation(
 ): Promise<{ error: string | null; id: string }> {
   const serialized = JSON.stringify(event);
   if (serialized.length > MAX_PAYLOAD_CHARS) {
-    const heavyMusic = (event.ambiance?.musicUrl?.length || 0) > 1_600_000;
+    const heavyMusic = (event.ambiance?.musicUrl?.length || 0) > 7_000_000;
     return {
       error: heavyMusic
-        ? 'La musique est trop lourde. Importez un extrait MP3 de moins de 1,2 Mo.'
+        ? 'La musique est trop lourde. Importez un fichier de moins de 5 Mo.'
         : 'Les photos sont trop lourdes pour être publiées. Réduisez la galerie, puis réessayez.',
       id: event.id,
     };

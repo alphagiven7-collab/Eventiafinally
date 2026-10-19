@@ -12,15 +12,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!event) {
     return {
-      title: 'Invitation introuvable | Invitia',
+      title: 'Invitation introuvable | Eventia',
       description: 'Cette invitation n\'existe pas ou a été supprimée.',
     };
   }
 
   const rawImage = event.bestPhotos?.[0] || event.cover_image || event.branding?.ogShareImage || event.branding?.heroImage || '';
   const image = rawImage.startsWith('http') ? rawImage : '';
-  const title = `${event.title} | Invitia`;
-  const description = event.metaDescription || event.welcomeMessage || `Découvrez l'invitation de ${event.title} sur Invitia.`;
+  const title = `${event.title} | Eventia`;
+  const description = event.metaDescription || event.welcomeMessage || `Découvrez l'invitation de ${event.title} sur Eventia.`;
 
   return {
     title,
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: image ? [{ url: image, width: 1200, height: 630 }] : [],
       type: 'website',
       locale: 'fr_FR',
-      siteName: 'Invitia',
+      siteName: 'Eventia',
     },
     twitter: {
       card: 'summary_large_image',

@@ -29,7 +29,7 @@ export const TYPOGRAPHY = {
 } as const;
 
 // ============================================
-// Palette Invitia — Base commune
+// Palette Eventia — Base commune
 // ============================================
 
 export const COLORS = {

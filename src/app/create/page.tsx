@@ -27,7 +27,7 @@ function CreateContent() {
               <circle cx="22" cy="20" r="1.5" fill="white"/>
               <path d="M17.5 21.5a1.5 1.5 0 001.5 1.5 1.5 1.5 0 001.5-1.5" stroke="white" strokeWidth="0.8" fill="none"/>
             </svg>
-            <span className="font-bold text-base text-gray-900 dark:text-gray-100">Invitia</span>
+            <span className="font-bold text-base text-gray-900 dark:text-gray-100">Eventia</span>
           </div>
           <button onClick={() => router.push('/dashboard')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
             ← Retour
@@ -60,7 +60,7 @@ function CreateContent() {
             <div className="absolute bottom-0 left-0 right-0 p-5">
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-4 h-4 text-rose-400" />
-                <span className="text-xs font-medium text-rose-300 uppercase tracking-wider">Invitia</span>
+                <span className="text-xs font-medium text-rose-300 uppercase tracking-wider">Eventia</span>
               </div>
               <h2 className="text-xl font-bold text-white">Mariage</h2>
               <p className="text-xs text-white/80 mt-0.5">L'invitation qui donne envie d'etre present</p>

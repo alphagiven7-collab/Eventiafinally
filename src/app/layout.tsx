@@ -9,16 +9,16 @@ import { PWAActivator } from '@/providers/pwa-activator';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Invitia - Créez vos invitations en ligne',
-    template: '%s | Invitia',
+    default: 'Eventia - Créez vos invitations en ligne',
+    template: '%s | Eventia',
   },
   description: 'Plateforme de création d\'invitations numériques pour événements. Mariages, anniversaires, baby showers et plus encore.',
   keywords: ['invitation', 'événement', 'mariage', 'anniversaire', 'RSVP', 'WhatsApp'],
-  authors: [{ name: 'Invitia' }],
+  authors: [{ name: 'Eventia' }],
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
-    siteName: 'Invitia',
+    siteName: 'Eventia',
   },
 };
 

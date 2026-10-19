@@ -193,13 +193,22 @@ export default function DashboardPage() {
                 {events.length > 0 ? `${events.length} invitation${events.length > 1 ? 's' : ''}` : 'Aucune invitation pour le moment'}
               </p>
             </div>
-            <button
-              onClick={() => setShowCreateInput(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              Créer
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => router.push('/checkin')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 rounded-xl font-medium text-sm"
+              >
+                Scanner le jour J
+              </button>
+              <button
+                onClick={() => setShowCreateInput(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                Créer
+              </button>
+            </div>
           </div>
 
           {/* Formulaire création rapide */}

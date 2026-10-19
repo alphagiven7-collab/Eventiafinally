@@ -109,7 +109,7 @@ ${event.title}
 Cliquez ici pour voir les détails et confirmer votre présence:
 ${eventUrl}
 
- Envoyé via Invitia`;
+ Envoyé via Eventia`;
   
   if (typeof window !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
     return `whatsapp://send?text=${encodeURIComponent(message)}`;

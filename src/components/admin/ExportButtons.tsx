@@ -42,7 +42,7 @@ export default function ExportButtons({ guests, event }: ExportButtonsProps) {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Invitia//Event//FR',
+      'PRODID:-//Eventia//Event//FR',
       'BEGIN:VEVENT',
       `UID:${event.slug}@invitia.app`,
       `DTSTART:${formatToICSDate(event.event_date)}`,

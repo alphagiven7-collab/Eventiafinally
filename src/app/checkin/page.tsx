@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Check, X } from 'lucide-react';
 import QRScanner from '@/components/checkin/QRScanner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -54,9 +55,12 @@ function CheckInContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="bg-emerald-600 text-white p-4">
-        <h1 className="text-xl font-bold text-center">Check-in des invités</h1>
-        <p className="text-sm text-center opacity-90">Mariage Josue & Divine</p>
+      <header className="bg-violet-700 text-white p-4 space-y-2">
+        <Link href="/dashboard" className="inline-flex text-sm font-semibold underline underline-offset-2">
+          Retour aux événements
+        </Link>
+        <h1 className="text-xl font-bold">Scanner les entrées</h1>
+        <p className="text-sm opacity-90">Le jour J, visez le code d&apos;entrée affiché sur le téléphone de l&apos;invité, ou la carte qu&apos;il a téléchargée.</p>
       </header>
 
       <main className="flex-1 p-4 max-w-md mx-auto w-full">
@@ -66,7 +70,7 @@ function CheckInContent() {
             onClick={() => setInputMode('scan')}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
               inputMode === 'scan' 
-                ? 'bg-emerald-600 text-white' 
+                ? 'bg-violet-600 text-white' 
                 : 'text-gray-600'
             }`}
           >
@@ -76,7 +80,7 @@ function CheckInContent() {
             onClick={() => setInputMode('manual')}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition ${
               inputMode === 'manual' 
-                ? 'bg-emerald-600 text-white' 
+                ? 'bg-violet-600 text-white' 
                 : 'text-gray-600'
             }`}
           >
@@ -100,7 +104,7 @@ function CheckInContent() {
             <button
               onClick={() => setScanning(true)}
               disabled={scanning}
-              className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+              className="w-full py-3 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 transition disabled:opacity-50"
             >
               {scanning ? 'Scan en cours...' : 'Démarrer le scan'}
             </button>
@@ -120,13 +124,13 @@ function CheckInContent() {
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
                   placeholder="Entrez le token..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none"
                 />
               </div>
 
               <button
                 onClick={handleManualCheckin}
-                className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition"
+                className="w-full py-3 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 transition"
               >
                 Valider la présence
               </button>

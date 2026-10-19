@@ -2,7 +2,7 @@
 // INVITIA - Constants
 // ============================================
 
-export const APP_NAME = 'Invitia';
+export const APP_NAME = 'Eventia';
 export const APP_DESCRIPTION = 'Créez votre événement. Partagez-le. Gérez vos invités.';
 
 // Event Types

@@ -15,7 +15,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <Link href="/" className="font-bold text-base">Invitia</Link>
+          <Link href="/" className="font-bold text-base">Eventia</Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {!loading && user ? (
@@ -39,7 +39,7 @@ export default function HomePage() {
               Créez l’invitation, envoyez le lien, suivez les réponses.
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-              Invitia sert à préparer un mariage ou une fête : texte, photos, date, lieu, liste d’invités et confirmation de présence. Vous commencez gratuitement avec {TRIAL_INVITATIONS} invitations d’essai.
+              Eventia sert à préparer un mariage ou une fête : texte, photos, date, lieu, liste d’invités et confirmation de présence. Vous commencez gratuitement avec {TRIAL_INVITATIONS} invitations d’essai.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href={user ? '/dashboard' : '/create'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
@@ -92,7 +92,7 @@ export default function HomePage() {
 
         <footer className="pt-4 border-t border-gray-200 dark:border-gray-800">
           <StoryCredit />
-          <p className="text-[11px] text-gray-400 mt-2">© {new Date().getFullYear()} Invitia</p>
+          <p className="text-[11px] text-gray-400 mt-2">© {new Date().getFullYear()} Eventia</p>
         </footer>
       </main>
     </div>

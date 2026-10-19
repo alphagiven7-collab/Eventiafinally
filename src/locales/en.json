@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Invitia",
+    "appName": "Eventia",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -10,7 +10,7 @@
   },
   "home": {
     "heroTitle": "Stressing about your event?",
-    "heroSubtitle": "We built Invitia for you. No more chasing guests, paying a designer, or wasting hours organizing.",
+    "heroSubtitle": "We built Eventia for you. No more chasing guests, paying a designer, or wasting hours organizing.",
     "ctaCreate": "Create my invitation",
     "ctaDemo": "View demo"
   },

@@ -6,7 +6,7 @@ export default function LandingFeatures() {
   return (
     <section className="mx-4 mt-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-gray-900">Pourquoi Invitia ?</h3>
+        <h3 className="text-base font-bold text-gray-900">Pourquoi Eventia ?</h3>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {[

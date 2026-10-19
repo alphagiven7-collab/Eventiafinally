@@ -32,7 +32,7 @@ export default function LandingHero() {
               <span className="text-emerald-300">événement ?</span>
             </h2>
             <p className="text-xs text-white/80 mb-4 leading-relaxed">
-              On a créé Invitia pour toi. Plus besoin de courir après les invités,<br />
+              On a créé Eventia pour toi. Plus besoin de courir après les invités,<br />
               de payer un designer ou de perdre des heures à organiser.
             </p>
             <div className="flex gap-2">
@@ -95,7 +95,7 @@ export default function LandingHero() {
           <div className="mt-4 p-4 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl">
             <div className="flex items-center gap-2 mb-2">
               <PartyPopper className="w-5 h-5 text-white" />
-              <h4 className="text-sm font-bold text-white">Invitia résout tout ça</h4>
+              <h4 className="text-sm font-bold text-white">Eventia résout tout ça</h4>
             </div>
             <ul className="space-y-1.5">
               <li className="flex items-center gap-2 text-[11px] text-white/90">

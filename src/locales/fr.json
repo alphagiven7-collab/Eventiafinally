@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Invitia",
+    "appName": "Eventia",
     "loading": "Chargement...",
     "save": "Sauvegarder",
     "cancel": "Annuler",
@@ -10,7 +10,7 @@
   },
   "home": {
     "heroTitle": "Tu stresses pour ton événement ?",
-    "heroSubtitle": "On a créé Invitia pour toi. Plus besoin de courir après les invités, de payer un designer ou de perdre des heures à organiser.",
+    "heroSubtitle": "On a créé Eventia pour toi. Plus besoin de courir après les invités, de payer un designer ou de perdre des heures à organiser.",
     "ctaCreate": "Créer mon invitation",
     "ctaDemo": "Voir une démo"
   },

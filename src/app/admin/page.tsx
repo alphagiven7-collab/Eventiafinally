@@ -132,7 +132,7 @@ function SuperAdminContent() {
                   ← Dashboard
                 </Link>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Administration Invitia</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Administration Eventia</h1>
               <p className="text-sm text-gray-500 mt-1">Vue globale de la plateforme</p>
             </div>
             <div className="flex items-center gap-2">

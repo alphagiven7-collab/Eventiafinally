@@ -20,7 +20,7 @@ export function AuthFrame({
           <StoryCredit className="text-center mt-2" />
         </div>
         <div className="w-full max-w-md mx-auto">
-          <Link href="/" className="text-sm font-bold text-gray-900 dark:text-white">Invitia</Link>
+          <Link href="/" className="text-sm font-bold text-gray-900 dark:text-white">Eventia</Link>
           <h1 className="font-serif text-3xl text-gray-900 dark:text-white mt-4">{title}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-6">{text}</p>
           <div className="md:hidden mb-4">

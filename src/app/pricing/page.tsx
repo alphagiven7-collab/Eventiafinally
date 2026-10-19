@@ -22,7 +22,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="text-sm font-bold">Invitia</Link>
+          <Link href="/" className="text-sm font-bold">Eventia</Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">

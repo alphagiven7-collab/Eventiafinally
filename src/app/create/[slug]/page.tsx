@@ -142,7 +142,7 @@ function CreateEventContent() {
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
-          <span className="font-bold text-base text-gray-900 dark:text-gray-100">Invitia</span>
+          <span className="font-bold text-base text-gray-900 dark:text-gray-100">Eventia</span>
           <button
             type="button"
             onClick={() => router.push('/dashboard')}

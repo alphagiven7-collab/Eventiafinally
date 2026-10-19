@@ -4,21 +4,21 @@ export default function LandingTestimonials() {
   return (
     <section className="mx-4 mt-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-gray-900">Ils s'en sont sortis grâce à Invitia</h3>
+        <h3 className="text-base font-bold text-gray-900">Ils s'en sont sortis grâce à Eventia</h3>
       </div>
       <div className="space-y-3">
         {[
           { 
             name: 'Grace M.', 
             city: 'Kolwezi', 
-            text: 'J\'étais à 3 semaines du mariage de ma fille, je ne dormais plus. Avec Invitia j\'ai tout réglé en 2 jours. Le lien WhatsApp, le RSVP... mes invités ont adoré !', 
+            text: 'J\'étais à 3 semaines du mariage de ma fille, je ne dormais plus. Avec Eventia j\'ai tout réglé en 2 jours. Le lien WhatsApp, le RSVP... mes invités ont adoré !', 
             initial: 'G',
             problem: 'Mariage dans 3 semaines, zéro organisation'
           },
           { 
             name: 'Jean-Pierre K.', 
             city: 'Lubumbashi', 
-            text: 'Pour mes 30 ans, je voulais inviter 80 personnes. Sans Invitia, j\'aurais dû appeler tout le monde un par un. Le suivi RSVP m\'a évité de payer des repas pour rien.', 
+            text: 'Pour mes 30 ans, je voulais inviter 80 personnes. Sans Eventia, j\'aurais dû appeler tout le monde un par un. Le suivi RSVP m\'a évité de payer des repas pour rien.', 
             initial: 'J',
             problem: '80 invités à gérer, stress du suivi'
           },

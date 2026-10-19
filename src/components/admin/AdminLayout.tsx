@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="font-bold text-gray-900 dark:text-white text-sm">
-              Invitia
+              Eventia
             </Link>
             {isAdmin && (
               <Link href="/admin" className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 px-3 py-1 rounded-lg text-xs font-bold transition">

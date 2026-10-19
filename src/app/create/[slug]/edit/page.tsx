@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   Share2,
+  ArrowLeft,
   ExternalLink,
   Check,
   Heart,
@@ -940,11 +941,17 @@ function EditEventContent() {
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-rose-50/70 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
       {/* Header sticky */}
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setLeaveAsk(true)}
+            className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            Retour aux événements
+          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <button type="button" onClick={() => setLeaveAsk(true)} className="text-[11px] text-violet-700 dark:text-violet-300 font-semibold">
-              Événements
-            </button>
             <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
               {title || event.title}
             </h1>
@@ -995,6 +1002,7 @@ function EditEventContent() {
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{copiedLink ? 'Copié' : 'Partager'}</span>
             </button>
+          </div>
           </div>
         </div>
       </header>

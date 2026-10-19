@@ -26,7 +26,7 @@ export default function PricingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
-              Tableau de bord
+              Événements
             </Link>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function PricingPage() {
             href="/dashboard"
             className="mt-5 inline-flex w-full justify-center py-3 bg-violet-600 text-white rounded-xl text-sm font-bold"
           >
-            Retourner au tableau de bord
+            Retourner aux événements
           </Link>
         </div>
       </main>

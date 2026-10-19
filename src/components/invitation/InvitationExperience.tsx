@@ -508,9 +508,9 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     box.style.display = 'none';
     return false;
   };
-  const hasMotif =
-    showMotif('#groom-motif', '#groom-motif-img', event.groomMotifImage) ||
-    showMotif('#bride-motif', '#bride-motif-img', event.brideMotifImage);
+  const groomShown = showMotif('#groom-motif', '#groom-motif-img', event.groomMotifImage);
+  const brideShown = showMotif('#bride-motif', '#bride-motif-img', event.brideMotifImage);
+  const hasMotif = groomShown || brideShown;
   if (motifSection) motifSection.style.display = hasMotif ? 'block' : 'none';
 
   const main = root.querySelector('#main-view');

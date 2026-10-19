@@ -35,7 +35,6 @@ import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
-import { EventSectionNav } from '@/components/nav/EventSectionNav';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -584,6 +583,7 @@ function EditEventContent() {
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [leaveAsk, setLeaveAsk] = useState(false);
 
   /* ── Chargement de l'événement ── */
   useEffect(() => {
@@ -799,14 +799,14 @@ function EditEventContent() {
   /* ── Sauvegarde sur Supabase ── */
   const handleSave = useCallback(
     async (mode: 'draft' | 'preview' | 'publish' = 'draft') => {
-      if (!liveEvent) return;
+      if (!liveEvent) return false;
       if (!eventDate || !location.trim()) {
         addToast('error', 'La date et le lieu sont obligatoires.');
-        return;
+        return false;
       }
       if (!user?.id || !isSupabaseReady()) {
         addToast('error', SUPABASE_REQUIRED);
-        return;
+        return false;
       }
 
       setSaving(true);
@@ -860,7 +860,7 @@ function EditEventContent() {
 
       if (result.error) {
         addToast('error', result.error);
-        return;
+        return false;
       }
 
       setEvent(prepared);
@@ -868,14 +868,15 @@ function EditEventContent() {
       if (mode === 'publish') {
         addToast('success', 'Invitation publiée.');
         router.push(`/e/${liveEvent.slug}`);
-        return;
+        return true;
       }
       if (mode === 'preview') {
         addToast('success', 'Aperçu enregistré. La publication n’a pas changé.');
         window.open(`/e/${liveEvent.slug}`, '_blank', 'noopener');
-        return;
+        return true;
       }
       addToast('success', 'Brouillon enregistré.');
+      return true;
     },
     [liveEvent, eventDate, location, user?.id, addToast, router]
   );
@@ -926,9 +927,9 @@ function EditEventContent() {
           <button
             type="button"
             onClick={() => router.push('/dashboard')}
-            className="mt-4 text-rose-600 dark:text-rose-400 hover:underline"
+            className="mt-4 text-violet-700 dark:text-violet-300 hover:underline"
           >
-            Retour au tableau de bord
+            Retour aux événements
           </button>
         </div>
       </div>
@@ -936,13 +937,13 @@ function EditEventContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50/70 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-rose-50/70 via-white to-slate-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
       {/* Header sticky */}
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <button type="button" onClick={() => router.push('/dashboard')} className="text-[11px] text-violet-700 dark:text-violet-300 font-semibold">
-              Tableau de bord
+            <button type="button" onClick={() => setLeaveAsk(true)} className="text-[11px] text-violet-700 dark:text-violet-300 font-semibold">
+              Événements
             </button>
             <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
               {title || event.title}
@@ -998,10 +999,7 @@ function EditEventContent() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 pt-4">
-        <EventSectionNav slug={event.slug} eventId={event.id} title={event.title} active="edit" />
-      </div>
-      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start min-w-0">
         {/* Colonne de gauche : les 5 sections de personnalisation */}
         <main
           className={`lg:col-span-7 space-y-4 ${
@@ -1447,6 +1445,39 @@ function EditEventContent() {
           </div>
         </aside>
       </div>
+      {leaveAsk && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setLeaveAsk(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Revenir aux événements ?</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Enregistrez le brouillon avant de quitter cette page.</p>
+            <div className="flex flex-col gap-2 mt-4">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  const saved = await handleSave('draft');
+                  if (!saved) return;
+                  setLeaveAsk(false);
+                  router.push('/dashboard');
+                }}
+                className="py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                {saving ? 'Enregistrement...' : 'Enregistrer et revenir'}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm"
+              >
+                Revenir sans enregistrer
+              </button>
+              <button type="button" onClick={() => setLeaveAsk(false)} className="py-3 text-sm text-gray-500">
+                Rester sur la page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmPublish && (
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmPublish(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>

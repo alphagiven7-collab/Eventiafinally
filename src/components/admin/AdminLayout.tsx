@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth, useAuthActions } from '@/providers/auth-provider';
 import { usePathname } from 'next/navigation';
-import { LogOut, User, Settings, Sun, Moon, LayoutDashboard, CalendarDays, Users, CircleUser } from 'lucide-react';
+import { LogOut, User, Settings, Sun, Moon, CalendarDays, Users, CircleUser } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface AdminLayoutProps {
@@ -47,30 +47,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const pathname = usePathname();
-  const [hash, setHash] = useState('');
   const nav = [
-    { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-    { href: '/dashboard#evenements', label: 'Événements', icon: CalendarDays },
+    { href: '/dashboard', label: 'Événements', icon: CalendarDays },
     { href: '/dashboard/invites', label: 'Invités', icon: Users },
     { href: '/profile', label: 'Profil', icon: CircleUser },
   ];
 
-  useEffect(() => {
-    const read = () => setHash(window.location.hash);
-    read();
-    window.addEventListener('hashchange', read);
-    return () => window.removeEventListener('hashchange', read);
-  }, [pathname]);
-
   const isActive = (href: string) => {
-    if (href === '/dashboard#evenements') return pathname === '/dashboard' && hash === '#evenements';
-    if (href === '/dashboard') return pathname === '/dashboard' && hash !== '#evenements';
     if (href === '/dashboard/invites') return pathname.startsWith('/dashboard/invites');
+    if (href === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(href);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
@@ -155,7 +145,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      <div className="lg:grid lg:grid-cols-[220px_1fr]">
+      <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="hidden lg:block border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 min-h-[calc(100vh-57px)] p-4">
           <nav className="space-y-1">
             {nav.map((item) => (
@@ -174,13 +164,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             ))}
           </nav>
         </aside>
-        <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-8">
+        <main className="min-w-0 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-8">
           {children}
         </main>
       </div>
 
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-3">
           {nav.map((item) => (
             <Link
               key={item.href}

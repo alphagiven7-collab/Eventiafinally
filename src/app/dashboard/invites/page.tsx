@@ -12,7 +12,6 @@ import { createClient } from '@/lib/supabase/client';
 import { formatUsd, GUEST_PACKS, guestCapacity, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { EventSectionNav } from '@/components/nav/EventSectionNav';
 import {
   BarChart3,
   Users,
@@ -339,14 +338,6 @@ function GuestManagementContent() {
     <AdminLayout>
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Invités</h1>
-        {selectedEvent && (
-          <EventSectionNav
-            slug={selectedEvent.slug}
-            eventId={selectedEvent.id}
-            title={selectedEvent.title}
-            active={activeTab === 'rsvps' ? 'results' : 'guests'}
-          />
-        )}
         {events.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Événement en cours</label>

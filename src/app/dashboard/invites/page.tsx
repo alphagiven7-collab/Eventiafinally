@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
@@ -17,7 +17,6 @@ import {
   Users,
   CheckCircle2,
   Download,
-  Upload,
   MessageCircle,
   Check,
   X,
@@ -25,9 +24,11 @@ import {
   QrCode,
   Trash2,
   Mail,
+  ChevronDown,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
+type GuestTool = 'import' | 'tables' | 'whatsapp';
 
 function GuestManagementContent() {
   const { user } = useAuth();
@@ -36,18 +37,17 @@ function GuestManagementContent() {
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Formulaire ajout
+  // Formulaire ajout : seul le nom est obligatoire
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newGroup, setNewGroup] = useState('');
   const [newTable, setNewTable] = useState('');
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
@@ -125,7 +125,8 @@ function GuestManagementContent() {
 
   const personalLink = (guest: Guest) => {
     const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
-    return `${window.location.origin}${guestInvitePath(slug, guest)}`;
+    const origin = typeof window === 'undefined' ? '' : window.location.origin;
+    return `${origin}${guestInvitePath(slug, guest)}`;
   };
 
   const selectedEvent = events.find((event) => event.id === selectedEventId);
@@ -152,12 +153,11 @@ function GuestManagementContent() {
 
   // Ajouter un invité
   const handleAddGuest = async () => {
+    if (!newName.trim()) { addToast('error', 'Le nom est obligatoire.'); return; }
     if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
     const result = await addGuest(createClient(), selectedEventId, {
       name: newName,
       phone: newPhone,
-      email: newEmail,
-      group: newGroup,
       tableNumber: newTable,
     }, capacity);
     if (result.error || !result.guest) {
@@ -165,9 +165,28 @@ function GuestManagementContent() {
       return;
     }
     setGuests((current) => [result.guest!, ...current]);
-    setNewName(''); setNewPhone(''); setNewEmail(''); setNewGroup(''); setNewTable('');
-    setShowAddForm(false);
+    setNewName('');
+    setNewPhone('');
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
+    nameInputRef.current?.focus();
+  };
+
+  const assignTable = async (guest: Guest, tableNumber: string) => {
+    const previous = guest.table_number;
+    const optimistic = { ...guest, table_number: tableNumber || undefined };
+    setGuests((list) => list.map((item) => item.id === guest.id ? optimistic : item));
+    if (!isSupabaseReady()) {
+      setGuests((list) => list.map((item) => item.id === guest.id ? guest : item));
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    const result = await updateGuest(createClient(), optimistic);
+    if (result.error || !result.guest) {
+      setGuests((list) => list.map((item) => item.id === guest.id ? { ...item, table_number: previous } : item));
+      addToast('error', result.error || 'Table non enregistrée');
+      return;
+    }
+    setGuests((list) => list.map((item) => item.id === guest.id ? result.guest! : item));
   };
 
   // Supprimer un invité
@@ -191,6 +210,7 @@ function GuestManagementContent() {
   // Sauvegarder édition
   const handleSaveEdit = async () => {
     if (!editingGuest) return;
+    if (!editingGuest.name.trim()) { addToast('error', 'Le nom est obligatoire.'); return; }
     if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
     const result = await updateGuest(createClient(), editingGuest);
     if (result.error || !result.guest) { addToast('error', result.error || 'Invité non enregistré'); return; }
@@ -203,6 +223,11 @@ function GuestManagementContent() {
     ? (selectedEvent.guestLimit ?? guestCapacity(selectedEvent.guestPack))
     : guestCapacity();
   const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
+  const tableChoices = (current?: string) => {
+    const names = tables.map((table) => table.name);
+    if (current && !names.includes(current)) names.push(current);
+    return names;
+  };
 
   const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -305,25 +330,25 @@ function GuestManagementContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Invités</h1>
         {events.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Événement en cours</label>
-            <select value={selectedEventId} onChange={(e) => {
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 px-3 py-2">
+            <label htmlFor="current-event" className="text-xs font-medium text-gray-700 dark:text-gray-300 shrink-0">Événement</label>
+            <select id="current-event" value={selectedEventId} onChange={(e) => {
               setSelectedEventId(e.target.value);
               const url = new URL(window.location.href);
               url.searchParams.set('event', e.target.value);
               window.history.replaceState(null, '', `${url.pathname}${url.search}`);
             }}
-              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               {events.map(evt => <option key={evt.id} value={evt.id}>{evt.title}</option>)}
             </select>
           </div>
@@ -366,163 +391,176 @@ function GuestManagementContent() {
 
         {/* ═══════ INVITÉS ═══════ */}
         {activeTab === 'guests' && (
-          <div className="space-y-4">
-            {/* Import CSV */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
-                <Upload className="w-4 h-4 text-blue-600 dark:text-blue-300" />
-                <span>Importer des invités</span>
-              </h2>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">Format CSV : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom,telephone,groupe,email</code></p>
-              <div className="flex flex-wrap gap-2">
-                <label className="px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
+          <div className="space-y-3">
+            <form
+              onSubmit={(event) => { event.preventDefault(); void handleAddGuest(); }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 space-y-2"
+            >
+              <div className="flex gap-2">
+                <input
+                  id="guest-name"
+                  ref={nameInputRef}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nom de l'invité"
+                  aria-label="Nom de l'invité"
+                  className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
+                <button type="submit" className="shrink-0 min-h-11 px-4 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
+                  Ajouter
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <select
+                  aria-label="Table du nouvel invité"
+                  value={newTable}
+                  onChange={(e) => setNewTable(e.target.value)}
+                  className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Sans table</option>
+                  {tableChoices(newTable).map((name) => {
+                    const table = tables.find((item) => item.name === name);
+                    return (
+                      <option key={name} value={name}>
+                        {table ? `${name} · ${seatsUsed(name)}/${table.seats}` : name}
+                      </option>
+                    );
+                  })}
+                </select>
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="Tél. facultatif"
+                  inputMode="tel"
+                  aria-label="Téléphone, facultatif"
+                  className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                Seul le nom est obligatoire. {guests.length}/{capacity} places, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
+              </p>
+            </form>
+
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                ['import', 'Importer'],
+                ['tables', 'Tables'],
+                ['whatsapp', 'WhatsApp'],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-expanded={openTool === id}
+                  onClick={() => setOpenTool((current) => current === id ? null : id)}
+                  className={`min-h-11 px-2 rounded-xl text-[11px] sm:text-xs font-semibold inline-flex items-center justify-center gap-1 ${
+                    openTool === id
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  <span>{label}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition ${openTool === id ? 'rotate-180' : ''}`} />
+                </button>
+              ))}
+            </div>
+
+            {openTool === 'import' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">CSV : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom,telephone,groupe,email</code>. Le nom suffit.</p>
+                <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
                 </label>
-                <button onClick={() => setShowAddForm(!showAddForm)} className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                  + Ajouter manuellement
-                </button>
-              </div>
-              {csvPreview && (
-                <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">{csvPreview.ready.length} ligne(s) prête(s) à importer</p>
-                  {csvPreview.duplicates.length > 0 && (
-                    <p className="text-amber-700 dark:text-amber-300">Doublons écartés : {csvPreview.duplicates.join(', ')}</p>
-                  )}
-                  {csvPreview.bad.length > 0 && (
-                    <ul className="text-red-600 space-y-1">
-                      {csvPreview.bad.map((row) => (
-                        <li key={`${row.line}-${row.text}`}>Ligne {row.line} : {row.reason}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
-                    <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
+                {csvPreview && (
+                  <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">{csvPreview.ready.length} ligne(s) prête(s) à importer</p>
+                    {csvPreview.duplicates.length > 0 && (
+                      <p className="text-amber-700 dark:text-amber-300">Doublons écartés : {csvPreview.duplicates.join(', ')}</p>
+                    )}
+                    {csvPreview.bad.length > 0 && (
+                      <ul className="text-red-600 space-y-1">
+                        {csvPreview.bad.map((row) => (
+                          <li key={`${row.line}-${row.text}`}>Ligne {row.line} : {row.reason}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
+                      <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Tables */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                Donnez un nom et un nombre de places. La table choisie apparaît sur la carte de l’invité. Le QR est le code d’entrée du jour J : le scan affiche le nom, la table, et enregistre l’arrivée dans la salle.
-              </p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
-                  className="flex-1 min-w-[140px] px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                <input value={tableSeats} onChange={(e) => setTableSeats(e.target.value)} type="number" min={1} placeholder="Places"
-                  className="w-24 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const name = tableName.trim();
-                    const seats = Math.max(1, Number(tableSeats) || 1);
-                    if (!name) return;
-                    void saveTables([...tables.filter((table) => table.name !== name), { name, seats }]);
-                    setTableName('');
-                  }}
-                  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-medium"
-                >
-                  Ajouter la table
-                </button>
-              </div>
-              {tables.length > 0 && (
-                <div className="space-y-2">
-                  {tables.map((table) => {
-                    const used = seatsUsed(table.name);
-                    return (
-                      <div key={table.name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{table.name}</p>
-                          <p className={`text-[11px] ${used > table.seats ? 'text-red-600 font-semibold' : 'text-blue-600 dark:text-blue-300'}`}>
-                            {used}/{table.seats} places{used > table.seats ? ' · cette table dépasse le nombre de places' : ''}
-                          </p>
-                        </div>
-                        <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500">Retirer</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {withoutTable.length > 0 && (
-                <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-                  Sans table : {withoutTable.map((guest) => guest.name).join(', ')}
-                </p>
-              )}
-            </div>
-
-            {/* Formulaire ajout */}
-            {showAddForm && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Ajouter un invité</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  {guests.length}/{capacity} places utilisées, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nom complet *</label>
-                    <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Marie N."
-                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
-                    <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+243..."
-                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                    <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@..."
-                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Table</label>
-                    <select value={newTable} onChange={(e) => setNewTable(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                      <option value="">Sans table</option>
-                      {tables.map((table) => (
-                        <option key={table.name} value={table.name}>
-                          {table.name} · {seatsUsed(table.name)}/{table.seats}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
-                    <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Famille, Amis..."
-                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={handleAddGuest} className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-xs font-medium hover:bg-green-600 transition">
-                    ✓ Ajouter l'invité
-                  </button>
-                  <button onClick={() => setShowAddForm(false)} className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-500 rounded-xl text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    Annuler
-                  </button>
-                </div>
+                )}
               </div>
             )}
 
-            {/* Message WhatsApp */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-emerald-500" />
-                <span>Message WhatsApp</span>
-              </h2>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">Variables : <strong>{'{nom}'}</strong> et <strong>{'{lien}'}</strong></p>
-              <textarea value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} rows={2}
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none" />
-            </div>
+            {openTool === 'tables' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                  Créez la table ici, puis choisissez-la sur la ligne de l&apos;invité.
+                </p>
+                <div className="flex gap-2 mb-3">
+                  <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
+                    className="min-w-0 flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                  <input value={tableSeats} onChange={(e) => setTableSeats(e.target.value)} type="number" min={1} placeholder="Places" aria-label="Nombre de places"
+                    className="w-20 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = tableName.trim();
+                      const seats = Math.max(1, Number(tableSeats) || 1);
+                      if (!name) return;
+                      void saveTables([...tables.filter((table) => table.name !== name), { name, seats }]);
+                      setTableName('');
+                      setNewTable(name);
+                    }}
+                    className="px-3 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-medium shrink-0"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+                {tables.length > 0 && (
+                  <div className="space-y-2">
+                    {tables.map((table) => {
+                      const used = seatsUsed(table.name);
+                      return (
+                        <div key={table.name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{table.name}</p>
+                            <p className={`text-[11px] ${used > table.seats ? 'text-red-600 font-semibold' : 'text-blue-600 dark:text-blue-300'}`}>
+                              {used}/{table.seats} places{used > table.seats ? ' · au-dessus du nombre de places' : ''}
+                            </p>
+                          </div>
+                          <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500 shrink-0">Retirer</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {withoutTable.length > 0 && (
+                  <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                    {withoutTable.length} invité(s) sans table.
+                  </p>
+                )}
+              </div>
+            )}
 
-            {/* Recherche + filtre */}
-            <div className="flex flex-wrap gap-2">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher nom ou téléphone..."
-                className="flex-1 min-w-[200px] px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-              <select value={filter} onChange={(e) => setFilter(e.target.value as any)}
-                className="px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            {openTool === 'whatsapp' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Message WhatsApp</h2>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">Variables : <strong>{'{nom}'}</strong> et <strong>{'{lien}'}</strong></p>
+                <textarea value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none" />
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité"
+                className="min-w-0 flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'declined')}
+                aria-label="Filtrer par statut"
+                className="min-w-0 w-28 px-2 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                 <option value="all">Tous</option>
                 <option value="pending">En attente</option>
                 <option value="confirmed">Confirmés</option>
@@ -536,7 +574,7 @@ function GuestManagementContent() {
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center mx-auto mb-3">
                   <Users className="w-6 h-6" />
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité. Importez un CSV ou ajoutez manuellement.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité pour l&apos;instant. Écrivez un nom dans le champ du haut.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -545,14 +583,32 @@ function GuestManagementContent() {
                             <div className="flex items-start justify-between gap-3">
                             <div>
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.email ? ` · ${g.email}` : ''}{g.group ? ` · ${g.group}` : ''}</p>
-                            <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''} · {g.table_number ? g.table_number : 'Sans table'}{g.checked_in_at ? ' · En salle' : ''}</p>
+                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
+                            <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
                             </span>
                             </div>
-                            <div className="flex flex-wrap gap-1 mt-3">
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <select
+                              aria-label={`Table de ${g.name}`}
+                              value={g.table_number || ''}
+                              onChange={(e) => void assignTable(g, e.target.value)}
+                              className="min-w-0 w-full sm:max-w-xs min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="">Sans table</option>
+                              {tableChoices(g.table_number).map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                              ))}
+                            </select>
+                            {tables.length === 0 && (
+                              <button type="button" onClick={() => setOpenTool('tables')} className="text-xs font-semibold text-violet-700 dark:text-violet-300 text-left">
+                                Créer une table
+                              </button>
+                            )}
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-2">
                               {g.status !== 'confirmed' && (
                                 <button onClick={() => handleStatusChange(g.id, 'confirmed')} title="Confirmer"
                                   className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs"><Check className="w-3.5 h-3.5" /></button>
@@ -664,7 +720,7 @@ function GuestManagementContent() {
                     className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email, facultatif</label>
                   <input value={editingGuest.email || ''} onChange={(e) => setEditingGuest({ ...editingGuest, email: e.target.value || undefined })}
                     className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                 </div>
@@ -696,9 +752,14 @@ function GuestManagementContent() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Table réservée</label>
-                <input value={editingGuest.table_number || ''} onChange={(e) => setEditingGuest({ ...editingGuest, table_number: e.target.value || undefined })}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Ex: Table 12" />
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Table</label>
+                <select value={editingGuest.table_number || ''} onChange={(e) => setEditingGuest({ ...editingGuest, table_number: e.target.value || undefined })}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <option value="">Sans table</option>
+                  {tableChoices(editingGuest.table_number).map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">

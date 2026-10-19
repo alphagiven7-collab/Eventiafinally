@@ -63,10 +63,10 @@ function ProfileContent() {
             <label className="text-sm text-gray-500">Rôle</label>
             <span className={`inline-block px-2 py-1 text-xs rounded-full ml-2 ${
               profile?.role === 'super_admin' 
-                ? 'bg-red-100 text-red-700' 
+                ? 'bg-violet-100 text-violet-700' 
                 : 'bg-blue-100 text-blue-700'
             }`}>
-              {profile?.role === 'super_admin' ? 'Super Admin' : 'Organisateur'}
+              {profile?.role === 'super_admin' ? 'Admin' : 'Organisateur'}
             </span>
           </div>
         </div>

@@ -67,10 +67,7 @@ function SuperAdminContent() {
         const guestsErr = guestsCountRes.error;
         const rsvpsErr = rsvpsCountRes.error;
 
-        if (eventsErr || usersErr || guestsErr || rsvpsErr) {
-          console.warn('Erreur stats, utilisation des données complètes');
-        }
-
+        const statError = [eventsErr, usersErr, guestsErr, rsvpsErr].find((item) => item);
         setStats({
           totalEvents: eventsCount || 0,
           totalUsers: usersCount || 0,
@@ -78,14 +75,13 @@ function SuperAdminContent() {
           totalRsvps: rsvpsCount || 0,
         });
 
-        // Charger tous les événements
         const [{ data: eventsData, error: eventsLoadErr }, { data: usersData, error: usersLoadErr }] = await Promise.all([
           supabase.from('events').select('id, title, slug, event_date, location, created_at, user_id, is_published').order('created_at', { ascending: false }).limit(100),
           supabase.from('users').select('id, email, full_name, role, created_at').order('created_at', { ascending: false }).limit(100),
         ]);
 
-        if (eventsLoadErr) console.warn('Erreur chargement événements:', eventsLoadErr);
-        if (usersLoadErr) console.warn('Erreur chargement utilisateurs:', usersLoadErr);
+        const loadError = eventsLoadErr || usersLoadErr || statError;
+        setError(loadError ? 'Une partie des données est encore invisible. Relancez le script d’accès dans Supabase, puis vérifiez à nouveau.' : '');
         setEvents(eventsData || []);
         setUsers(usersData || []);
       } catch (error) {
@@ -103,7 +99,7 @@ function SuperAdminContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-gray-600">Chargement des données...</p>
         </div>
       </div>
@@ -111,31 +107,19 @@ function SuperAdminContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Link href="/dashboard" className="text-sm text-emerald-600 hover:underline">
-                  ← Dashboard
-                </Link>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">Administration Eventia</h1>
-              <p className="text-sm text-gray-500 mt-1">Vue globale de la plateforme</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
-                SUPER ADMIN
-              </span>
-              <Link href="/">
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
-                  Accueil
-                </button>
-              </Link>
-            </div>
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+        <div className="max-w-3xl mx-auto px-4 py-5">
+          <Link href="/dashboard" className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+            Retour aux événements
+          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Administration</h1>
+            <span className="px-3 py-1 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200 rounded-full text-xs font-bold">
+              Super admin
+            </span>
           </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Comptes, invitations et réponses de la plateforme</p>
         </div>
       </header>
 
@@ -147,7 +131,7 @@ function SuperAdminContent() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {/* Statistiques */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
@@ -157,7 +141,7 @@ function SuperAdminContent() {
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <p className="text-xs text-gray-500 mb-2">Événements</p>
-            <p className="text-3xl font-bold text-emerald-600">{stats?.totalEvents || 0}</p>
+            <p className="text-3xl font-bold text-violet-700">{stats?.totalEvents || 0}</p>
             <p className="text-xs text-gray-400 mt-1">créés sur la plateforme</p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
@@ -173,115 +157,81 @@ function SuperAdminContent() {
         </div>
 
         {/* Utilisateurs */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">Utilisateurs ({users.length})</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Comptes ({users.length})</h2>
             <span className="text-xs text-gray-500">
-              {users.filter(u => u.role === 'super_admin').length} super admin
+              {users.filter(u => u.role === 'super_admin').length} admin
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inscription</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">{user.full_name || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{user.email || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        user.role === 'super_admin' 
-                          ? 'bg-red-100 text-red-700' 
-                          : user.role === 'staff'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {user.role === 'super_admin' ? 'Super Admin' : user.role === 'staff' ? 'Staff' : 'Organisateur'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {users.map((account) => (
+              <article key={account.id} className="p-4 min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 break-words">{account.full_name || 'Sans nom'}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 break-all">{account.email || 'Sans e-mail'}</p>
+                  </div>
+                  <span className={`shrink-0 px-2 py-1 text-xs font-medium rounded-full ${
+                    account.role === 'super_admin'
+                      ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {account.role === 'super_admin' ? 'Admin' : account.role === 'staff' ? 'Staff' : 'Organisateur'}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {account.created_at ? new Date(account.created_at).toLocaleDateString('fr-FR') : ''}
+                </p>
+              </article>
+            ))}
           </div>
           {users.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              Aucun utilisateur
+            <div className="p-8 text-center text-sm text-gray-500">
+              Aucun compte visible pour le moment.
             </div>
           )}
         </div>
 
         {/* Événements */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Tous les événements ({events.length})</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Événements ({events.length})</h2>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organisateur</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Créé le</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {events.map((event) => {
-                  const owner = users.find(u => u.id === event.user_id);
-                  return (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">{event.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {owner?.email || event.user_id?.slice(0, 8) || '-'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          event.is_published 
-                            ? 'bg-emerald-100 text-emerald-700' 
-                            : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {event.is_published ? 'Publié' : 'Brouillon'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {event.event_date 
-                          ? new Date(event.event_date).toLocaleDateString('fr-FR') 
-                          : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(event.created_at).toLocaleDateString('fr-FR')}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <a
-                          href={`/e/${event.slug}`}
-                          target="_blank"
-                          className="text-xs text-emerald-600 hover:underline"
-                        >
-                          Voir →
-                        </a>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {events.map((event) => {
+              const owner = users.find(u => u.id === event.user_id);
+              return (
+                <article key={event.id} className="p-4 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 break-words">{event.title}</h3>
+                    <span className={`shrink-0 px-2 py-1 text-xs font-medium rounded-full ${
+                      event.is_published
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {event.is_published ? 'Publié' : 'Brouillon'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 break-all">{owner?.email || 'Organisateur inconnu'}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {event.event_date ? new Date(event.event_date).toLocaleDateString('fr-FR') : 'Date à préciser'}
+                    {event.location ? ` · ${event.location}` : ''}
+                  </p>
+                  <a
+                    href={`/e/${event.slug}`}
+                    target="_blank"
+                    className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-violet-700 dark:text-violet-300"
+                  >
+                    Ouvrir l’invitation
+                  </a>
+                </article>
+              );
+            })}
           </div>
           {events.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              Aucun événement sur la plateforme
+            <div className="p-8 text-center text-sm text-gray-500">
+              Aucun événement visible pour le moment.
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth, useAuthActions } from '@/providers/auth-provider';
 import { usePathname } from 'next/navigation';
-import { LogOut, User, Settings, Sun, Moon, CalendarDays, Users, CircleUser } from 'lucide-react';
+import { LogOut, User, Settings, Sun, Moon, CalendarDays, Users, CircleUser, Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface AdminLayoutProps {
@@ -69,8 +69,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               Eventia
             </Link>
             {isAdmin && (
-              <Link href="/admin" className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 px-3 py-1 rounded-lg text-xs font-bold transition">
-                ⚡ Admin
+              <Link href="/admin" className="bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-300 px-3 py-1 rounded-lg text-xs font-bold transition">
+                Admin
               </Link>
             )}
           </div>
@@ -117,7 +117,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         {user?.user_metadata?.name || user?.email}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {isAdmin ? '👑 Super Admin' : 'Organisateur'}
+                        {isAdmin ? 'Administration' : 'Organisateur'}
                       </p>
                     </div>
                     <div className="py-1">
@@ -128,6 +128,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       >
                         <Settings className="w-4 h-4" />
                         Mon profil
+                      </Link>
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <Shield className="w-4 h-4" />
+                        Administration
                       </Link>
                       <button
                         onClick={() => { setMenuOpen(false); handleLogout(); }}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
 import { useAuth } from '@/providers/auth-provider';
+import AdminAccess from '@/components/admin/AdminAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,7 +16,8 @@ export default function ProtectedRoute({
   children,
   requireAdmin = false,
 }: ProtectedRouteProps) {
-  const [authorized, setAuthorized] = useState(false);
+  const [status, setStatus] = useState<'checking' | 'allowed' | 'blocked'>('checking');
+  const [retry, setRetry] = useState(0);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
@@ -28,12 +30,12 @@ export default function ProtectedRoute({
     }
 
     if (!requireAdmin) {
-      setAuthorized(true);
+      setStatus('allowed');
       return;
     }
 
     if (!isSupabaseReady()) {
-      router.push('/dashboard');
+      setStatus('blocked');
       return;
     }
 
@@ -46,23 +48,31 @@ export default function ProtectedRoute({
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        if (data?.role === 'super_admin') {
-          setAuthorized(true);
-          return;
-        }
-        router.push('/dashboard');
+        setStatus(data?.role === 'super_admin' ? 'allowed' : 'blocked');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [user, router, requireAdmin, authLoading]);
+  }, [user, router, requireAdmin, authLoading, retry]);
 
-  if (!authorized) {
+  if (authLoading || status === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (requireAdmin && status === 'blocked') {
+    return (
+      <AdminAccess
+        email={user?.email}
+        onRetry={() => {
+          setStatus('checking');
+          setRetry((count) => count + 1);
+        }}
+      />
     );
   }
 

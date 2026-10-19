@@ -9,7 +9,7 @@ import { listInvitations, publishInvitation } from '@/lib/events/store';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { formatUsd, GUEST_PACKS, guestCapacity, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
+import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
@@ -51,9 +51,6 @@ function GuestManagementContent() {
   const [newTable, setNewTable] = useState('');
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
-  const [packChoice, setPackChoice] = useState<number>(50);
-  const [customPack, setCustomPack] = useState('250');
-  const [confirmPack, setConfirmPack] = useState(false);
   const [csvPreview, setCsvPreview] = useState<null | {
     ready: { name: string; phone?: string; email?: string; group?: string }[];
     bad: { line: number; text: string; reason: string }[];
@@ -205,7 +202,6 @@ function GuestManagementContent() {
   const capacity = selectedEvent
     ? (selectedEvent.guestLimit ?? guestCapacity(selectedEvent.guestPack))
     : guestCapacity();
-  const chosenPackSize = packChoice === 0 ? Math.max(1, Number(customPack) || 0) : packChoice;
   const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
 
   const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,26 +260,6 @@ function GuestManagementContent() {
       addToast('success', `${result.guests.length} invités enregistrés.`);
     }
     setCsvPreview(null);
-  };
-
-  const applyPack = async () => {
-    if (!selectedEvent || !user?.id) return;
-    const result = await publishInvitation(createClient(), {
-      ...selectedEvent,
-      user_id: user.id,
-      is_published: selectedEvent.is_published,
-      guestPack: chosenPackSize,
-      guestLimit: guestCapacity(chosenPackSize),
-    });
-    if (result.error) {
-      addToast('error', result.error);
-      return;
-    }
-    setEvents((current) => current.map((event) => event.id === selectedEvent.id
-      ? { ...event, guestPack: chosenPackSize, guestLimit: guestCapacity(chosenPackSize) }
-      : event));
-    setConfirmPack(false);
-    addToast('success', `Forfait validé : ${chosenPackSize} invités, plus ${TRIAL_INVITATIONS} d'essai. Total ${formatUsd(packTotalUsd(chosenPackSize))}.`);
   };
 
   // Export CSV
@@ -423,46 +399,6 @@ function GuestManagementContent() {
                   <div className="flex gap-2">
                     <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
                     <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 space-y-3">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Capacité</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {guests.length}/{capacity} places. Les {TRIAL_INVITATIONS} invitations d&apos;essai sont en plus du forfait.
-                {guests.length >= capacity ? ' La capacité est atteinte. Choisissez un forfait pour continuer.' : ''}
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {GUEST_PACKS.map((pack) => (
-                  <button key={pack} type="button" onClick={() => { setPackChoice(pack); setConfirmPack(false); }}
-                    className={`rounded-xl border p-3 text-left ${packChoice === pack ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
-                    <span className="block text-xs font-semibold">{pack}</span>
-                    <span className="block text-sm font-bold">{formatUsd(packTotalUsd(pack))}</span>
-                  </button>
-                ))}
-                <button type="button" onClick={() => setPackChoice(0)}
-                  className={`rounded-xl border p-3 text-left ${packChoice === 0 ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
-                  <span className="block text-xs font-semibold">Autre</span>
-                  <span className="block text-[11px]">0,30 $ × nombre</span>
-                </button>
-              </div>
-              {packChoice === 0 && (
-                <input type="number" min={1} value={customPack} onChange={(e) => setCustomPack(e.target.value)}
-                  className="w-full px-3 py-2.5 border rounded-lg text-sm bg-gray-50 dark:bg-gray-700" />
-              )}
-              <p className="text-sm font-bold">Total affiché : {formatUsd(packTotalUsd(chosenPackSize))}</p>
-              {!confirmPack ? (
-                <button type="button" onClick={() => setConfirmPack(true)} className="px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-xl text-xs font-bold">
-                  Voir la validation
-                </button>
-              ) : (
-                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
-                  <p className="text-xs">Valider {chosenPackSize} invités pour {formatUsd(packTotalUsd(chosenPackSize))} ? Les {TRIAL_INVITATIONS} invitations d&apos;essai restent en plus. La publication de l&apos;invitation ne change pas.</p>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => void applyPack()} className="px-3 py-2 bg-violet-600 text-white rounded-lg text-xs font-bold">Valider ce forfait</button>
-                    <button type="button" onClick={() => setConfirmPack(false)} className="px-3 py-2 border rounded-lg text-xs">Annuler</button>
                   </div>
                 </div>
               )}

@@ -77,7 +77,7 @@ export default function PricingPage() {
           </p>
           <p className="text-4xl font-extrabold mt-1">{formatUsd(total)}</p>
           <p className="mt-2 text-xs text-gray-500">
-            Ce montant s&apos;affiche avant toute validation. Rien n&apos;est ajouté à la capacité tant que vous ne confirmez pas le forfait dans la page Invités de l&apos;événement.
+            Le total s&apos;affiche ici avant toute validation. Les choix de capacité restent sur cette page.
           </p>
           <ul className="mt-4 space-y-2 text-sm">
             {[

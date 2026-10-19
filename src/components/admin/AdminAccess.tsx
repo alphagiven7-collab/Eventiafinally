@@ -61,6 +61,26 @@ WHERE guest_limit IS NULL;
 ALTER TABLE public.events
   ADD COLUMN IF NOT EXISTS payment_note text;
 
+CREATE OR REPLACE FUNCTION public.admin_whatsapp()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+SET row_security = off
+AS $$
+  SELECT NULLIF(regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g'), '')
+  FROM public.users
+  WHERE role = 'super_admin'
+    AND phone IS NOT NULL
+    AND btrim(phone) <> ''
+  ORDER BY created_at
+  LIMIT 1;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_whatsapp() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_whatsapp() TO anon, authenticated;
+
 NOTIFY pgrst, 'reload schema';`;
 }
 

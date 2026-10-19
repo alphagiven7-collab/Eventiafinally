@@ -19,6 +19,9 @@ function ProfileContent() {
   const { user } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  const [phone, setPhone] = useState('');
+  const [phoneNotice, setPhoneNotice] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,10 +34,25 @@ function ProfileContent() {
         .eq('id', user.id)
         .maybeSingle();
       setProfile(data);
+      setPhone(data?.phone || '');
     };
     
     loadProfile();
   }, [user?.id, supabase]);
+
+  const savePhone = async () => {
+    if (!user?.id) return;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 8) {
+      setPhoneNotice('Indiquez le numéro avec l’indicatif du pays, sans espaces.');
+      return;
+    }
+    setSavingPhone(true);
+    const { error } = await supabase.from('users').update({ phone: digits }).eq('id', user.id);
+    setSavingPhone(false);
+    setPhoneNotice(error ? 'Le numéro n’a pas été enregistré.' : 'Numéro WhatsApp enregistré.');
+    if (!error) setPhone(digits);
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -59,6 +77,33 @@ function ProfileContent() {
             </p>
           </div>
           
+          <div>
+            <label htmlFor="admin-whatsapp" className="text-sm text-gray-500">WhatsApp</label>
+            <input
+              id="admin-whatsapp"
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="Indicatif pays, puis le numéro"
+              className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-600 dark:bg-gray-900"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              {profile?.role === 'super_admin'
+                ? 'Les organisateurs écrivent à ce numéro depuis la page Offres.'
+                : 'Votre numéro de contact.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void savePhone()}
+              disabled={savingPhone}
+              className="mt-2 min-h-12 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white"
+            >
+              {savingPhone ? 'Enregistrement…' : 'Enregistrer le numéro'}
+            </button>
+            {phoneNotice && <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{phoneNotice}</p>}
+          </div>
+
           <div>
             <label className="text-sm text-gray-500">Rôle</label>
             <span className={`inline-block px-2 py-1 text-xs rounded-full ml-2 ${

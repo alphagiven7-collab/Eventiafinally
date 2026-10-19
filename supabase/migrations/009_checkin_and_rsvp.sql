@@ -116,6 +116,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS list_event_guestbook(text, integer);
 DROP FUNCTION IF EXISTS list_event_guestbook(text);
 
 CREATE FUNCTION list_event_guestbook(p_slug text, p_limit integer DEFAULT 3)

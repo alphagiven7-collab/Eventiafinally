@@ -8,7 +8,24 @@ import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { compressImageFile, formatDataUrlSize } from '@/lib/utils/image-compression';
-import { Music, Upload, X, Eye, EyeOff, Share2, ExternalLink, Check } from 'lucide-react';
+import {
+  Music,
+  Upload,
+  X,
+  Eye,
+  EyeOff,
+  Share2,
+  ExternalLink,
+  Check,
+  Heart,
+  Mail,
+  Camera,
+  Calendar,
+  Sparkles,
+  Sun,
+  Moon,
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
 import {
   EventWithSettings,
   ProgramItem,
@@ -31,7 +48,7 @@ function Section({
 }: {
   title: string;
   subtitle?: string;
-  icon: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
@@ -45,11 +62,13 @@ function Section({
       >
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2.5">
-            <span className="text-lg">{icon}</span>
+            <span className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center flex-shrink-0">
+              {icon}
+            </span>
             <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</h2>
           </div>
           {subtitle && !open && (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-8">{subtitle}</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-9">{subtitle}</p>
           )}
         </div>
         <svg
@@ -377,10 +396,10 @@ function ProgramEditor({
             onChange={(e) => updateItem(i, 'color', e.target.value)}
             className="px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
-            <option value="pink">🌹</option>
-            <option value="blue">💙</option>
-            <option value="green">💚</option>
-            <option value="purple">💜</option>
+            <option value="pink">Rose</option>
+            <option value="blue">Bleu</option>
+            <option value="green">Vert</option>
+            <option value="purple">Violet</option>
           </select>
           <button
             type="button"
@@ -433,9 +452,9 @@ function PracticalInfoEditor({
               onChange={(e) => updateItem(i, 'icon', e.target.value)}
               className="px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
-              <option value="car">🚗 Accès / Parking</option>
-              <option value="bed">🏨 Hébergement</option>
-              <option value="wine">🍷 Réception</option>
+              <option value="car">Accès / Parking</option>
+              <option value="bed">Hébergement</option>
+              <option value="wine">Réception</option>
             </select>
             <input
               type="text"
@@ -491,6 +510,7 @@ function EditEventContent() {
   const router = useRouter();
   const { addToast } = useToast();
   const { user } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const slug = params.slug as string;
 
   const [event, setEvent] = useState<EventWithSettings | null>(null);
@@ -849,6 +869,21 @@ function EditEventContent() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => {
+                const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+                setTheme(next);
+                try {
+                  localStorage.setItem('invitia_theme', next);
+                } catch {}
+              }}
+              className="p-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              title="Basculer le mode sombre"
+              aria-label="Basculer le mode sombre"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowMobilePreview((v) => !v)}
               className="lg:hidden px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
@@ -895,7 +930,7 @@ function EditEventContent() {
           <Section
             title="1. L'essentiel : Qui, Quand et Où"
             subtitle="Les prénoms, la date et le lieu de réception"
-            icon="💍"
+            icon={<Heart className="w-4 h-4" />}
             defaultOpen
           >
             <div className="space-y-4 pt-4">
@@ -957,7 +992,7 @@ function EditEventContent() {
           <Section
             title="2. Texte de la carte & Couleurs"
             subtitle="Le mot d'invitation et l'harmonie de couleurs"
-            icon="💌"
+            icon={<Mail className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
               <div>
@@ -1016,7 +1051,7 @@ function EditEventContent() {
           <Section
             title="3. Vos photos & Musique d'ambiance"
             subtitle="Toutes les photos sont réduites et converties automatiquement"
-            icon="📸"
+            icon={<Camera className="w-4 h-4" />}
           >
             <div className="space-y-5 pt-4">
               <SingleImageUploader
@@ -1074,7 +1109,7 @@ function EditEventContent() {
           <Section
             title="4. Programme, Tenue & Infos pratiques"
             subtitle="Déroulé de la journée, dress code et conseils invités"
-            icon="📅"
+            icon={<Calendar className="w-4 h-4" />}
           >
             <div className="space-y-5 pt-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
@@ -1139,7 +1174,7 @@ function EditEventContent() {
           <Section
             title="5. Notre histoire, Cadeau & Contact (optionnel)"
             subtitle="Ces blocs s'affichent uniquement si vous les remplissez"
-            icon="✨"
+            icon={<Sparkles className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
               <Field

@@ -85,7 +85,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
 
-  // Hero & Couverture (prend en compte heroImage, hero_image, cover_image ou la 1re photo de la galerie)
+  // Hero & Couverture
   const heroImg =
     event.heroImage ||
     event.hero_image ||
@@ -120,11 +120,6 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     event.subtitle || (hasBothNames ? `${leftName} & ${rightName}` : event.location || '')
   );
   setText('#welcome-gate-title', coupleDisplay);
-  setText('#welcome-gate-message', event.welcomeMessage || '');
-  setText(
-    '#welcome-gate-hint',
-    event.gateHint || 'Découvrez votre invitation personnelle.'
-  );
 
   const coupleRow = $('#couple-row-container');
   const joinBadge = $('#couple-join-badge');
@@ -173,7 +168,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Date & Vrai Calendrier dynamique
+  // Date & Calendrier dynamique
   if (event.event_date) {
     const d = new Date(event.event_date);
     if (!isNaN(d.getTime())) {
@@ -219,11 +214,11 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="display:flex;flex-direction:column;align-items:center;padding-top:3px;">
                 <div style="width:11px;height:11px;border-radius:999px;background:${dotColor};box-shadow:0 0 0 4px rgba(236,72,153,0.1);"></div>
-                ${i < event.program!.length - 1 ? '<div style="width:1px;height:36px;background:#e5e7eb;margin-top:4px;"></div>' : ''}
+                ${i < event.program!.length - 1 ? '<div class="inv-divider-line" style="width:1px;height:36px;background:#e5e7eb;margin-top:4px;"></div>' : ''}
               </div>
               <div style="padding-bottom:6px;">
                 <p style="font-size:11px;font-weight:600;color:${dotColor};margin-bottom:2px;letter-spacing:0.05em;">${item.time}</p>
-                <p style="font-size:14px;font-weight:500;color:#1f2937;">${item.title}</p>
+                <p class="inv-text-primary" style="font-size:14px;font-weight:500;">${item.title}</p>
               </div>
             </div>`;
         })
@@ -234,7 +229,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Lieu & Bouton Itinéraire (toujours fonctionnel avec fallback Google Maps Search)
+  // Lieu & Bouton Itinéraire
   const venueName = event.venue || event.venueDetails?.title || event.location || 'Lieu de réception';
   const venueAddr = event.venueDetails?.address || event.address || event.location || '';
   setText('#venue-title', venueName);
@@ -283,7 +278,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Section Galerie Photos (Best Photos)
+  // Section Galerie Photos
   const gallerySection = $('#section-gallery');
   const showGallery = event.sections?.gallery !== false;
   const uploadedPhotos = (event.bestPhotos || []).filter(Boolean);
@@ -322,7 +317,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Section Tenue Vestimentaire (Dress Code)
+  // Section Tenue Vestimentaire
   const dressSection = $('#section-dress-code');
   const showDress = event.sections?.dressCode !== false;
   if (dressSection) {
@@ -343,7 +338,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
         dressTrack.innerHTML = loopDress
           .map(
             (p) =>
-              `<img src="${p}" style="width:120px;height:160px;object-fit:cover;border-radius:0.75rem;border:1px solid #e5e7eb;flex-shrink:0;" alt="Tenue">`
+              `<img src="${p}" style="width:120px;height:160px;object-fit:cover;border-radius:0.75rem;border:1px solid rgba(148,163,184,0.25);flex-shrink:0;" alt="Tenue">`
           )
           .join('');
         if (dressWrapper) dressWrapper.style.display = 'block';
@@ -376,14 +371,14 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
         .map(
           (item) => `
           <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="width:34px;height:34px;background:#fdf2f8;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <div class="inv-icon-badge" style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <svg style="width:16px;height:16px;color:${rsvpColor};" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="${iconMap[item.icon] || iconMap.car}"/>
               </svg>
             </div>
             <div>
-              <p style="font-size:11px;font-weight:700;color:#1f2937;text-transform:uppercase;letter-spacing:0.06em;">${item.title}</p>
-              <p style="font-size:12px;color:#6b7280;line-height:1.5;margin-top:2px;">${item.text}</p>
+              <p class="inv-text-primary" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">${item.title}</p>
+              <p class="inv-text-muted" style="font-size:12px;line-height:1.5;margin-top:2px;">${item.text}</p>
             </div>
           </div>
         `
@@ -454,8 +449,8 @@ function renderDynamicCalendar(root: HTMLElement, date: Date) {
   const month = date.getMonth();
   const targetDay = date.getDate();
 
-  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Dim) .. 6 (Sam)
-  const leadingEmptyDays = (firstDayOfMonth + 6) % 7; // Lundi = 0
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const leadingEmptyDays = (firstDayOfMonth + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const cells: string[] = [];
@@ -554,20 +549,19 @@ function initRsvp(
   const setNote = (text: string, isConfirmed?: boolean) => {
     if (!note) return;
     note.textContent = text;
-    note.style.color = isConfirmed === false ? '#6b7280' : 'var(--rsvp-color, #ec4899)';
+    note.style.color = isConfirmed === false ? '#9ca3af' : 'var(--rsvp-color, #ec4899)';
   };
 
   const applyVisualState = (status: 'confirmed' | 'declined') => {
     if (status === 'confirmed') {
-      setNote('✓ Votre présence est bien confirmée. Merci !', true);
+      setNote('Votre présence est bien confirmée. Merci !', true);
       if (confirmBtn) {
-        confirmBtn.style.opacity = '1';
         const lbl = confirmBtn.querySelector('#confirm-presence-label');
-        if (lbl) lbl.textContent = 'Présence confirmée ✓';
+        if (lbl) lbl.textContent = 'Présence confirmée';
       }
       if (reserveBtn) {
         const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
-        if (topLbl) topLbl.textContent = 'Présence confirmée ✓';
+        if (topLbl) topLbl.textContent = 'Présence confirmée';
       }
     } else if (status === 'declined') {
       setNote('Votre réponse (ne pourra pas venir) est bien enregistrée.', false);
@@ -648,32 +642,56 @@ function initThemeToggle(root: HTMLElement) {
   const thumb = root.querySelector('.theme-thumb') as HTMLElement | null;
   if (!toggle) return () => {};
 
+  const sunSvg = `<svg style="width:11px;height:11px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
+  const moonSvg = `<svg style="width:11px;height:11px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+
   const applyTheme = (isDark: boolean) => {
     toggle.checked = isDark;
     root.classList.toggle('dark-mode-applied', isDark);
+    document.documentElement.classList.toggle('dark', isDark);
     if (thumb) {
-      thumb.style.transform = isDark ? 'translateX(16px)' : 'translateX(0)';
-      thumb.textContent = isDark ? '☾' : '☀';
+      thumb.style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
+      thumb.innerHTML = isDark ? moonSvg : sunSvg;
     }
   };
 
   try {
-    const saved = localStorage.getItem('invitia_theme') || localStorage.getItem('wedding_theme_mode');
-    if (saved === 'dark') {
+    const saved =
+      localStorage.getItem('invitia_theme') ||
+      localStorage.getItem('theme') ||
+      localStorage.getItem('wedding_theme_mode');
+    if (saved === 'dark' || (!saved && document.documentElement.classList.contains('dark'))) {
       applyTheme(true);
+    } else {
+      applyTheme(false);
     }
-  } catch {}
+  } catch {
+    applyTheme(false);
+  }
 
   const onChange = () => {
     const isDark = toggle.checked;
     applyTheme(isDark);
     try {
       localStorage.setItem('invitia_theme', isDark ? 'dark' : 'light');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
     } catch {}
   };
 
   toggle.addEventListener('change', onChange);
   return () => toggle.removeEventListener('change', onChange);
+}
+
+function getDrinkIconSvg(id: string): string {
+  const icons: Record<string, string> = {
+    champagne: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
+    'vin-rouge': `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
+    'vin-blanc': `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
+    cocktail: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/></svg>`,
+    biere: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 3 11 3s2 .5 3 .5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg>`,
+    soft: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1.5 12a2 2 0 0 1-2 1.8H9.5a2 2 0 0 1-2-1.8L6 8Z"/><path d="M15 2l-2 6"/><path d="M5 8h14"/></svg>`,
+  };
+  return icons[id] || icons.champagne;
 }
 
 function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
@@ -685,12 +703,12 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
     event?.drinks && event.drinks.length > 0
       ? event.drinks
       : [
-          { id: 'champagne', name: 'Champagne', desc: 'Fines bulles', emoji: '🥂' },
-          { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Sélection du couple', emoji: '🍷' },
-          { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Frais & fruité', emoji: '🥂' },
-          { id: 'cocktail', name: 'Cocktail', desc: 'Création maison', emoji: '🍹' },
-          { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '🍺' },
-          { id: 'soft', name: 'Soft & Jus', desc: 'Sans alcool', emoji: '🥤' },
+          { id: 'champagne', name: 'Champagne', desc: 'Fines bulles', emoji: '' },
+          { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Sélection du couple', emoji: '' },
+          { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Frais & fruité', emoji: '' },
+          { id: 'cocktail', name: 'Cocktail', desc: 'Création maison', emoji: '' },
+          { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '' },
+          { id: 'soft', name: 'Soft & Jus', desc: 'Sans alcool', emoji: '' },
         ];
 
   const selected = new Set<string>();
@@ -701,6 +719,8 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
     if (saved) JSON.parse(saved).forEach((s: string) => selected.add(s));
   } catch {}
 
+  const checkSvg = `<svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
   function render() {
     if (!grid) return;
     grid.innerHTML = defaultDrinks
@@ -709,8 +729,10 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
       <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${d.id}">
         <input type="checkbox" class="drink-card-input" value="${d.id}" ${selected.has(d.id) ? 'checked' : ''}>
         <div class="drink-card-media">
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2.25rem;background:linear-gradient(135deg,#fdf2f8,#fce7f3);">${d.emoji}</div>
-          <span class="drink-card-check">${selected.has(d.id) ? '✓' : ''}</span>
+          <div class="drink-card-icon-wrap" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--rsvp-color, #ec4899);">
+            ${getDrinkIconSvg(d.id)}
+          </div>
+          <span class="drink-card-check">${selected.has(d.id) ? checkSvg : ''}</span>
         </div>
         <div class="drink-card-body">
           <span class="drink-card-title">${d.name}</span>
@@ -755,8 +777,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   function updateBtn() {
     if (!btn || !audio) return;
     const isPlaying = !audio.paused;
-    const icon = btn.querySelector('.music-toggle-icon');
-    if (icon) icon.textContent = isPlaying ? '♫' : '♪';
+    btn.style.opacity = isPlaying ? '1' : '0.65';
     btn.title = isPlaying ? 'Couper la musique' : 'Lancer la musique';
   }
 
@@ -792,18 +813,18 @@ function getOriginalCSS(): string {
       --rsvp-color: #ec4899;
       font-family: 'Montserrat', sans-serif;
       background-color: #f4f4f6;
-      color: #333;
+      color: #1f2937;
       -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
     .invitation-experience-root .font-serif { font-family: 'Playfair Display', serif; }
     .invitation-experience-root .font-cursive { font-family: 'Great Vibes', cursive; }
+    .invitation-experience-root .inv-text-primary { color: #1f2937; }
+    .invitation-experience-root .inv-text-muted { color: #6b7280; }
+    .invitation-experience-root .inv-subsurface { background: #f9fafb; border: 1px solid #f3f4f6; }
+    .invitation-experience-root .inv-icon-badge { background: #fdf2f8; }
     .invitation-experience-root .hero-bg {
       background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), var(--hero-image-url);
-      background-size: cover;
-      background-position: center;
-    }
-    .invitation-experience-root .welcome-gate-bg {
-      background-image: linear-gradient(rgba(2, 6, 23, 0.78), rgba(15, 23, 42, 0.9)), var(--welcome-image-url);
       background-size: cover;
       background-position: center;
     }
@@ -833,6 +854,7 @@ function getOriginalCSS(): string {
       opacity: 0.12;
       pointer-events: none;
       z-index: 0;
+      color: #111827;
     }
     .invitation-experience-root .invitation-card-floral--tl { top: 0.4rem; left: 0.4rem; }
     .invitation-experience-root .invitation-card-floral--br { right: 0.4rem; bottom: 0.4rem; transform: rotate(180deg); }
@@ -963,7 +985,7 @@ function getOriginalCSS(): string {
       background: #fff;
       cursor: pointer;
       user-select: none;
-      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
     }
     .invitation-experience-root label.drink-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
     .invitation-experience-root label.drink-card.is-selected {
@@ -971,7 +993,7 @@ function getOriginalCSS(): string {
       box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.25), 0 10px 24px rgba(236, 72, 153, 0.12);
     }
     .invitation-experience-root .drink-card-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
-    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 82px; overflow: hidden; background: #f1f5f9; }
+    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 78px; overflow: hidden; background: linear-gradient(135deg, #fdf2f8, #fce7f3); }
     .invitation-experience-root .drink-card-check {
       position: absolute;
       top: 8px;
@@ -982,8 +1004,6 @@ function getOriginalCSS(): string {
       background: rgba(255, 255, 255, 0.92);
       border: 1px solid #e2e8f0;
       color: transparent;
-      font-size: 13px;
-      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -999,25 +1019,85 @@ function getOriginalCSS(): string {
     .invitation-experience-root .drink-card-title { display: block; font-size: 0.78rem; font-weight: 600; color: #0f172a; line-height: 1.25; }
     .invitation-experience-root .drink-card-desc { display: block; margin-top: 0.2rem; font-size: 0.62rem; color: #64748b; line-height: 1.35; }
 
-    /* Dark mode */
-    .invitation-experience-root.dark-mode-applied { background: #0f172a; color: #e5e7eb; }
-    .invitation-experience-root.dark-mode-applied #main-view { background: #111827 !important; }
-    .invitation-experience-root.dark-mode-applied .surface-card {
-      background: #1f2937 !important;
+    /* ═══════════ DARK MODE COMPLET ═══════════ */
+    .invitation-experience-root.dark-mode-applied {
+      background-color: #0b0f19 !important;
+      color: #f3f4f6 !important;
+    }
+    .invitation-experience-root.dark-mode-applied #main-view {
+      background: #0f172a !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .surface-card,
+    .invitation-experience-root.dark-mode-applied .drink-menu-shell {
+      background: #1e293b !important;
       border-color: rgba(148, 163, 184, 0.16) !important;
       color: #f3f4f6 !important;
     }
+    .invitation-experience-root.dark-mode-applied .inv-subsurface,
+    .invitation-experience-root.dark-mode-applied .dress-marquee-wrapper {
+      background: #0f172a !important;
+      border-color: rgba(148, 163, 184, 0.14) !important;
+      color: #e5e7eb !important;
+    }
+    .invitation-experience-root.dark-mode-applied .inv-icon-badge {
+      background: rgba(236, 72, 153, 0.15) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .inv-text-primary,
+    .invitation-experience-root.dark-mode-applied h3 {
+      color: #f9fafb !important;
+    }
+    .invitation-experience-root.dark-mode-applied .inv-text-muted {
+      color: #9ca3af !important;
+    }
+    .invitation-experience-root.dark-mode-applied .inv-divider-line {
+      background: rgba(148, 163, 184, 0.22) !important;
+    }
     .invitation-experience-root.dark-mode-applied .invitation-card {
       background:
-        radial-gradient(circle at 88% 8%, rgba(244, 114, 182, 0.12), transparent 42%),
+        radial-gradient(circle at 88% 8%, rgba(244, 114, 182, 0.14), transparent 42%),
         radial-gradient(circle at 12% 92%, rgba(148, 163, 184, 0.08), transparent 40%),
-        linear-gradient(168deg, #1e293b 0%, #111827 55%, #0f172a 100%);
-      border-color: rgba(148, 163, 184, 0.18);
+        linear-gradient(168deg, #1e293b 0%, #111827 55%, #0f172a 100%) !important;
+      border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .invitation-card-floral {
+      color: #f8fafc !important;
+      opacity: 0.15;
     }
     .invitation-experience-root.dark-mode-applied .invite-card-title,
-    .invitation-experience-root.dark-mode-applied .invite-guest-name { color: #f9fafb; }
+    .invitation-experience-root.dark-mode-applied .invite-guest-name {
+      color: #f9fafb !important;
+    }
+    .invitation-experience-root.dark-mode-applied .invite-couple-join {
+      background: rgba(30, 41, 59, 0.9) !important;
+      border-color: rgba(148, 163, 184, 0.25) !important;
+      color: #cbd5e1 !important;
+    }
     .invitation-experience-root.dark-mode-applied .invite-greeting,
-    .invitation-experience-root.dark-mode-applied .invite-body-text { color: #d1d5db; }
+    .invitation-experience-root.dark-mode-applied .invite-body-text {
+      color: #cbd5e1 !important;
+    }
+    .invitation-experience-root.dark-mode-applied label.drink-card {
+      background: #0f172a !important;
+      border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    .invitation-experience-root.dark-mode-applied label.drink-card.is-selected {
+      border-color: var(--rsvp-color, #ec4899) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-card-media {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.14), rgba(190, 24, 93, 0.2)) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-card-title {
+      color: #f8fafc !important;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-card-desc {
+      color: #94a3b8 !important;
+    }
+    .invitation-experience-root.dark-mode-applied #decline-presence-btn {
+      background: #0f172a !important;
+      color: #cbd5e1 !important;
+      border-color: rgba(148, 163, 184, 0.25) !important;
+    }
   `;
 }
 
@@ -1030,12 +1110,12 @@ function getOriginalHTML(): string {
     <div id="app-floating-tools" style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">
       <label style="cursor:pointer;" title="Mode clair / sombre">
         <input type="checkbox" id="theme-toggle-input" style="display:none;">
-        <span style="display:inline-block;width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,0.88);backdrop-filter:blur(8px);border:1px solid rgba(0,0,0,0.08);position:relative;transition:background 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
-          <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:#1f2937;color:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;font-size:10px;" class="theme-thumb">☀</span>
+        <span style="display:inline-block;width:44px;height:24px;border-radius:999px;background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);border:1px solid rgba(0,0,0,0.1);position:relative;transition:background 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.14);">
+          <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:#1f2937;color:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;" class="theme-thumb"></span>
         </span>
       </label>
-      <button id="music-toggle-btn" type="button" style="width:34px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);" title="Musique">
-        <span class="music-toggle-icon">♪</span>
+      <button id="music-toggle-btn" type="button" style="width:34px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);" title="Musique">
+        <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       </button>
     </div>
 
@@ -1059,10 +1139,10 @@ function getOriginalHTML(): string {
       <section style="padding:0 16px;margin-top:-52px;position:relative;z-index:10;">
         <article class="invitation-card invitation-card--floral rounded-2xl text-center" aria-label="Carte d'invitation">
           <div class="invitation-card-floral invitation-card-floral--tl" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="#111827" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="#111827" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="#111827" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="#111827" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="#111827"/><circle cx="52" cy="30" r="2.5" fill="#111827"/><path d="M20 48c4 6 10 8 16 6" stroke="#111827" stroke-width="0.9" stroke-linecap="round"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
           </div>
           <div class="invitation-card-floral invitation-card-floral--br" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="#111827" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="#111827" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="#111827" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="#111827" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="#111827"/><circle cx="52" cy="30" r="2.5" fill="#111827"/><path d="M20 48c4 6 10 8 16 6" stroke="#111827" stroke-width="0.9" stroke-linecap="round"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
           </div>
           <div class="invitation-card-inner">
             <p class="invite-card-overline">Vous êtes cordialement invité(e)</p>
@@ -1091,7 +1171,7 @@ function getOriginalHTML(): string {
           <img id="about-cover-image" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Notre histoire" style="width:100%;height:100%;object-fit:cover;opacity:0.62;">
           <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 24px;">
             <div style="color:white;">
-              <h3 id="about-card-title" class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;">Notre histoire</h3>
+              <h3 id="about-card-title" class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;color:white !important;">Notre histoire</h3>
               <p id="about-toggle-label" style="font-size:11px;color:#e5e7eb;font-weight:400;display:inline-flex;align-items:center;background:rgba(0,0,0,0.35);padding:4px 10px;border-radius:999px;backdrop-filter:blur(4px);">
                 Découvrir notre histoire ›
               </p>
@@ -1099,8 +1179,8 @@ function getOriginalHTML(): string {
           </div>
         </div>
         <div id="about-toggle-detail" class="surface-card" style="display:none;background:white;border-radius:16px;margin-top:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #f3f4f6;">
-          <p id="about-story-1" style="font-size:13px;color:#4b5563;line-height:1.75;margin-bottom:10px;"></p>
-          <p id="about-story-2" style="font-size:13px;color:#4b5563;line-height:1.75;"></p>
+          <p id="about-story-1" class="inv-text-muted" style="font-size:13px;line-height:1.75;margin-bottom:10px;"></p>
+          <p id="about-story-2" class="inv-text-muted" style="font-size:13px;line-height:1.75;"></p>
         </div>
       </section>
 
@@ -1108,7 +1188,7 @@ function getOriginalHTML(): string {
       <section id="section-gallery" style="padding:0 16px;margin-top:24px;">
         <div class="best-photos-shell" style="padding:18px 16px;color:white;">
           <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Moments d'exception</p>
-          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;">Les plus belles photos</h3>
+          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white !important;">Les plus belles photos</h3>
           <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
             <img src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=700&q=80" style="height:165px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo 1">
             <img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80" style="height:165px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo 2">
@@ -1130,10 +1210,10 @@ function getOriginalHTML(): string {
       <!-- 5. Dress Code -->
       <section id="section-dress-code" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
-          <div style="width:40px;height:40px;background:#fdf2f8;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+          <div class="inv-icon-badge" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
             <svg style="width:20px;height:20px;color:var(--rsvp-color, #ec4899);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
           </div>
-          <h3 id="dress-code-title" class="font-serif text-lg mb-1" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
+          <h3 id="dress-code-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
           <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">Code vestimentaire</p>
           <div class="dress-marquee-wrapper">
             <div class="dress-marquee-track">
@@ -1153,24 +1233,24 @@ function getOriginalHTML(): string {
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;border:1px solid #f3f4f6;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
             <div>
-              <p id="event-day" style="font-size:32px;font-weight:300;color:#1f2937;line-height:1;">30</p>
+              <p id="event-day" class="inv-text-primary" style="font-size:32px;font-weight:300;line-height:1;">30</p>
               <p id="event-month-year" style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;margin-top:4px;">Avril 2026</p>
             </div>
-            <div id="event-time-badge" style="background:#f9fafb;padding:8px 14px;border-radius:12px;text-align:center;border:1px solid #f3f4f6;">
+            <div id="event-time-badge" class="inv-subsurface" style="padding:8px 14px;border-radius:12px;text-align:center;">
               <svg style="width:16px;height:16px;margin:0 auto 4px;color:var(--rsvp-color, #ec4899);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <p id="event-time-range" style="font-size:11px;font-weight:600;color:#374151;">19h00</p>
+              <p id="event-time-range" class="inv-text-primary" style="font-size:11px;font-weight:600;">19h00</p>
             </div>
           </div>
 
-          <!-- Vrai Calendrier dynamique du mois -->
-          <div style="margin-bottom:24px;background:#f9fafb;border-radius:14px;padding:16px;border:1px solid #f3f4f6;">
+          <!-- Calendrier dynamique du mois -->
+          <div class="inv-subsurface" style="margin-bottom:24px;border-radius:14px;padding:16px;">
             <div style="display:flex;justify-content:center;align-items:center;margin-bottom:14px;">
-              <span id="calendar-month-label" style="font-weight:700;font-size:11px;color:#374151;text-transform:uppercase;letter-spacing:0.2em;">Avril 2026</span>
+              <span id="calendar-month-label" class="inv-text-primary" style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.2em;">Avril 2026</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:9px;color:#9ca3af;margin-bottom:8px;font-weight:700;">
               <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
             </div>
-            <div id="calendar-days-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;color:#6b7280;"></div>
+            <div id="calendar-days-grid" class="inv-text-muted" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;"></div>
           </div>
 
           <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:18px;text-align:center;">Programme de la journée</p>
@@ -1181,7 +1261,7 @@ function getOriginalHTML(): string {
       <!-- 7. Lieu & Itinéraire -->
       <section style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:6px;border:1px solid #f3f4f6;overflow:hidden;">
-          <div style="height:11.5rem;position:relative;background:#e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="height:11.5rem;position:relative;background:#1e293b;border-radius:12px;overflow:hidden;">
             <img id="map-image" src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" style="width:100%;height:100%;object-fit:cover;opacity:0.75;" alt="Lieu">
             <div style="position:absolute;inset:0;display:flex;justify-content:center;align-items:center;pointer-events:none;">
               <div style="width:46px;height:46px;background:white;border-radius:999px;box-shadow:0 10px 20px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">
@@ -1190,9 +1270,9 @@ function getOriginalHTML(): string {
             </div>
           </div>
           <div style="padding:18px 16px;text-align:center;">
-            <h3 id="venue-title" class="font-serif text-lg mb-1" style="font-family:'Playfair Display',serif;color:#1f2937;">Lieu</h3>
-            <p id="venue-address" style="font-size:12px;color:#6b7280;margin-bottom:14px;padding:0 12px;"></p>
-            <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex;width:100%;justify-content:center;align-items:center;gap:8px;background:#111827;color:#ffffff;padding:13px 20px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;transition:opacity 0.2s;">
+            <h3 id="venue-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Lieu</h3>
+            <p id="venue-address" class="inv-text-muted" style="font-size:12px;margin-bottom:14px;padding:0 12px;"></p>
+            <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-rsvp" style="display:inline-flex;width:100%;justify-content:center;align-items:center;gap:8px;padding:13px 20px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
               <span>Ouvrir l'itinéraire sur Google Maps</span>
             </a>
@@ -1206,19 +1286,19 @@ function getOriginalHTML(): string {
           <p id="countdown-status" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--rsvp-color, #ec4899);margin-bottom:16px;min-height:18px;"></p>
           <div style="display:flex;justify-content:center;gap:10px;">
             <div style="text-align:center;width:60px;">
-              <div id="days" style="width:100%;height:56px;background:#f9fafb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:#1f2937;border:1px solid #f3f4f6;">00</div>
+              <div id="days" class="inv-subsurface inv-text-primary" style="width:100%;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">00</div>
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Jours</p>
             </div>
             <div style="text-align:center;width:60px;">
-              <div id="hours" style="width:100%;height:56px;background:#f9fafb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:#1f2937;border:1px solid #f3f4f6;">00</div>
+              <div id="hours" class="inv-subsurface inv-text-primary" style="width:100%;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">00</div>
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Heures</p>
             </div>
             <div style="text-align:center;width:60px;">
-              <div id="minutes" style="width:100%;height:56px;background:#f9fafb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:#1f2937;border:1px solid #f3f4f6;">00</div>
+              <div id="minutes" class="inv-subsurface inv-text-primary" style="width:100%;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">00</div>
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Min</p>
             </div>
             <div style="text-align:center;width:60px;">
-              <div id="seconds" style="width:100%;height:56px;background:#fdf2f8;color:var(--rsvp-color, #ec4899);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;border:1px solid #fce7f3;">00</div>
+              <div id="seconds" class="inv-icon-badge" style="width:100%;height:56px;color:var(--rsvp-color, #ec4899);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;border:1px solid rgba(236,72,153,0.2);">00</div>
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Sec</p>
             </div>
           </div>
@@ -1228,8 +1308,8 @@ function getOriginalHTML(): string {
       <!-- 9. Confirmation de présence (RSVP) -->
       <section id="section-rsvp" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
-          <h3 class="font-serif" style="font-family:'Playfair Display',serif;font-size:20px;color:#1f2937;margin-bottom:4px;">Votre réponse</h3>
-          <p id="rsvp-deadline-caption" style="font-size:11px;color:#6b7280;margin-bottom:14px;display:none;"></p>
+          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;">Votre réponse</h3>
+          <p id="rsvp-deadline-caption" class="inv-text-muted" style="font-size:11px;margin-bottom:14px;display:none;"></p>
           <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:15px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
             <span style="width:26px;height:26px;border-radius:999px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;">
               <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -1247,9 +1327,11 @@ function getOriginalHTML(): string {
       <section id="drink-menu-section" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="drink-menu-shell surface-card" style="border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #f3f4f6;overflow:hidden;">
           <div style="padding:20px 20px 12px;text-align:center;">
-            <div style="width:42px;height:42px;border-radius:999px;background:linear-gradient(135deg,#fce7f3,#fdf2f8);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:1.25rem;">🥂</div>
-            <h3 style="font-family:'Playfair Display',serif;font-size:19px;color:#1f2937;margin-bottom:4px;">Préférences de boissons</h3>
-            <p style="font-size:11px;color:#6b7280;max-width:320px;margin:0 auto;">Touchez vos préférences pour le jour J (optionnel).</p>
+            <div class="inv-icon-badge" style="width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--rsvp-color, #ec4899);">
+              <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>
+            </div>
+            <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Préférences de boissons</h3>
+            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Touchez vos préférences pour le jour J (optionnel).</p>
           </div>
           <div id="drink-menu-grid" class="drink-menu-grid" style="padding:0 16px 16px;"></div>
         </div>
@@ -1258,7 +1340,7 @@ function getOriginalHTML(): string {
       <!-- 11. Informations pratiques -->
       <section id="section-practical-info" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;">
-          <h3 style="font-weight:700;font-size:12px;color:#1f2937;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.08em;">
+          <h3 class="inv-text-primary" style="font-weight:700;font-size:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.08em;">
             <span id="practical-info-title">Informations pratiques</span>
             <span id="practical-info-count" style="color:#9ca3af;font-size:10px;font-weight:500;"></span>
           </h3>
@@ -1266,20 +1348,23 @@ function getOriginalHTML(): string {
         </div>
       </section>
 
-      <!-- 12. Cadeau / Cagnotte / Contact (affiché uniquement si renseigné) -->
+      <!-- 12. Cadeau / Cagnotte / Contact -->
       <section id="section-gift-contact" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;text-align:center;">
-          <h3 class="font-serif" style="font-family:'Playfair Display',serif;font-size:18px;color:#1f2937;margin-bottom:6px;">Une attention ou une question ?</h3>
-          <p style="font-size:11px;color:#6b7280;margin-bottom:14px;">Retrouvez nos liens directs ci-dessous</p>
+          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Une attention ou une question ?</h3>
+          <p class="inv-text-muted" style="font-size:11px;margin-bottom:14px;">Retrouvez nos liens directs ci-dessous</p>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <a id="gift-donation-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:var(--rsvp-color, #ec4899);color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
-              🎁 Accéder à la cagnotte / Liste de cadeaux
+              <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+              <span>Accéder à la cagnotte / Liste de cadeaux</span>
             </a>
             <a id="gift-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:#10b981;color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
-              💬 Écrire sur WhatsApp
+              <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+              <span>Écrire sur WhatsApp</span>
             </a>
-            <a id="support-email-link" href="#" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:#f3f4f6;color:#1f2937;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
-              ✉️ Nous envoyer un e-mail
+            <a id="support-email-link" href="#" class="inv-subsurface inv-text-primary" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
+              <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <span>Nous envoyer un e-mail</span>
             </a>
           </div>
         </div>

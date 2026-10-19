@@ -10,7 +10,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { deleteInvitation, listInvitations, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2 } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2, Mail, Heart } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -211,7 +211,9 @@ export default function DashboardPage() {
             </div>
           ) : events.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="text-4xl mb-4">💌</div>
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-7 h-7" />
+              </div>
               <p className="text-gray-500 dark:text-gray-400 mb-4">
                 Vous n'avez pas encore d'événement. Créez votre première invitation.
               </p>
@@ -234,7 +236,9 @@ export default function DashboardPage() {
                     {/* Infos */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg">💍</span>
+                        <span className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center flex-shrink-0">
+                          <Heart className="w-4 h-4" />
+                        </span>
                         <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">{event.title}</h3>
                       </div>
                       <div className="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">

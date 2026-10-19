@@ -8,6 +8,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug } from '@/lib/events/store';
 import { lookupGuestByToken, PublicGuest } from '@/lib/guests/store';
+import { Heart, Home } from 'lucide-react';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -64,7 +65,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f4f4f6' }}>
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f4f6] dark:bg-[#0b0f19]">
         <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -72,13 +73,16 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#f4f4f6' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f4f4f6] dark:bg-[#0b0f19]">
         <div className="text-center max-w-sm">
-          <div className="text-6xl mb-4">💍</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Invitation introuvable</h1>
-          <p className="text-sm text-gray-600 mb-4">Désolé, l'invitation "{slug}" n'existe pas.</p>
-          <a href="/" className="inline-block bg-pink-500 hover:bg-pink-600 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
-            🏠 Retour à l'accueil
+          <div className="w-16 h-16 rounded-2xl bg-pink-50 dark:bg-pink-900/30 text-pink-500 flex items-center justify-center mx-auto mb-4">
+            <Heart className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Invitation introuvable</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Désolé, l'invitation "{slug}" n'existe pas.</p>
+          <a href="/" className="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
+            <Home className="w-4 h-4" />
+            <span>Retour à l'accueil</span>
           </a>
         </div>
       </div>

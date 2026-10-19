@@ -12,6 +12,20 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { FREE_GUEST_LIMIT } from '@/constants/pricing';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
+import {
+  BarChart3,
+  Users,
+  CheckCircle2,
+  Download,
+  Upload,
+  MessageCircle,
+  Check,
+  X,
+  Pencil,
+  QrCode,
+  Trash2,
+  Mail,
+} from 'lucide-react';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 
@@ -282,14 +296,14 @@ function GuestManagementContent() {
         {/* Tabs */}
         <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-2xl p-1 shadow-sm border border-gray-100 dark:border-gray-700">
           {[
-            { id: 'overview' as Tab, icon: '📊', label: 'Vue d\'ensemble' },
-            { id: 'guests' as Tab, icon: '👥', label: 'Invités' },
-            { id: 'rsvps' as Tab, icon: '✓', label: 'Confirmations' },
-            { id: 'exports' as Tab, icon: '📥', label: 'Exports' },
+            { id: 'overview' as Tab, icon: <BarChart3 className="w-3.5 h-3.5" />, label: 'Vue d\'ensemble' },
+            { id: 'guests' as Tab, icon: <Users className="w-3.5 h-3.5" />, label: 'Invités' },
+            { id: 'rsvps' as Tab, icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: 'Confirmations' },
+            { id: 'exports' as Tab, icon: <Download className="w-3.5 h-3.5" />, label: 'Exports' },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-medium transition ${activeTab === tab.id ? 'bg-rose-500 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-              <span className="mr-1">{tab.icon}</span> {tab.label}
+              className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5 transition ${activeTab === tab.id ? 'bg-rose-500 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+              {tab.icon} <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -319,7 +333,10 @@ function GuestManagementContent() {
           <div className="space-y-4">
             {/* Import CSV */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">📥 Importer des invités</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-rose-500" />
+                <span>Importer des invités</span>
+              </h2>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">Format CSV : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom,telephone,groupe,email</code></p>
               <div className="flex flex-wrap gap-2">
                 <label className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-rose-600 transition">
@@ -374,7 +391,10 @@ function GuestManagementContent() {
 
             {/* Message WhatsApp */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">💬 Message WhatsApp</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-emerald-500" />
+                <span>Message WhatsApp</span>
+              </h2>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">Variables : <strong>{'{nom}'}</strong> et <strong>{'{lien}'}</strong></p>
               <textarea value={waTemplate} onChange={(e) => setWaTemplate(e.target.value)} rows={2}
                 className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none" />
@@ -396,7 +416,9 @@ function GuestManagementContent() {
             {/* Tableau */}
             {filteredGuests.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-10 text-center">
-                <p className="text-4xl mb-3">👥</p>
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-6 h-6" />
+                </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité. Importez un CSV ou ajoutez manuellement.</p>
               </div>
             ) : (
@@ -435,14 +457,14 @@ function GuestManagementContent() {
                             <div className="flex gap-1 justify-end">
                               {g.status !== 'confirmed' && (
                                 <button onClick={() => handleStatusChange(g.id, 'confirmed')} title="Confirmer"
-                                  className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs">✅</button>
+                                  className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs"><Check className="w-3.5 h-3.5" /></button>
                               )}
                               {g.status !== 'declined' && (
                                 <button onClick={() => handleStatusChange(g.id, 'declined')} title="Refuser"
-                                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs">❌</button>
+                                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs"><X className="w-3.5 h-3.5" /></button>
                               )}
                               <button onClick={() => setEditingGuest(g)} title="Modifier"
-                                className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition text-xs">✏️</button>
+                                className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition text-xs"><Pencil className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
                                   const link = personalLink(g);
@@ -464,14 +486,14 @@ function GuestManagementContent() {
                                   };
                                 }}
                                 title="QR Code"
-                                className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs">🔲</button>
+                                className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs"><QrCode className="w-3.5 h-3.5" /></button>
                               {g.phone && (
                                 <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', personalLink(g)))}`}
                                   target="_blank" rel="noopener" title="WhatsApp"
-                                  className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs">💬</a>
+                                  className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs"><MessageCircle className="w-3.5 h-3.5" /></a>
                               )}
                               <button onClick={() => handleDelete(g.id)} title="Supprimer"
-                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs">🗑️</button>
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           </td>
                         </tr>
@@ -492,7 +514,9 @@ function GuestManagementContent() {
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-4">Liste des invités ayant confirmé ou refusé.</p>
               {guests.filter(g => g.status !== 'pending').length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-4xl mb-3">✉️</p>
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center mx-auto mb-3">
+                    <Mail className="w-6 h-6" />
+                  </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Aucune confirmation reçue pour l'instant.</p>
                 </div>
               ) : (
@@ -517,7 +541,10 @@ function GuestManagementContent() {
         {/* ═══════ EXPORTS ═══════ */}
         {activeTab === 'exports' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">📥 Exporter les données</h2>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+              <Download className="w-4 h-4 text-rose-500" />
+              <span>Exporter les données</span>
+            </h2>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-4">Téléchargez vos listes pour archivage ou impression.</p>
             <div className="flex flex-wrap gap-2">
               <button onClick={handleExportCSV} className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-medium hover:bg-rose-600 transition">

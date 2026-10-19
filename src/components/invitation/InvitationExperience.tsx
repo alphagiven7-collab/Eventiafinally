@@ -200,6 +200,27 @@ export default function InvitationExperience({
   return <div ref={containerRef} className="invitation-experience-host" />;
 }
 
+function isWebAddress(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function placeLabel(value: string): string {
+  const text = value.trim();
+  if (!text || isWebAddress(text)) return '';
+  return text;
+}
+
+function isCurrentInvitation(href: string, slug: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const url = new URL(href, window.location.origin);
+    const path = url.pathname.replace(/\/$/, '');
+    return url.origin === window.location.origin && path === `/e/${slug}`;
+  } catch {
+    return false;
+  }
+}
+
 function mauveButton(hex: string): string {
   const match = hex.trim().toLowerCase().match(/^#([0-9a-f]{6})$/);
   if (!match) return '#7c3aed';
@@ -404,11 +425,13 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   }
 
   // Lieu & Bouton Itinéraire
-  const venueName = event.venue || event.venueDetails?.title || event.location || 'Lieu de réception';
-  const venueAddr = event.venueDetails?.address || event.address || event.location || '';
-  setText('#venue-title', venueName);
+  const rawPlace = [event.venue, event.venueDetails?.title, event.location, event.address, event.venueDetails?.address]
+    .find((value) => value && isWebAddress(value)) || '';
+  const venueName = placeLabel(event.venue || event.venueDetails?.title || event.location || '');
+  const venueAddr = placeLabel(event.venueDetails?.address || event.address || '');
+  setText('#venue-title', venueName || 'Lieu de réception');
   setText('#venue-address', venueAddr);
-  setText('#summary-venue', venueName);
+  setText('#summary-venue', venueName || 'Lieu de réception');
   setText('#summary-address', venueAddr);
 
   const customMapImg = event.venueDetails?.mapImage || event.mapImage || '';
@@ -420,13 +443,22 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     mapFrame.style.display = 'none';
   }
 
-  const rawMapLink = event.links?.map || event.mapLink || '';
-  const mapQuery = encodeURIComponent([venueName, venueAddr].filter(Boolean).join(', '));
-  const resolvedMapUrl =
-    rawMapLink && rawMapLink !== '#'
-      ? rawMapLink
-      : `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
-  setHref('#venue-map-link', resolvedMapUrl);
+  const rawMapLink = event.links?.map || event.mapLink || rawPlace;
+  const mapQuery = encodeURIComponent([venueName, venueAddr].filter((value) => value && value !== 'Lieu de réception').join(', '));
+  const candidateMap = rawMapLink && rawMapLink !== '#' && isWebAddress(rawMapLink) ? rawMapLink : '';
+  const resolvedMapUrl = !candidateMap || isCurrentInvitation(candidateMap, event.slug)
+    ? (mapQuery ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}` : '')
+    : candidateMap;
+  const mapLink = root.querySelector('#venue-map-link') as HTMLAnchorElement | null;
+  if (mapLink) {
+    if (resolvedMapUrl) {
+      mapLink.href = resolvedMapUrl;
+      mapLink.style.display = '';
+    } else {
+      mapLink.removeAttribute('href');
+      mapLink.style.display = 'none';
+    }
+  }
 
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Confirmer ma présence';
@@ -1163,11 +1195,10 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   const customUrl = event.ambiance.musicUrl || '';
   const hasFile = Boolean(event.ambiance.hasFile) || customUrl.startsWith('data:');
   const directSrc = customUrl.startsWith('data:') || customUrl.startsWith('http') ? customUrl : '';
-  const defaultMusic = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
 
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
-  audio.preload = 'auto';
+  audio.preload = 'none';
   audio.setAttribute('playsinline', '');
   audio.style.display = 'block';
   audio.style.position = 'absolute';
@@ -1202,11 +1233,13 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
     tryPlay();
   };
 
-  if (directSrc) arm(directSrc);
+  if (directSrc.startsWith('http') || directSrc.startsWith('data:')) arm(directSrc);
   else if (hasFile) {
-    void fetchEventMusic(createClient(), event.id).then((url) => arm(url || defaultMusic)).catch(() => arm(defaultMusic));
-  } else {
-    arm(defaultMusic);
+    void fetchEventMusic(createClient(), event.id).then((url) => {
+      if (url) arm(url);
+    }).catch(() => {
+      /* pas de musique distante de secours : elle ralentit l’ouverture */
+    });
   }
 
   const onFirstGesture = (event: Event) => {

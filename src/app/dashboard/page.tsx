@@ -385,7 +385,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => {
                         const url = `${window.location.origin}/e/${event.slug}`;
-                        const text = `Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : ${url}`;
+                        const text = `Tu es invité(e) à "${event.title}" ! ${url}`;
                         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition"

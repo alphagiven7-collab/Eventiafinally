@@ -993,7 +993,7 @@ function EditEventContent() {
     const origin =
       typeof window !== 'undefined' ? window.location.origin : 'https://eventiafinally.vercel.app';
     const publicUrl = `${origin}/e/${event?.slug || slug}`;
-    const shareText = `Tu es invité(e) à "${title || event?.title}" ! Découvre ton invitation ici : ${publicUrl}`;
+    const shareText = `Tu es invité(e) à "${title || event?.title}" !`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -1014,7 +1014,7 @@ function EditEventContent() {
       addToast('success', 'Lien de l’invitation copié !');
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener');
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${publicUrl}`)}`, '_blank', 'noopener');
     }
   }, [event?.slug, event?.title, slug, title, addToast]);
 

@@ -47,23 +47,21 @@ self.addEventListener('fetch', (event) => {
   if (/\/(api|auth|dashboard|create|admin)\b/.test(url.pathname)) return;
 
   const invitationNavigation = request.mode === 'navigate' && /^\/e\/[^/]+\/?$/.test(url.pathname);
+  if (!invitationNavigation) return;
 
   event.respondWith((async () => {
-    const cache = await caches.open(SHELL_CACHE);
     const offline = self.navigator.onLine === false;
-    if (invitationNavigation && offline) {
+    if (offline) {
+      const cache = await caches.open(SHELL_CACHE);
       const shell = await cache.match(SHELL_URL);
       if (shell) return shellResponse(shell);
     }
     try {
-      return await fetch(request, invitationNavigation ? { cache: 'no-store' } : undefined);
+      return await fetch(request);
     } catch {
-      if (invitationNavigation) {
-        const shell = await cache.match(SHELL_URL);
-        if (shell) return shellResponse(shell);
-      }
-      const cached = await cache.match(request);
-      if (cached) return cached;
+      const cache = await caches.open(SHELL_CACHE);
+      const shell = await cache.match(SHELL_URL);
+      if (shell) return shellResponse(shell);
       return new Response('Hors ligne', {
         status: 503,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },

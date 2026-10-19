@@ -13,8 +13,8 @@ import { Heart, Home } from 'lucide-react';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const [event, setEvent] = useState<EventWithSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [event, setEvent] = useState<EventWithSettings | null>(() => getEventBySlug(slug));
+  const [loading, setLoading] = useState(() => !getEventBySlug(slug));
   const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
   const [liveStatus, setLiveStatus] = useState<GuestStatus | null>(null);
   const [rsvpNotice, setRsvpNotice] = useState('');
@@ -26,6 +26,13 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     let cancelled = false;
 
     async function loadEvent() {
+      const known = getEventBySlug(slug);
+      if (known) {
+        setEvent(known);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       const token = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '';
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const saved = await readOfflineInvitation(slug, token);
@@ -75,7 +82,6 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
       }
     }
 
-    setLoading(true);
     loadEvent();
 
     return () => { cancelled = true; };

@@ -20,17 +20,22 @@ export default function InvitationExperience({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const root = containerRef.current;
+    const host = containerRef.current;
+    if (!host) return;
+    const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
+    shadow.replaceChildren();
 
     const tailwind = document.createElement('link');
     tailwind.rel = 'stylesheet';
     tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
-    root.prepend(tailwind);
 
     const style = document.createElement('style');
     style.textContent = getOriginalCSS();
-    root.prepend(style);
+
+    const root = document.createElement('div');
+    root.className = 'invitation-experience-root';
+    root.innerHTML = getOriginalHTML();
+    shadow.append(tailwind, style, root);
 
     hydrateEventData(root, event, guestName);
 
@@ -50,16 +55,11 @@ export default function InvitationExperience({
       detachGallery();
       detachMusic();
       detachRsvp();
-      style.remove();
-      tailwind.remove();
+      shadow.replaceChildren();
     };
   }, [event, guestName, guestToken, guestStatus]);
 
-  return (
-    <div ref={containerRef} className="invitation-experience-root">
-      <div dangerouslySetInnerHTML={{ __html: getOriginalHTML() }} />
-    </div>
-  );
+  return <div ref={containerRef} className="invitation-experience-host" />;
 }
 
 function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName?: string) {
@@ -372,7 +372,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
           (item) => `
           <div style="display:flex;align-items:flex-start;gap:12px;">
             <div class="inv-icon-badge" style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg style="width:16px;height:16px;color:${rsvpColor};" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg style="width:16px;height:16px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="${iconMap[item.icon] || iconMap.car}"/>
               </svg>
             </div>
@@ -637,6 +637,24 @@ function initGate(root: HTMLElement, guestName?: string) {
   }
 }
 
+function readIsDark(): boolean {
+  try {
+    const explicit = localStorage.getItem('invitia_theme');
+    if (explicit === 'dark' || explicit === 'light') return explicit === 'dark';
+    const theme = localStorage.getItem('theme') || localStorage.getItem('wedding_theme_mode');
+    if (theme === 'dark' || theme === 'light') return theme === 'dark';
+  } catch {
+    /* stockage indisponible */
+  }
+  if (document.documentElement.classList.contains('dark')) return true;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
+
+function applyDocumentTheme(isDark: boolean) {
+  document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+}
+
 function initThemeToggle(root: HTMLElement) {
   const toggle = root.querySelector('#theme-toggle-input') as HTMLInputElement | null;
   const thumb = root.querySelector('.theme-thumb') as HTMLElement | null;
@@ -645,41 +663,53 @@ function initThemeToggle(root: HTMLElement) {
   const sunSvg = `<svg style="width:11px;height:11px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
   const moonSvg = `<svg style="width:11px;height:11px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 
-  const applyTheme = (isDark: boolean) => {
+  const paintInvitation = (isDark: boolean) => {
     toggle.checked = isDark;
     root.classList.toggle('dark-mode-applied', isDark);
-    document.documentElement.classList.toggle('dark', isDark);
     if (thumb) {
       thumb.style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
+      thumb.style.background = '#2563eb';
+      thumb.style.color = '#ffffff';
       thumb.innerHTML = isDark ? moonSvg : sunSvg;
     }
   };
 
-  try {
-    const saved =
-      localStorage.getItem('invitia_theme') ||
-      localStorage.getItem('theme') ||
-      localStorage.getItem('wedding_theme_mode');
-    if (saved === 'dark' || (!saved && document.documentElement.classList.contains('dark'))) {
-      applyTheme(true);
-    } else {
-      applyTheme(false);
-    }
-  } catch {
-    applyTheme(false);
-  }
+  const initialDark = document.documentElement.classList.contains('dark') || readIsDark();
+  applyDocumentTheme(initialDark);
+  paintInvitation(initialDark);
+
+  const onExternal = (event: Event) => {
+    const next = (event as CustomEvent<string>).detail;
+    paintInvitation(next === 'dark' || next === 'light' ? next === 'dark' : readIsDark());
+  };
+
+  const onClassChange = () => {
+    paintInvitation(document.documentElement.classList.contains('dark'));
+  };
 
   const onChange = () => {
     const isDark = toggle.checked;
-    applyTheme(isDark);
     try {
       localStorage.setItem('invitia_theme', isDark ? 'dark' : 'light');
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    } catch {}
+    } catch {
+      /* stockage indisponible */
+    }
+    applyDocumentTheme(isDark);
+    paintInvitation(isDark);
+    window.dispatchEvent(new CustomEvent('invitia-theme-change', { detail: isDark ? 'dark' : 'light' }));
   };
 
+  const observer = new MutationObserver(onClassChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   toggle.addEventListener('change', onChange);
-  return () => toggle.removeEventListener('change', onChange);
+  window.addEventListener('invitia-theme-change', onExternal);
+
+  return () => {
+    observer.disconnect();
+    toggle.removeEventListener('change', onChange);
+    window.removeEventListener('invitia-theme-change', onExternal);
+  };
 }
 
 function getDrinkIconSvg(id: string): string {
@@ -729,7 +759,7 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
       <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${d.id}">
         <input type="checkbox" class="drink-card-input" value="${d.id}" ${selected.has(d.id) ? 'checked' : ''}>
         <div class="drink-card-media">
-          <div class="drink-card-icon-wrap" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--rsvp-color, #ec4899);">
+          <div class="drink-card-icon-wrap" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--icon-color, #2563eb);">
             ${getDrinkIconSvg(d.id)}
           </div>
           <span class="drink-card-check">${selected.has(d.id) ? checkSvg : ''}</span>
@@ -811,6 +841,7 @@ function getOriginalCSS(): string {
       --primary-color: #db2777;
       --accent-color: #be185d;
       --rsvp-color: #ec4899;
+      --icon-color: #2563eb;
       font-family: 'Montserrat', sans-serif;
       background-color: #f4f4f6;
       color: #1f2937;
@@ -822,7 +853,7 @@ function getOriginalCSS(): string {
     .invitation-experience-root .inv-text-primary { color: #1f2937; }
     .invitation-experience-root .inv-text-muted { color: #6b7280; }
     .invitation-experience-root .inv-subsurface { background: #f9fafb; border: 1px solid #f3f4f6; }
-    .invitation-experience-root .inv-icon-badge { background: #fdf2f8; }
+    .invitation-experience-root .inv-icon-badge { background: #eff6ff; color: var(--icon-color, #2563eb); }
     .invitation-experience-root .hero-bg {
       background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), var(--hero-image-url);
       background-size: cover;
@@ -993,7 +1024,7 @@ function getOriginalCSS(): string {
       box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.25), 0 10px 24px rgba(236, 72, 153, 0.12);
     }
     .invitation-experience-root .drink-card-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
-    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 78px; overflow: hidden; background: linear-gradient(135deg, #fdf2f8, #fce7f3); }
+    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 78px; overflow: hidden; background: linear-gradient(135deg, #eff6ff, #dbeafe); }
     .invitation-experience-root .drink-card-check {
       position: absolute;
       top: 8px;
@@ -1040,8 +1071,12 @@ function getOriginalCSS(): string {
       border-color: rgba(148, 163, 184, 0.14) !important;
       color: #e5e7eb !important;
     }
+    .invitation-experience-root.dark-mode-applied {
+      --icon-color: #60a5fa;
+    }
     .invitation-experience-root.dark-mode-applied .inv-icon-badge {
-      background: rgba(236, 72, 153, 0.15) !important;
+      background: rgba(37, 99, 235, 0.2) !important;
+      color: #60a5fa !important;
     }
     .invitation-experience-root.dark-mode-applied .inv-text-primary,
     .invitation-experience-root.dark-mode-applied h3 {
@@ -1085,7 +1120,7 @@ function getOriginalCSS(): string {
       border-color: var(--rsvp-color, #ec4899) !important;
     }
     .invitation-experience-root.dark-mode-applied .drink-card-media {
-      background: linear-gradient(135deg, rgba(236, 72, 153, 0.14), rgba(190, 24, 93, 0.2)) !important;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(30, 64, 175, 0.28)) !important;
     }
     .invitation-experience-root.dark-mode-applied .drink-card-title {
       color: #f8fafc !important;
@@ -1129,7 +1164,7 @@ function getOriginalHTML(): string {
       <header class="hero-bg" style="height:58vh;min-height:360px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;padding:0 22px;position:relative;">
         <p id="hero-date-pill" style="font-size:10px;letter-spacing:0.28em;text-transform:uppercase;background:rgba(255,255,255,0.16);backdrop-filter:blur(6px);padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);margin-bottom:14px;"></p>
         <h1 id="hero-title" class="font-serif text-2xl md:text-3xl mb-3" style="font-family:'Playfair Display',serif;letter-spacing:0.04em;text-shadow:0 2px 14px rgba(0,0,0,0.35);">Titre</h1>
-        <div style="width:22px;height:22px;color:#f9a8d4;margin:4px auto 12px;">
+        <div style="width:22px;height:22px;color:#60a5fa;margin:4px auto 12px;">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </div>
         <p id="hero-subtitle" style="font-size:13px;font-weight:300;letter-spacing:0.2em;text-transform:uppercase;opacity:0.92;">Couple</p>
@@ -1211,7 +1246,7 @@ function getOriginalHTML(): string {
       <section id="section-dress-code" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
           <div class="inv-icon-badge" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-            <svg style="width:20px;height:20px;color:var(--rsvp-color, #ec4899);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
+            <svg style="width:20px;height:20px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
           </div>
           <h3 id="dress-code-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
           <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">Code vestimentaire</p>
@@ -1237,7 +1272,7 @@ function getOriginalHTML(): string {
               <p id="event-month-year" style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;margin-top:4px;">Avril 2026</p>
             </div>
             <div id="event-time-badge" class="inv-subsurface" style="padding:8px 14px;border-radius:12px;text-align:center;">
-              <svg style="width:16px;height:16px;margin:0 auto 4px;color:var(--rsvp-color, #ec4899);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg style="width:16px;height:16px;margin:0 auto 4px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <p id="event-time-range" class="inv-text-primary" style="font-size:11px;font-weight:600;">19h00</p>
             </div>
           </div>
@@ -1265,7 +1300,7 @@ function getOriginalHTML(): string {
             <img id="map-image" src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" style="width:100%;height:100%;object-fit:cover;opacity:0.75;" alt="Lieu">
             <div style="position:absolute;inset:0;display:flex;justify-content:center;align-items:center;pointer-events:none;">
               <div style="width:46px;height:46px;background:white;border-radius:999px;box-shadow:0 10px 20px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">
-                <svg style="width:22px;height:22px;color:var(--rsvp-color, #ec4899);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <svg style="width:22px;height:22px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               </div>
             </div>
           </div>
@@ -1327,7 +1362,7 @@ function getOriginalHTML(): string {
       <section id="drink-menu-section" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="drink-menu-shell surface-card" style="border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #f3f4f6;overflow:hidden;">
           <div style="padding:20px 20px 12px;text-align:center;">
-            <div class="inv-icon-badge" style="width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--rsvp-color, #ec4899);">
+            <div class="inv-icon-badge" style="width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--icon-color, #2563eb);">
               <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>
             </div>
             <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Préférences de boissons</h3>
@@ -1363,7 +1398,7 @@ function getOriginalHTML(): string {
               <span>Écrire sur WhatsApp</span>
             </a>
             <a id="support-email-link" href="#" class="inv-subsurface inv-text-primary" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
-              <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <svg style="width:16px;height:16px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
               <span>Nous envoyer un e-mail</span>
             </a>
           </div>

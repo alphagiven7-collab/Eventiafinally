@@ -157,3 +157,33 @@
     background-image: linear-gradient(to right, var(--tw-gradient-stops));
   }
 }
+
+/* Le mode sombre doit atteindre les champs natifs, même si une feuille externe redéfinit les utilitaires. */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark :where(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']):not([type='button']):not([type='submit']):not([type='reset']),
+  textarea,
+  select
+) {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  border-color: #4b5563 !important;
+  caret-color: #60a5fa;
+}
+
+html.dark :where(input, textarea)::placeholder {
+  color: #9ca3af !important;
+}
+
+html.dark option,
+html.dark optgroup {
+  background-color: #111827;
+  color: #f9fafb;
+}

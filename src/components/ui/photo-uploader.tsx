@@ -104,8 +104,8 @@ export default function PhotoUploader({
         onClick={() => fileInputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 ${
           dragOver
-            ? 'border-rose-400 bg-rose-50 dark:bg-rose-900/20 scale-[1.01]'
-            : 'border-gray-200 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/50 hover:border-rose-300 hover:bg-rose-50/40 dark:hover:bg-rose-900/10'
+            ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/40 scale-[1.01]'
+            : 'border-gray-200 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/50 hover:border-blue-300 hover:bg-blue-50/40 dark:hover:bg-blue-950/20'
         }`}
       >
         <input
@@ -119,15 +119,15 @@ export default function PhotoUploader({
 
         {uploading ? (
           <div className="flex flex-col items-center gap-2 py-2">
-            <Loader2 className="w-7 h-7 text-rose-500 animate-spin" />
+            <Loader2 className="w-7 h-7 text-blue-600 dark:text-blue-300 animate-spin" />
             <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
               Conversion et réduction des photos...
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1.5">
-            <div className="w-9 h-9 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-              <Upload className="w-4 h-4 text-rose-500" />
+            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+              <Upload className="w-4 h-4 text-blue-600 dark:text-blue-300" />
             </div>
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-gray-300">

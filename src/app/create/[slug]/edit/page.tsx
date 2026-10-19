@@ -62,7 +62,7 @@ function Section({
       >
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center flex-shrink-0">
+            <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center flex-shrink-0">
               {icon}
             </span>
             <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">{title}</h2>
@@ -196,8 +196,8 @@ function AudioUploader({
       />
       {value ? (
         <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
-          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
-            <Music className="w-5 h-5 text-rose-500" />
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+            <Music className="w-5 h-5 text-blue-600 dark:text-blue-300" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -222,11 +222,11 @@ function AudioUploader({
           onClick={() => inputRef.current?.click()}
           className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition text-left"
         >
-          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
             {uploading ? (
               <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Upload className="w-5 h-5 text-rose-500" />
+              <Upload className="w-5 h-5 text-blue-600 dark:text-blue-300" />
             )}
           </div>
           <div>
@@ -333,11 +333,11 @@ function SingleImageUploader({
           disabled={uploading}
           className="w-full flex flex-col items-center gap-2 p-5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition"
         >
-          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
             {uploading ? (
               <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Upload className="w-5 h-5 text-rose-500" />
+              <Upload className="w-5 h-5 text-blue-600 dark:text-blue-300" />
             )}
           </div>
           <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
@@ -518,6 +518,15 @@ function EditEventContent() {
   const [saving, setSaving] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    const onTheme = (themeEvent: Event) => {
+      const next = (themeEvent as CustomEvent<string>).detail;
+      if (next === 'dark' || next === 'light') setTheme(next);
+    };
+    window.addEventListener('invitia-theme-change', onTheme);
+    return () => window.removeEventListener('invitia-theme-change', onTheme);
+  }, [setTheme]);
 
   // ── 1. L'essentiel (Qui, Quand, Où) ──
   const [title, setTitle] = useState('');
@@ -874,9 +883,11 @@ function EditEventContent() {
                 setTheme(next);
                 try {
                   localStorage.setItem('invitia_theme', next);
+                  localStorage.setItem('theme', next);
                 } catch {}
+                window.dispatchEvent(new CustomEvent('invitia-theme-change', { detail: next }));
               }}
-              className="p-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              className="p-2 border border-gray-200 dark:border-gray-700 text-blue-600 dark:text-blue-300 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
               title="Basculer le mode sombre"
               aria-label="Basculer le mode sombre"
             >
@@ -1070,7 +1081,7 @@ function EditEventContent() {
                     type="checkbox"
                     checked={secGallery}
                     onChange={(e) => setSecGallery(e.target.checked)}
-                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
                   />
                 </div>
                 {secGallery && (
@@ -1097,7 +1108,7 @@ function EditEventContent() {
                     type="checkbox"
                     checked={musicEnabled}
                     onChange={(e) => setMusicEnabled(e.target.checked)}
-                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
                   />
                 </div>
                 {musicEnabled && <AudioUploader value={musicUrl} onChange={setMusicUrl} />}
@@ -1120,7 +1131,7 @@ function EditEventContent() {
                   type="checkbox"
                   checked={secCountdown}
                   onChange={(e) => setSecCountdown(e.target.checked)}
-                  className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
                 />
               </div>
 
@@ -1140,7 +1151,7 @@ function EditEventContent() {
                     type="checkbox"
                     checked={secDressCode}
                     onChange={(e) => setSecDressCode(e.target.checked)}
-                    className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
                   />
                 </div>
                 {secDressCode && (

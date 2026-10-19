@@ -68,8 +68,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Dark mode toggle */}
             {mounted && (
               <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                onClick={() => {
+                  const next = theme === 'dark' ? 'light' : 'dark';
+                  setTheme(next);
+                  try {
+                    localStorage.setItem('invitia_theme', next);
+                    localStorage.setItem('theme', next);
+                  } catch {}
+                  window.dispatchEvent(new CustomEvent('invitia-theme-change', { detail: next }));
+                }}
+                className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
                 aria-label="Changer le thème"
                 title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
               >

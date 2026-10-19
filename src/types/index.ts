@@ -68,6 +68,7 @@ export interface Guest {
   table_number?: string;
   message?: string;
   token: string;
+  checked_in_at?: string;
   created_at: string;
   updated_at: string;
 }

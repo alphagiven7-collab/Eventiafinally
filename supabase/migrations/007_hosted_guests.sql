@@ -75,7 +75,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  found guests%ROWTYPE;
+  guest_row guests%ROWTYPE;
 BEGIN
   IF p_status NOT IN ('confirmed', 'declined') THEN
     RAISE EXCEPTION 'INVALID_STATUS'
@@ -92,18 +92,18 @@ BEGIN
     p_message := left(p_message, 500);
   END IF;
 
-  SELECT * INTO found
+  SELECT * INTO guest_row
   FROM guests
   WHERE token = p_token;
 
-  IF NOT FOUND THEN
+  IF guest_row.id IS NULL THEN
     RAISE EXCEPTION 'GUEST_NOT_FOUND'
       USING ERRCODE = 'no_data_found';
   END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM events
-    WHERE id = found.event_id
+    WHERE id = guest_row.event_id
       AND is_published = true
   ) THEN
     RAISE EXCEPTION 'EVENT_NOT_PUBLISHED'
@@ -116,12 +116,12 @@ BEGIN
       children = p_children,
       message = COALESCE(p_message, message),
       updated_at = now()
-  WHERE id = found.id;
+  WHERE id = guest_row.id;
 
   INSERT INTO rsvps (event_id, guest_id, status, adults, children, message)
-  VALUES (found.event_id, found.id, p_status, p_adults, p_children, p_message);
+  VALUES (guest_row.event_id, guest_row.id, p_status, p_adults, p_children, p_message);
 
-  guest_name := found.name;
+  guest_name := guest_row.name;
   guest_status := p_status;
   RETURN NEXT;
 END;

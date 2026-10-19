@@ -379,7 +379,7 @@ function GuestManagementContent() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
               <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                Donnez un nom et un nombre de places. La table choisie apparaît sur la carte de l’invité. Le QR, lui, sert à ouvrir son lien : il se partage ou s’imprime depuis la liste, il ne s’affiche pas sur la carte.
+                Donnez un nom et un nombre de places. La table choisie apparaît sur la carte de l’invité. Le QR est le code d’entrée du jour J : le scan affiche le nom, la table, et enregistre l’arrivée dans la salle.
               </p>
               <div className="flex flex-wrap gap-2 mb-3">
                 <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
@@ -520,7 +520,7 @@ function GuestManagementContent() {
                         <tr key={g.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
                           <td className="px-4 py-3">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[10px] text-gray-400">{g.adults || 1} ad. {g.children > 0 ? `· ${g.children} enf.` : ''}{g.table_number ? ` · ${g.table_number}` : ''}</p>
+                            <p className="text-[10px] text-gray-400">{g.adults || 1} ad. {g.children > 0 ? `· ${g.children} enf.` : ''}{g.table_number ? ` · ${g.table_number}` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs text-gray-600 dark:text-gray-400">{g.phone || '—'}</p>
@@ -548,25 +548,16 @@ function GuestManagementContent() {
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition text-xs"><Pencil className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
-                                  const link = personalLink(g);
-                                  const canvas = document.createElement('canvas');
-                                  const qrSize = 256;
-                                  canvas.width = qrSize; canvas.height = qrSize;
-                                  const ctx = canvas.getContext('2d');
-                                  if (!ctx) return;
-                                  // Dessiner un QR simple (matrix code via API Google Charts)
-                                  const img = new Image();
-                                  img.crossOrigin = 'anonymous';
-                                  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(link)}`;
-                                  img.onload = () => {
-                                    ctx.drawImage(img, 0, 0);
+                                  void import('@/lib/guests/checkin-qr').then(async ({ checkinQrDataUrl }) => {
+                                    const src = await checkinQrDataUrl(g.token, 280);
                                     const w = window.open('', '_blank');
-                                    if (w) {
-                                      w.document.write(`<title>QR - ${g.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${canvas.toDataURL()}" style="max-width:300px"><p style="margin-top:16px;font-size:14px;color:#333"><strong>${g.name}</strong></p><p style="font-size:12px;color:#666">${link}</p><p style="font-size:11px;color:#999;margin-top:8px">Table: ${g.table_number || '—'}</p></div>`);
-                                    }
-                                  };
+                                    if (!w) return;
+                                    const safe = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+                                    const tableLine = g.table_number ? `Table ${g.table_number}` : 'Sans table';
+                                    w.document.write(`<title>Entrée - ${safe(g.name)}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${src}" style="width:280px;height:280px"><p style="margin-top:16px;font-size:18px;color:#111"><strong>${safe(g.name)}</strong></p><p style="font-size:14px;color:#2563eb">${safe(tableLine)}</p><p style="font-size:12px;color:#666;margin-top:8px">Code d'entrée — à scanner à l'accueil</p></div>`);
+                                  });
                                 }}
-                                title="QR du lien personnel"
+                                title="QR d'entrée"
                                 className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs"><QrCode className="w-3.5 h-3.5" /></button>
                               {g.phone && (
                                 <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', personalLink(g)))}`}

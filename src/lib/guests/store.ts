@@ -16,6 +16,7 @@ type GuestRow = {
   token: string;
   message: string | null;
   table_number: string | null;
+  checked_in_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,7 +42,13 @@ export type GuestDraft = {
   tableNumber?: string;
 };
 
-const MIGRATION_HINT = 'La base doit être mise à jour. Exécutez supabase/migrations/007_hosted_guests.sql dans le SQL Editor de Supabase.';
+export const CHECKIN_PREFIX = 'invitia:checkin:';
+
+const MIGRATION_HINT = 'La base doit être mise à jour. Exécutez supabase/migrations/009_checkin_and_rsvp.sql dans le SQL Editor de Supabase.';
+
+export function checkinPayload(token: string): string {
+  return `${CHECKIN_PREFIX}${token}`;
+}
 
 export function guestInvitePath(slug: string, guest: Pick<Guest, 'name' | 'token'>): string {
   const params = new URLSearchParams({ guest: guest.name, token: guest.token });
@@ -51,6 +58,7 @@ export function guestInvitePath(slug: string, guest: Pick<Guest, 'name' | 'token
 export function tokenFromInviteLink(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return '';
+  if (trimmed.startsWith(CHECKIN_PREFIX)) return trimmed.slice(CHECKIN_PREFIX.length).trim();
   try {
     const url = new URL(trimmed);
     return url.searchParams.get('token') || trimmed;
@@ -63,6 +71,9 @@ export function explainGuestError(message: string): string {
   if (message.includes('FREE_GUEST_LIMIT')) return freeGuestLimitMessage();
   if (/group_name|table_number|schema cache|lookup_guest_by_token|submit_guest_rsvp|column/i.test(message)) {
     return MIGRATION_HINT;
+  }
+  if (/argument of NOT must be type boolean/i.test(message)) {
+    return 'La confirmation n’a pas pu être enregistrée. Exécutez supabase/migrations/009_checkin_and_rsvp.sql dans le SQL Editor de Supabase.';
   }
   if (message.includes('GUEST_NOT_FOUND')) return 'Ce lien personnel ne correspond à aucun invité.';
   if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n\'est pas encore publiée.';
@@ -83,6 +94,7 @@ export function toGuest(row: GuestRow): Guest {
     table_number: row.table_number ?? undefined,
     message: row.message ?? undefined,
     token: row.token,
+    checked_in_at: row.checked_in_at ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -229,10 +241,45 @@ export async function lookupGuestByToken(client: SupabaseClient, token: string):
 export async function listGuestbook(
   client: SupabaseClient,
   slug: string,
+  limit = 3,
 ): Promise<{ guest_name: string; message: string }[]> {
-  const { data, error } = await client.rpc('list_event_guestbook', { p_slug: slug });
-  if (error || !Array.isArray(data)) return [];
-  return data as { guest_name: string; message: string }[];
+  const limited = await client.rpc('list_event_guestbook', { p_slug: slug, p_limit: limit });
+  const result = limited.error
+    ? await client.rpc('list_event_guestbook', { p_slug: slug })
+    : limited;
+  if (result.error || !Array.isArray(result.data)) return [];
+  const notes = result.data as { guest_name: string; message: string }[];
+  return limit > 0 ? notes.slice(0, limit) : notes;
+}
+
+export type CheckInResult = {
+  name: string;
+  tableNumber?: string;
+  status?: string;
+  alreadyInside: boolean;
+};
+
+export async function checkInGuest(
+  client: SupabaseClient,
+  token: string,
+): Promise<{ guest?: CheckInResult; error?: string }> {
+  const { data, error } = await client.rpc('check_in_guest', { p_token: token });
+  if (error) return { error: explainGuestError(error.message) };
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    guest_name?: string;
+    table_number?: string | null;
+    guest_status?: string;
+    already_inside?: boolean;
+  } | null;
+  if (!row?.guest_name) return { error: 'Invité introuvable.' };
+  return {
+    guest: {
+      name: row.guest_name,
+      tableNumber: row.table_number || undefined,
+      status: row.guest_status,
+      alreadyInside: Boolean(row.already_inside),
+    },
+  };
 }
 
 export async function submitGuestRsvp(

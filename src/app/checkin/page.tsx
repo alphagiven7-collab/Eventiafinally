@@ -6,7 +6,7 @@ import QRScanner from '@/components/checkin/QRScanner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { lookupGuestByToken, PublicGuest, submitGuestRsvp, tokenFromInviteLink } from '@/lib/guests/store';
+import { checkInGuest, CheckInResult, tokenFromInviteLink } from '@/lib/guests/store';
 
 export default function CheckInPage() {
   return (
@@ -21,7 +21,7 @@ function CheckInContent() {
   const [tokenInput, setTokenInput] = useState('');
   const [checkinResult, setCheckinResult] = useState<{
     success: boolean;
-    guest?: PublicGuest;
+    guest?: CheckInResult;
     message?: string;
   } | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -32,14 +32,12 @@ function CheckInContent() {
       setCheckinResult({ success: false, message: 'Invité introuvable. Le lien doit venir de la liste enregistrée.' });
       return;
     }
-    const guest = await lookupGuestByToken(createClient(), token);
-    if (!guest) {
-      setCheckinResult({ success: false, message: 'Token invalide ou invité non trouvé' });
+    const result = await checkInGuest(createClient(), token);
+    if (result.error || !result.guest) {
+      setCheckinResult({ success: false, message: result.error || 'Invité introuvable' });
       return;
     }
-    await submitGuestRsvp(createClient(), { token: guest.token, status: 'confirmed', adults: guest.adults, children: guest.children });
-    setCheckinResult({ success: true, guest });
-    setTimeout(() => setCheckinResult(null), 3000);
+    setCheckinResult({ success: true, guest: result.guest });
   };
 
   const handleManualCheckin = () => {
@@ -151,7 +149,12 @@ function CheckInContent() {
                 {checkinResult.guest ? (
                   <>
                     <p className="font-semibold text-gray-900">{checkinResult.guest.name}</p>
-                    <p className="text-sm text-gray-600">Présent(e) enregistré(e)</p>
+                    <p className="text-sm text-gray-700">
+                      {checkinResult.guest.tableNumber ? `Table ${checkinResult.guest.tableNumber}` : 'Sans table'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {checkinResult.guest.alreadyInside ? 'Déjà présent(e) dans la salle' : 'Présent(e) dans la salle'}
+                    </p>
                   </>
                 ) : (
                   <p className="font-semibold text-gray-900">{checkinResult.message}</p>

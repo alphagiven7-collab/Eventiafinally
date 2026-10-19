@@ -5,6 +5,7 @@ import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
+import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 
 export default function InvitationExperience({
   event,
@@ -50,7 +51,7 @@ export default function InvitationExperience({
     const detachMusic = initMusic(root, event);
     const detachRsvp = initRsvp(root, event.slug, guestToken, guestStatus);
     const detachModals = initModals(root);
-    initGuestbook(root, event.slug);
+    const detachGuestbook = initGuestbook(root, event.slug);
 
     return () => {
       stopCountdown();
@@ -60,6 +61,7 @@ export default function InvitationExperience({
       detachMusic();
       detachRsvp();
       detachModals();
+      detachGuestbook();
       shadow.replaceChildren();
     };
   }, [event, guestName, guestToken, guestStatus, guestTable]);
@@ -482,7 +484,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const section = root.querySelector(`#${id}`);
     if (section && main) main.appendChild(section);
   });
-  ['date-modal', 'place-modal'].forEach((id) => {
+  ['date-modal', 'place-modal', 'guestbook-modal'].forEach((id) => {
     const modal = root.querySelector(`#${id}`);
     if (modal && main) main.appendChild(modal);
   });
@@ -604,6 +606,32 @@ function initRsvp(
     note.style.color = isConfirmed === false ? '#9ca3af' : 'var(--rsvp-color, #ec4899)';
   };
 
+  const token =
+    guestToken ||
+    (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+
+  const showCheckinQr = async () => {
+    const box = root.querySelector('#checkin-pass') as HTMLElement | null;
+    const img = root.querySelector('#checkin-qr') as HTMLImageElement | null;
+    const caption = root.querySelector('#checkin-qr-caption');
+    if (!box || !img || !token) {
+      if (box) box.style.display = 'none';
+      return;
+    }
+    const name = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
+    const tableEl = root.querySelector('#guest-table-line') as HTMLElement | null;
+    const tableLabel = tableEl && tableEl.style.display !== 'none' ? tableEl.textContent?.trim() || '' : '';
+    img.src = await checkinQrDataUrl(token, 180);
+    img.alt = 'Code d’entrée';
+    if (caption) caption.textContent = [name, tableLabel].filter(Boolean).join(' · ');
+    box.style.display = 'block';
+  };
+
+  const hideCheckinQr = () => {
+    const box = root.querySelector('#checkin-pass') as HTMLElement | null;
+    if (box) box.style.display = 'none';
+  };
+
   const applyVisualState = (status: 'confirmed' | 'declined') => {
     if (status === 'confirmed') {
       setNote('Votre présence est bien confirmée. Merci !', true);
@@ -615,7 +643,9 @@ function initRsvp(
         const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
         if (topLbl) topLbl.textContent = 'Présence confirmée';
       }
+      void showCheckinQr();
     } else if (status === 'declined') {
+      hideCheckinQr();
       setNote('Votre réponse (ne pourra pas venir) est bien enregistrée.', false);
     }
   };
@@ -635,9 +665,6 @@ function initRsvp(
     if (button) button.disabled = true;
     const messageField = root.querySelector('#guest-message') as HTMLTextAreaElement | null;
     const message = messageField?.value.trim() || undefined;
-    const token =
-      guestToken ||
-      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
 
     if (token && isSupabaseReady()) {
       const result = await submitGuestRsvp(createClient(), { token, status, message });
@@ -662,7 +689,7 @@ function initRsvp(
         status === 'confirmed'
       );
     } else {
-      void initGuestbook(root, slug);
+      void refreshGuestbookPreview(root, slug);
     }
   };
 
@@ -930,20 +957,21 @@ function initModals(root: HTMLElement) {
   return () => cleanups.forEach((cleanup) => cleanup());
 }
 
-async function initGuestbook(root: HTMLElement, slug: string) {
+async function refreshGuestbookPreview(root: HTMLElement, slug: string) {
   const section = root.querySelector('#section-guestbook') as HTMLElement | null;
   const list = root.querySelector('#guestbook-list') as HTMLElement | null;
-  if (!section || !list) return;
-  if (!isSupabaseReady()) {
-    section.style.display = 'none';
-    return;
-  }
-  const notes = await listGuestbook(createClient(), slug);
+  if (!section || !list || !isSupabaseReady()) return;
+  const notes = await listGuestbook(createClient(), slug, 3);
   if (!notes.length) {
     section.style.display = 'none';
     return;
   }
-  list.innerHTML = notes
+  list.innerHTML = guestbookMarkup(notes);
+  section.style.display = 'block';
+}
+
+function guestbookMarkup(notes: { guest_name: string; message: string }[]): string {
+  return notes
     .map(
       (note) => `
       <article class="guestbook-note">
@@ -952,7 +980,50 @@ async function initGuestbook(root: HTMLElement, slug: string) {
       </article>`
     )
     .join('');
-  section.style.display = 'block';
+}
+
+function initGuestbook(root: HTMLElement, slug: string) {
+  const section = root.querySelector('#section-guestbook') as HTMLElement | null;
+  const list = root.querySelector('#guestbook-list') as HTMLElement | null;
+  const open = root.querySelector('#open-guestbook');
+  const modal = root.querySelector('#guestbook-modal') as HTMLElement | null;
+  const full = root.querySelector('#guestbook-full') as HTMLElement | null;
+  const close = modal?.querySelector('[data-close-modal]');
+  if (!section || !list || !open || !modal || !full) return () => {};
+
+  let cancelled = false;
+  const show = () => { modal.style.display = 'flex'; };
+  const hide = () => { modal.style.display = 'none'; };
+  const onOpen = () => {
+    show();
+    if (!isSupabaseReady()) {
+      full.innerHTML = '<p class="guestbook-empty">Aucun message pour le moment.</p>';
+      return;
+    }
+    void listGuestbook(createClient(), slug, 200).then((notes) => {
+      if (cancelled) return;
+      full.innerHTML = notes.length
+        ? guestbookMarkup(notes)
+        : '<p class="guestbook-empty">Aucun message pour le moment.</p>';
+    });
+  };
+  const onBackdrop = (event: Event) => {
+    if (event.target === modal) hide();
+  };
+  open.addEventListener('click', onOpen);
+  close?.addEventListener('click', hide);
+  modal.addEventListener('click', onBackdrop);
+
+  if (isSupabaseReady()) {
+    void refreshGuestbookPreview(root, slug);
+  }
+
+  return () => {
+    cancelled = true;
+    open.removeEventListener('click', onOpen);
+    close?.removeEventListener('click', hide);
+    modal.removeEventListener('click', onBackdrop);
+  };
 }
 
 function getOriginalCSS(): string {
@@ -1306,6 +1377,60 @@ function getOriginalCSS(): string {
       color: #2563eb;
       font-weight: 700;
     }
+    .invitation-experience-root .guestbook-open {
+      width: 100%;
+      display: block;
+      border: 1px solid #f3f4f6;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      padding: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: center;
+      color: inherit;
+    }
+    .invitation-experience-root .guestbook-more {
+      margin: 14px 0 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .invitation-experience-root .guestbook-empty {
+      margin: 0;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .invitation-experience-root .checkin-pass {
+      margin-top: 14px;
+    }
+    .invitation-experience-root .checkin-qr-frame {
+      display: inline-block;
+      background: #ffffff;
+      padding: 8px;
+      border-radius: 12px;
+      line-height: 0;
+    }
+    .invitation-experience-root .checkin-qr-frame img {
+      width: 168px;
+      height: 168px;
+      display: block;
+    }
+    .invitation-experience-root .checkin-kicker {
+      margin: 0 0 8px;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .invitation-experience-root .checkin-caption {
+      margin: 8px 0 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+    }
     .invitation-experience-root .inv-modal {
       position: fixed;
       inset: 0;
@@ -1325,6 +1450,7 @@ function getOriginalCSS(): string {
       padding: 18px;
       box-shadow: 0 24px 50px rgba(0,0,0,0.28);
     }
+    .invitation-experience-root.dark-mode-applied .guestbook-open,
     .invitation-experience-root.dark-mode-applied .guest-message,
     .invitation-experience-root.dark-mode-applied .guestbook-note,
     .invitation-experience-root.dark-mode-applied .inv-modal-card {
@@ -1339,6 +1465,13 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied .guest-table-line {
       background: rgba(37, 99, 235, 0.2);
       color: #bfdbfe;
+    }
+    .invitation-experience-root.dark-mode-applied .checkin-caption {
+      color: #e2e8f0;
+    }
+    .invitation-experience-root.dark-mode-applied .guestbook-more,
+    .invitation-experience-root.dark-mode-applied .checkin-kicker {
+      color: #93c5fd;
     }
   `;
 }
@@ -1557,16 +1690,34 @@ function getOriginalHTML(): string {
             Je ne pourrai pas venir
           </button>
           <p id="rsvp-status-note" style="margin-top:10px;text-align:center;font-size:12px;font-weight:600;min-height:1.1rem;"></p>
+          <div id="checkin-pass" class="checkin-pass" style="display:none;">
+            <p class="checkin-kicker">Code d'entrée</p>
+            <div class="checkin-qr-frame">
+              <img id="checkin-qr" alt="Code d'entrée" width="168" height="168">
+            </div>
+            <p id="checkin-qr-caption" class="checkin-caption"></p>
+          </div>
         </div>
       </section>
 
       <section id="section-guestbook" style="padding:0 16px;margin-top:24px;display:none;">
-        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;">
+        <button id="open-guestbook" type="button" class="guestbook-open">
           <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#2563eb;text-align:center;margin-bottom:4px;">Livre d'or</p>
           <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:22px;text-align:center;margin-bottom:14px;">Leurs mots</h3>
           <div id="guestbook-list" class="guestbook-list"></div>
-        </div>
+          <p class="guestbook-more">Voir tous les messages</p>
+        </button>
       </section>
+
+      <div id="guestbook-modal" class="inv-modal">
+        <div class="inv-modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <p class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;">Livre d'or</p>
+            <button type="button" data-close-modal style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#64748b;">×</button>
+          </div>
+          <div id="guestbook-full" class="guestbook-list"></div>
+        </div>
+      </div>
 
       <!-- 10. Menu des boissons -->
       <section id="drink-menu-section" style="padding:0 16px;margin-top:24px;display:none;">

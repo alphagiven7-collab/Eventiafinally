@@ -1,5 +1,5 @@
 import localforage from 'localforage';
-import { EventWithSettings } from '@/types';
+import { EventWithSettings, GuestStatus } from '@/types';
 
 const offlineStore = localforage.createInstance({
   name: 'eventia',
@@ -14,6 +14,7 @@ export type OfflineInvitation = {
   token: string;
   guestName?: string;
   guestTable?: string;
+  guestStatus?: GuestStatus;
   event: EventWithSettings;
   savedAt: string;
   updatedAt: string;
@@ -80,6 +81,7 @@ export async function saveOfflineInvitation(input: {
   token?: string;
   guestName?: string;
   guestTable?: string;
+  guestStatus?: GuestStatus;
 }): Promise<OfflineInvitation> {
   const event = publicEvent(input.event);
   const cover = await shrinkToDataUrl(event.cover_image || event.heroImage || event.branding?.heroImage || '');
@@ -105,6 +107,7 @@ export async function saveOfflineInvitation(input: {
     token: input.token || '',
     guestName: input.guestName?.trim() || undefined,
     guestTable: input.guestTable?.trim() || undefined,
+    guestStatus: input.guestStatus,
     event,
     savedAt: new Date().toISOString(),
     updatedAt: event.updated_at || new Date().toISOString(),

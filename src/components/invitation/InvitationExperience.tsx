@@ -6,7 +6,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
-import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
+import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 
@@ -128,6 +128,7 @@ export default function InvitationExperience({
           token: tokenForOffline,
           guestName: tokenForOffline ? (guestName || shownName) : undefined,
           guestTable: tokenForOffline ? (guestTable || tableText) : undefined,
+          guestStatus: tokenForOffline && (guestStatus === 'confirmed' || guestStatus === 'declined') ? guestStatus : undefined,
         });
         const clone = root.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('audio, source').forEach((node) => node.remove());
@@ -800,7 +801,10 @@ function initRsvp(
   const reserveBtn = root.querySelector('#reserve-deadline-btn') as HTMLButtonElement | null;
   const declineBtn = root.querySelector('#decline-presence-btn') as HTMLButtonElement | null;
   const rsvpSection = root.querySelector('#section-rsvp') as HTMLElement | null;
-  const localKey = `invitia_rsvp_${slug}`;
+  const token =
+    guestToken ||
+    (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+  const localKey = token ? `invitia_rsvp_${slug}_${token}` : `invitia_rsvp_${slug}`;
 
   const setNote = (text: string, isConfirmed?: boolean) => {
     if (!note) return;
@@ -808,11 +812,10 @@ function initRsvp(
     note.style.color = isConfirmed === false ? '#9ca3af' : 'var(--rsvp-color, #7c3aed)';
   };
 
-  const token =
-    guestToken ||
-    (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+  let passGeneration = 0;
 
   const showCheckinQr = async () => {
+    const generation = ++passGeneration;
     const box = root.querySelector('#checkin-pass') as HTMLElement | null;
     const img = root.querySelector('#checkin-qr') as HTMLImageElement | null;
     const caption = root.querySelector('#checkin-qr-caption');
@@ -820,26 +823,37 @@ function initRsvp(
       if (box) box.style.display = 'none';
       return;
     }
-    const name = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
+    const name = root.querySelector('#display-guest-name')?.textContent?.trim() || 'Invité';
     const tableEl = root.querySelector('#guest-table-line') as HTMLElement | null;
     const tableLabel = tableEl && tableEl.style.display !== 'none' ? tableEl.textContent?.trim() || '' : '';
-    img.src = await checkinQrDataUrl(token, 180);
-    img.alt = 'Carte d’entrée';
+    const [qrSrc, cardSrc] = await Promise.all([
+      checkinQrDataUrl(token, 180),
+      checkinEntryCardDataUrl({
+        token,
+        guestName: name,
+        tableLabel,
+        eventTitle: event.title,
+      }),
+    ]);
+    if (generation !== passGeneration || !box.isConnected) return;
+    img.src = qrSrc;
+    img.alt = `Code d’entrée de ${name}`;
     if (caption) caption.textContent = [name, tableLabel].filter(Boolean).join(' · ');
     const download = root.querySelector('#download-checkin-qr') as HTMLAnchorElement | null;
     if (download) {
-      download.href = img.src;
-      download.download = 'carte-entree.png';
+      download.href = cardSrc;
+      download.download = checkinCardFileName(name);
     }
-    box.style.display = 'block';
+    box.style.display = 'flex';
   };
 
   const hideCheckinQr = () => {
+    passGeneration += 1;
     const box = root.querySelector('#checkin-pass') as HTMLElement | null;
     if (box) box.style.display = 'none';
   };
 
-  const applyVisualState = (status: 'confirmed' | 'declined') => {
+  const applyVisualState = (status: 'confirmed' | 'declined', revealPass: boolean) => {
     if (status === 'confirmed') {
       setNote('Votre présence est bien confirmée. Merci !', true);
       if (confirmBtn) {
@@ -850,7 +864,8 @@ function initRsvp(
         const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
         if (topLbl) topLbl.textContent = 'Présence confirmée';
       }
-      void showCheckinQr();
+      if (revealPass && token) void showCheckinQr();
+      else hideCheckinQr();
     } else if (status === 'declined') {
       hideCheckinQr();
       setNote('Votre réponse (ne pourra pas venir) est bien enregistrée.', false);
@@ -860,13 +875,15 @@ function initRsvp(
   let alreadyAnswered = false;
   if (guestStatus === 'confirmed' || guestStatus === 'declined') {
     alreadyAnswered = true;
-    applyVisualState(guestStatus);
-  } else if (rememberAnswer) {
+    applyVisualState(guestStatus, guestStatus === 'confirmed');
+  } else if (guestStatus === 'pending') {
+    hideCheckinQr();
+  } else if (rememberAnswer && typeof navigator !== 'undefined' && navigator.onLine === false && token) {
     try {
       const savedLocal = localStorage.getItem(localKey);
       if (savedLocal === 'confirmed' || savedLocal === 'declined') {
         alreadyAnswered = true;
-        applyVisualState(savedLocal);
+        applyVisualState(savedLocal, savedLocal === 'confirmed');
       }
     } catch {}
   }
@@ -922,12 +939,13 @@ function initRsvp(
         button.disabled = false;
       }
 
-      if (rememberAnswer) {
+      const recorded = Boolean(token && isSupabaseReady() && !responsesClosed);
+      if (rememberAnswer && recorded) {
         try {
           localStorage.setItem(localKey, status);
         } catch {}
       }
-      applyVisualState(status);
+      applyVisualState(status, status === 'confirmed' && recorded);
       paintAnswer(status === 'confirmed' ? 'Présence confirmée' : 'Réponse enregistrée');
       const notice = !token
         ? status === 'confirmed'
@@ -985,7 +1003,12 @@ function initRsvp(
       const result = await submitGuestRsvp(createClient(), { token, status: pending.status, message: pending.message || undefined });
       if (result.error) return;
       localStorage.removeItem('eventia-rsvp-pending');
-      applyVisualState(pending.status);
+      if (rememberAnswer) {
+        try {
+          localStorage.setItem(localKey, pending.status);
+        } catch {}
+      }
+      applyVisualState(pending.status, pending.status === 'confirmed');
       setNote(pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.', pending.status === 'confirmed');
       onRsvpRef?.current?.({ status: pending.status, notice: pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.' });
     } catch {
@@ -1820,14 +1843,22 @@ function getOriginalCSS(): string {
       font-size: 13px;
     }
     .invitation-experience-root .checkin-pass {
-      margin-top: 14px;
+      margin: 18px auto 0;
+      width: 100%;
+      max-width: 280px;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
     }
     .invitation-experience-root .checkin-qr-frame {
-      display: inline-block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #ffffff;
       padding: 8px;
       border-radius: 12px;
       line-height: 0;
+      border: 1px solid #E8E0D8;
     }
     .invitation-experience-root .checkin-qr-frame img {
       width: 168px;
@@ -1843,20 +1874,26 @@ function getOriginalCSS(): string {
       font-weight: 700;
     }
     .invitation-experience-root .checkin-caption {
-      margin: 8px 0 0;
-      font-size: 13px;
-      font-weight: 600;
+      margin: 10px 0 0;
+      width: 100%;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
       color: #111827;
+      text-align: center;
     }
     .invitation-experience-root .checkin-help {
-      margin: 10px 0 0;
+      margin: 8px 0 0;
+      width: 100%;
       font-size: 12px;
       line-height: 1.45;
       color: #374151;
+      text-align: center;
     }
     .invitation-experience-root .checkin-download {
-      display: inline-flex;
-      margin-top: 10px;
+      display: flex;
+      width: 100%;
+      margin-top: 12px;
       min-height: 44px;
       align-items: center;
       justify-content: center;
@@ -1867,6 +1904,7 @@ function getOriginalCSS(): string {
       font-size: 12px;
       font-weight: 700;
       text-decoration: none;
+      text-align: center;
     }
     .invitation-experience-root[data-template="elegance"] .invitation-card-floral {
       display: none;

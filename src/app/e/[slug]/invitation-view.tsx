@@ -23,7 +23,8 @@ export default function InvitationView({
   const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
   const [liveStatus, setLiveStatus] = useState<GuestStatus | null>(null);
   const [rsvpNotice, setRsvpNotice] = useState('');
-  const [offlineGuest, setOfflineGuest] = useState<{ name?: string; table?: string } | null>(null);
+  const [offlineGuest, setOfflineGuest] = useState<{ name?: string; table?: string; status?: GuestStatus } | null>(null);
+  const [usingOffline, setUsingOffline] = useState(false);
   const [offlineNote, setOfflineNote] = useState('');
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
@@ -43,7 +44,8 @@ export default function InvitationView({
         const saved = await readOfflineInvitation(slug, token);
         if (saved && !cancelled) {
           setEvent(saved.event);
-          setOfflineGuest({ name: saved.guestName, table: saved.guestTable });
+          setUsingOffline(true);
+          setOfflineGuest({ name: saved.guestName, table: saved.guestTable, status: saved.guestStatus });
           setOfflineNote('Invitation disponible hors ligne.');
           setLoading(false);
           return;
@@ -174,7 +176,7 @@ export default function InvitationView({
     );
   }
 
-  const shownStatus = liveStatus || matchedGuest?.status;
+  const shownStatus = liveStatus || matchedGuest?.status || (usingOffline ? offlineGuest?.status : undefined);
 
   return (
     <>

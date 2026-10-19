@@ -1,0 +1,248 @@
+import { EventWithSettings } from '@/types';
+import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
+import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
+
+export type InvitationPdfGuest = {
+  id?: string;
+  name?: string;
+  table?: string;
+};
+
+export type InvitationPdfFailure = {
+  name: string;
+  reason: string;
+};
+
+const INVITATION_WIDTH = 448;
+const MAX_PDF_EDGE = 14000;
+
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function canvasHeightLimit() {
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+  return coarse ? 4096 : 8192;
+}
+
+function captureScale(limit: number) {
+  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1.5 : 2;
+  const maxScale = Math.max(1, Math.floor((limit - 32) / 900));
+  return Math.min(preferred, maxScale);
+}
+
+async function settleImages(root: ParentNode) {
+  const images = Array.from(root.querySelectorAll('img'));
+  await Promise.all(images.map((img) => {
+    const source = img.getAttribute('src');
+    if (!source) return Promise.resolve();
+    if (!source.startsWith('data:')) img.crossOrigin = 'anonymous';
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = () => resolve();
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    });
+  }));
+  const fonts = (root.ownerDocument ?? document).fonts;
+  if (fonts?.ready) await fonts.ready;
+}
+
+function inlineHero(root: HTMLElement) {
+  const hero = root.querySelector('.hero-bg') as HTMLElement | null;
+  if (!hero) return;
+  const variable = getComputedStyle(root).getPropertyValue('--hero-image-url').trim();
+  if (!variable) return;
+  hero.style.backgroundImage = `linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), ${variable}`;
+  hero.style.backgroundSize = 'cover';
+  hero.style.backgroundPosition = 'center';
+}
+
+function assertGuest(root: HTMLElement, guest?: InvitationPdfGuest | null) {
+  const name = guest?.name?.trim();
+  if (name) {
+    const shown = root.querySelector('#display-guest-name')?.textContent?.trim();
+    if (shown !== name) {
+      throw new Error('Le nom inscrit sur l’invitation ne correspond pas à cet invité.');
+    }
+  }
+  const table = guest?.table?.trim() ?? '';
+  const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
+  const visible = Boolean(tableLine && tableLine.style.display !== 'none' && tableLine.textContent?.trim());
+  if (table) {
+    if (!visible || !tableLine?.textContent?.includes(table)) {
+      throw new Error('La table inscrite sur l’invitation ne correspond pas à cet invité.');
+    }
+  } else if (visible) {
+    throw new Error('Une table a été ajoutée alors qu’aucune n’est enregistrée pour cet invité.');
+  }
+}
+
+async function captureSlices(main: HTMLElement) {
+  const { default: html2canvas } = await import('html2canvas');
+  const limit = canvasHeightLimit();
+  const scale = captureScale(limit);
+  const sliceCss = Math.max(600, Math.floor((limit - 48) / scale));
+  const total = Math.ceil(main.scrollHeight);
+  if (total < 40) throw new Error('L’invitation est vide.');
+
+  const frame = main.ownerDocument.defaultView?.frameElement as HTMLIFrameElement | null;
+  const viewport = main.ownerDocument.getElementById('pdf-slice-window');
+  const mover = main.ownerDocument.getElementById('pdf-slice-mover');
+  if (!frame || !viewport || !mover) throw new Error('La préparation du PDF a échoué.');
+
+  const slices: { canvas: HTMLCanvasElement; cssHeight: number }[] = [];
+  try {
+    for (let offset = 0; offset < total; offset += sliceCss) {
+      const cssHeight = Math.min(sliceCss, total - offset);
+      frame.style.height = `${cssHeight}px`;
+      viewport.style.height = `${cssHeight}px`;
+      mover.style.marginTop = `-${offset}px`;
+      const canvas = await html2canvas(viewport, {
+        scale,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#fafafa',
+        width: INVITATION_WIDTH,
+        height: cssHeight,
+        windowWidth: INVITATION_WIDTH,
+        windowHeight: cssHeight,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
+        logging: false,
+      });
+      slices.push({ canvas, cssHeight });
+    }
+    return { slices, total };
+  } catch (error) {
+    slices.forEach((slice) => {
+      slice.canvas.width = 1;
+      slice.canvas.height = 1;
+    });
+    throw error;
+  }
+}
+
+export async function generateInvitationPdf(
+  event: EventWithSettings,
+  guest?: InvitationPdfGuest | null,
+): Promise<{ blob: Blob; filename: string }> {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = `position:fixed;left:0;top:0;transform:translateX(-160vw);width:${INVITATION_WIDTH}px;height:800px;border:0;background:#fafafa;`;
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  if (!doc) {
+    iframe.remove();
+    throw new Error('Le navigateur n’a pas pu préparer le PDF.');
+  }
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"></head><body style="margin:0;background:#fafafa;width:${INVITATION_WIDTH}px;"><div id="pdf-slice-window" style="width:${INVITATION_WIDTH}px;overflow:hidden;background:#fafafa;"><div id="pdf-slice-mover"></div></div></body></html>`);
+  doc.close();
+
+  const mover = doc.getElementById('pdf-slice-mover');
+  const viewport = doc.getElementById('pdf-slice-window');
+  if (!mover || !viewport) {
+    iframe.remove();
+    throw new Error('Le navigateur n’a pas pu préparer le PDF.');
+  }
+
+  const mounted = mountInvitationForCapture(mover, event, {
+    name: guest?.name,
+    table: guest?.table,
+  });
+
+  try {
+    viewport.style.height = 'auto';
+    viewport.style.overflow = 'visible';
+    iframe.style.height = '4000px';
+    await settleImages(mounted.root);
+    inlineHero(mounted.root);
+    assertGuest(mounted.root, guest);
+    viewport.style.overflow = 'hidden';
+    iframe.style.height = '800px';
+    if (mounted.main.scrollHeight < 40) throw new Error('L’invitation est vide.');
+
+    const { slices, total } = await captureSlices(mounted.main);
+    const fit = total > MAX_PDF_EDGE ? MAX_PDF_EDGE / total : 1;
+    const pageWidth = INVITATION_WIDTH * fit;
+    const pageHeight = total * fit;
+    const { jsPDF } = await import('jspdf');
+    const pdf = new jsPDF({
+      unit: 'px',
+      format: [pageWidth, pageHeight],
+      orientation: pageHeight >= pageWidth ? 'portrait' : 'landscape',
+      hotfixes: ['px_scaling'],
+      compress: true,
+    });
+    let cursor = 0;
+    for (const slice of slices) {
+      const image = slice.canvas.toDataURL('image/jpeg', 0.84);
+      const height = slice.cssHeight * fit;
+      pdf.addImage(image, 'JPEG', 0, cursor, pageWidth, height, undefined, 'FAST');
+      cursor += height;
+      slice.canvas.width = 1;
+      slice.canvas.height = 1;
+    }
+    if (pdf.getNumberOfPages() !== 1) {
+      throw new Error('Le PDF devait tenir sur une seule page.');
+    }
+    const filename = invitationPdfFilename(event.title || 'Evenement', guest?.name, new Map());
+    return { blob: pdf.output('blob'), filename };
+  } finally {
+    mounted.destroy();
+    iframe.remove();
+  }
+}
+
+export async function generateInvitationsZip(
+  event: EventWithSettings,
+  guests: InvitationPdfGuest[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ blob: Blob; filename: string; failures: InvitationPdfFailure[] }> {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  const used = new Map<string, number>();
+  const failures: InvitationPdfFailure[] = [];
+  const total = guests.length;
+  let made = 0;
+  onProgress?.(0, total);
+
+  for (let index = 0; index < guests.length; index += 1) {
+    const guest = guests[index];
+    const label = guest.name?.trim() || `Invité ${index + 1}`;
+    try {
+      const result = await generateInvitationPdf(event, {
+        id: guest.id,
+        name: guest.name?.trim() || '',
+        table: guest.table,
+      });
+      const filename = invitationPdfFilename(event.title || 'Evenement', guest.name, used);
+      zip.file(filename, result.blob);
+      made += 1;
+    } catch (error) {
+      failures.push({
+        name: label,
+        reason: error instanceof Error ? error.message : 'La génération a échoué.',
+      });
+    }
+    onProgress?.(index + 1, total);
+  }
+
+  if (failures.length > 0 || made !== guests.length) {
+    return { blob: new Blob(), filename: invitationsZipFilename(event.title || 'Evenement'), failures };
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+  return { blob, filename: invitationsZipFilename(event.title || 'Evenement'), failures };
+}

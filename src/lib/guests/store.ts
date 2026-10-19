@@ -135,6 +135,28 @@ export async function listGuests(client: SupabaseClient, eventId: string): Promi
   return { guests: ((data ?? []) as GuestRow[]).map(toGuest) };
 }
 
+export async function listAllEventGuests(
+  client: SupabaseClient,
+  eventId: string,
+): Promise<{ guests: Guest[]; error?: string }> {
+  const pageSize = 1000;
+  const guests: Guest[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from('guests')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return { guests: [], error: explainGuestError(error.message) };
+    const rows = ((data ?? []) as GuestRow[]).map(toGuest);
+    guests.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return { guests };
+}
+
 export async function countGuests(client: SupabaseClient, eventId: string): Promise<number> {
   const { count, error } = await client
     .from('guests')

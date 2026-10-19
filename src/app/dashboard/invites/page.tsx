@@ -6,7 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { fetchInvitationBySlug, listInvitations, publishInvitation } from '@/lib/events/store';
-import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
+import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
@@ -57,6 +57,9 @@ function GuestManagementContent() {
   const [newTable, setNewTable] = useState('');
   const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
+  const [zipFailures, setZipFailures] = useState<{ name: string; reason: string }[]>([]);
+  const zipLock = useRef(false);
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
   const [csvPreview, setCsvPreview] = useState<null | {
@@ -114,7 +117,7 @@ function GuestManagementContent() {
         if (!cancelled) setGuests([]);
         return;
       }
-      const result = await listGuests(createClient(), selectedEventId);
+      const result = await listAllEventGuests(createClient(), selectedEventId);
       if (cancelled) return;
       if (result.error) addToast('error', result.error);
       setGuests(result.guests);
@@ -393,6 +396,95 @@ function GuestManagementContent() {
     addToast('success', 'Export JSON téléchargé');
   };
 
+  const exportAllPdfs = async () => {
+    if (zipLock.current) return;
+    const selected = events.find((event) => event.id === selectedEventId);
+    if (!user?.id || !selected) {
+      addToast('error', 'Choisissez un événement avant d’exporter les PDF.');
+      return;
+    }
+    if (selected.user_id && selected.user_id !== user.id) {
+      addToast('error', 'Vous ne pouvez exporter que les invités de vos événements.');
+      return;
+    }
+    if (!isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    zipLock.current = true;
+    setZipFailures([]);
+    setZipProgress({ done: 0, total: guests.length });
+    try {
+      const loaded = await listAllEventGuests(createClient(), selected.id);
+      if (loaded.error) {
+        addToast('error', loaded.error);
+        return;
+      }
+      if (loaded.guests.length === 0) {
+        addToast('error', 'Aucun invité enregistré pour cette invitation.');
+        return;
+      }
+      setZipProgress({ done: 0, total: loaded.guests.length });
+      const { generateInvitationsZip, downloadBlob } = await import('@/lib/invitation/pdf');
+      const result = await generateInvitationsZip(
+        selected,
+        loaded.guests.map((guest) => ({
+          id: guest.id,
+          name: guest.name,
+          table: guest.table_number,
+        })),
+        (done, total) => setZipProgress({ done, total }),
+      );
+      if (result.failures.length > 0) {
+        setZipFailures(result.failures);
+        addToast('error', `${result.failures.length} PDF n’ont pas pu être créés. L’archive n’a pas été téléchargée.`);
+        return;
+      }
+      downloadBlob(result.blob, result.filename);
+      addToast('success', `${loaded.guests.length} PDF réunis dans le fichier ZIP.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'L’export PDF a échoué.';
+      addToast('error', message);
+    } finally {
+      zipLock.current = false;
+      setZipProgress(null);
+    }
+  };
+
+  const pdfZipControls = (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 space-y-2">
+      <p className="text-xs text-gray-600 dark:text-gray-300">
+        {guests.length} PDF {guests.length > 1 ? 'seront générés' : 'sera généré'}, un par invité de la liste complète.
+      </p>
+      <button
+        type="button"
+        onClick={() => void exportAllPdfs()}
+        disabled={Boolean(zipProgress) || guests.length === 0}
+        className="w-full min-h-12 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60"
+      >
+        {zipProgress ? `${zipProgress.done} / ${zipProgress.total}` : 'Télécharger tous les PDF (ZIP)'}
+      </button>
+      {zipFailures.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-2">
+          <p className="font-semibold">Ces invitations n’ont pas été créées. L’archive n’a pas été téléchargée.</p>
+          <ul className="space-y-1">
+            {zipFailures.map((failure) => (
+              <li key={`${failure.name}-${failure.reason}`}>{failure.name} : {failure.reason}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => void exportAllPdfs()}
+            disabled={Boolean(zipProgress)}
+            className="min-h-10 px-3 rounded-lg bg-red-700 text-white font-semibold"
+          >
+            Relancer l’export
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   const statusLabel = (s: GuestStatus) => {
     if (s === 'confirmed') return '✅ Confirmé';
     if (s === 'declined') return '❌ Refus';
@@ -553,6 +645,8 @@ function GuestManagementContent() {
                 </button>
               ))}
             </div>
+
+            {pdfZipControls}
 
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
@@ -822,7 +916,8 @@ function GuestManagementContent() {
               <span>Exporter les données</span>
             </h2>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-4">Téléchargez vos listes pour archivage ou impression.</p>
-            <div className="flex flex-wrap gap-2">
+            {pdfZipControls}
+            <div className="flex flex-wrap gap-2 mt-4">
               <button onClick={handleExportCSV} className="px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium hover:bg-violet-700 transition">
                 Export CSV
               </button>

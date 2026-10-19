@@ -8,6 +8,22 @@ import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 
+function showPdfNotice(root: HTMLElement, message: string) {
+  let note = root.querySelector('#pdf-notice') as HTMLElement | null;
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'pdf-notice';
+    note.setAttribute('role', 'alert');
+    note.style.cssText = 'position:fixed;left:12px;right:12px;top:56px;z-index:80;padding:12px 14px;border-radius:14px;background:#fef2f2;color:#b91c1c;font-size:13px;font-weight:650;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.16);';
+    root.appendChild(note);
+  }
+  note.textContent = message;
+  note.style.display = 'block';
+  window.setTimeout(() => {
+    note.style.display = 'none';
+  }, 5000);
+}
+
 export default function InvitationExperience({
   event,
   guestName,
@@ -54,8 +70,36 @@ export default function InvitationExperience({
     const detachMusic = initMusic(root, event);
     const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer, onRsvpRef);
     const printBtn = root.querySelector('#print-invitation-btn');
-    const onPrint = () => window.print();
-    printBtn?.addEventListener('click', onPrint);
+    let pdfBusy = false;
+    const onPdf = async () => {
+      if (pdfBusy || !(printBtn instanceof HTMLButtonElement)) return;
+      pdfBusy = true;
+      const previous = printBtn.textContent;
+      printBtn.textContent = 'PDF…';
+      printBtn.disabled = true;
+      printBtn.style.opacity = '0.65';
+      try {
+        const { generateInvitationPdf, downloadBlob } = await import('@/lib/invitation/pdf');
+        const result = await generateInvitationPdf(event, {
+          name: guestName,
+          table: guestTable,
+        });
+        downloadBlob(result.blob, result.filename);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Le PDF n’a pas pu être créé.';
+        showPdfNotice(root, message);
+        printBtn.textContent = 'Échec';
+        window.setTimeout(() => {
+          if (printBtn.isConnected) printBtn.textContent = previous || 'PDF';
+        }, 2400);
+      } finally {
+        if (printBtn.textContent === 'PDF…') printBtn.textContent = previous || 'PDF';
+        printBtn.disabled = false;
+        printBtn.style.opacity = '';
+        pdfBusy = false;
+      }
+    };
+    printBtn?.addEventListener('click', onPdf);
     const detachModals = initModals(root);
     const detachGuestbook = initGuestbook(root, event.slug);
 
@@ -66,7 +110,7 @@ export default function InvitationExperience({
       detachGallery();
       detachMusic();
       detachRsvp();
-      printBtn?.removeEventListener('click', onPrint);
+      printBtn?.removeEventListener('click', onPdf);
       detachModals();
       detachGuestbook();
       shadow.replaceChildren();
@@ -1718,7 +1762,7 @@ function getOriginalHTML(): string {
           <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:#1f2937;color:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;" class="theme-thumb"></span>
         </span>
       </label>
-      <button id="print-invitation-btn" type="button" style="height:32px;padding:0 10px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:11px;font-weight:700;" title="Enregistrer l'invitation en PDF">PDF</button>
+      <button id="print-invitation-btn" type="button" style="height:32px;padding:0 10px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:11px;font-weight:700;" title="Télécharger l'invitation en PDF">PDF</button>
       <button id="music-toggle-btn" type="button" style="width:34px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);" title="Musique">
         <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       </button>
@@ -2010,4 +2054,53 @@ function getOriginalHTML(): string {
       </section>
     </main>
   `;
+}
+
+export function mountInvitationForCapture(
+  host: HTMLElement,
+  event: EventWithSettings,
+  guest?: { name?: string; table?: string },
+) {
+  host.replaceChildren();
+  const style = document.createElement('style');
+  style.textContent = `${getOriginalCSS()}
+    .invitation-experience-root.pdf-capture #app-floating-tools,
+    .invitation-experience-root.pdf-capture audio,
+    .invitation-experience-root.pdf-capture .inv-modal,
+    .invitation-experience-root.pdf-capture #welcome-gate { display: none !important; }
+    .invitation-experience-root.pdf-capture,
+    .invitation-experience-root.pdf-capture * {
+      animation: none !important;
+      transition: none !important;
+    }
+    .invitation-experience-root.pdf-capture #main-view {
+      width: 448px !important;
+      max-width: 448px !important;
+      min-height: 0 !important;
+      height: auto !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      margin: 0 !important;
+    }
+    .invitation-experience-root.pdf-capture .hero-bg {
+      height: 460px !important;
+      min-height: 460px !important;
+    }
+  `;
+  const root = document.createElement('div');
+  root.className = 'invitation-experience-root pdf-capture';
+  root.innerHTML = getOriginalHTML();
+  host.append(style, root);
+  hydrateEventData(root, event, guest?.name?.trim() || undefined, guest?.table);
+  initDrinkMenu(root, event);
+  if (event.event_date) initCountdown(root, event.event_date)();
+  const main = root.querySelector('#main-view');
+  if (!(main instanceof HTMLElement)) {
+    throw new Error('Le modèle d’invitation est introuvable.');
+  }
+  return {
+    root,
+    main,
+    destroy: () => host.replaceChildren(),
+  };
 }

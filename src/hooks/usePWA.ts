@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { ensureInstallPromptListener } from '@/lib/pwa/install-prompt';
 
 export function usePWA() {
   useEffect(() => {
+    ensureInstallPromptListener();
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
     let cancelled = false;
 

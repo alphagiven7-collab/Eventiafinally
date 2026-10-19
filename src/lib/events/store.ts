@@ -150,6 +150,16 @@ export async function fetchEventMusic(supabase: DbClient, eventId: string): Prom
   return url || null;
 }
 
+export async function fetchGuestLimitBySlug(supabase: DbClient, slug: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('guest_limit')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.guest_limit != null ? Number(data.guest_limit) : null;
+}
+
 export async function fetchInvitationMeta(
   supabase: DbClient,
   slug: string,

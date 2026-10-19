@@ -8,6 +8,7 @@ import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { readOfflineInvitation, saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
+import { iosInstallHint, tryInstallPwa } from '@/lib/pwa/install-prompt';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -117,9 +118,9 @@ export default function InvitationExperience({
         offlineStatus.textContent = 'Cette invitation est enregistrée sur cet appareil.';
         return;
       }
-      offlineBtn.textContent = 'Enregistrer l’invitation hors ligne';
+      offlineBtn.textContent = 'Installer et enregistrer hors ligne';
       offlineStatus.textContent = navigator.onLine
-        ? 'Ouvrez l’invitation en ligne, puis enregistrez-la pour la relire sans connexion.'
+        ? 'Installe l’application sur cet appareil et enregistre l’invitation pour la relire sans connexion.'
         : 'Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.';
     };
     void paintOffline();
@@ -134,8 +135,16 @@ export default function InvitationExperience({
       }
       offlineBusy = true;
       offlineBtn.disabled = true;
-      offlineBtn.textContent = 'Enregistrement…';
+      offlineBtn.textContent = 'Installation…';
+      let installNote = '';
       try {
+        const installOutcome = await tryInstallPwa();
+        if (installOutcome === 'accepted') {
+          installNote = 'Application installée. ';
+        } else if (installOutcome === 'ios') {
+          installNote = `${iosInstallHint()} `;
+        }
+        offlineBtn.textContent = 'Enregistrement…';
         const shownName = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
         const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
         const tableVisible = Boolean(tableLine && tableLine.style.display !== 'none' && tableLine.textContent?.trim());
@@ -156,11 +165,14 @@ export default function InvitationExperience({
           html: clone.outerHTML,
           secrets: [event.adminCode || '', event.user_id || ''],
         });
+        if (offlineStatus instanceof HTMLElement && installNote) {
+          offlineStatus.textContent = `${installNote}Cette invitation est enregistrée sur cet appareil.`;
+        }
       } catch {
         if (offlineStatus instanceof HTMLElement) {
           offlineStatus.textContent = 'L’enregistrement hors ligne n’a pas abouti. Réessayez en ligne.';
         }
-        offlineBtn.textContent = 'Enregistrer l’invitation hors ligne';
+        offlineBtn.textContent = 'Installer et enregistrer hors ligne';
       } finally {
         offlineBtn.disabled = false;
         offlineBusy = false;
@@ -630,16 +642,16 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   const main = root.querySelector('#main-view');
   [
-    'section-family-motifs',
     'section-when-where',
     'section-dress-code',
     'section-gallery',
     'section-about',
     'drink-menu-section',
+    'section-date-place',
     'section-countdown',
+    'section-family-motifs',
     'section-rsvp',
     'section-guestbook',
-    'section-date-place',
     'section-practical-info',
     'section-gift-contact',
   ].forEach((id) => {
@@ -1476,6 +1488,14 @@ function getOriginalCSS(): string {
       color: #1f2937;
       margin-bottom: 0.9rem;
     }
+    .invitation-experience-root .invite-calligraphy {
+      font-family: "Great Vibes", cursive;
+      font-size: clamp(1.55rem, 6.2vw, 2rem);
+      font-weight: 400;
+      line-height: 1.45;
+      color: #374151;
+      letter-spacing: 0.02em;
+    }
     .invitation-experience-root .invitation-rsvp-wrap { margin-top: 1rem; padding: 0 0.15rem; }
     .invitation-experience-root .btn-rsvp {
       background: var(--rsvp-color, linear-gradient(135deg, #2563eb, #7c3aed));
@@ -1896,7 +1916,6 @@ function getOriginalHTML(): string {
           </div>
           <div class="invitation-card-inner">
             <p class="invite-card-overline">Vous êtes cordialement invité(e)</p>
-            <h2 class="invite-card-title">Invitation</h2>
             <div id="couple-row-container" class="invite-couple-row">
               <span id="couple-name-left" class="invite-couple-name invite-couple-name--left">Prénom</span>
               <span id="couple-join-badge" class="invite-couple-join">&amp;</span>
@@ -1904,23 +1923,11 @@ function getOriginalHTML(): string {
             </div>
             <p class="invite-greeting font-serif">Cher/Chère <span id="display-guest-name" class="invite-guest-name">Invité(e)</span>,</p>
             <p id="guest-table-line" class="guest-table-line"></p>
-            <p id="invite-intro-paragraph" class="invite-body-text"></p>
+            <p id="invite-intro-paragraph" class="invite-body-text invite-calligraphy"></p>
             <p id="invite-secondary-text" class="invite-body-text" style="display:none;"></p>
-            <p id="invite-main-text" class="invite-body-text" style="display:none;"><span id="invitation-main-text"></span></p>
+            <p id="invite-main-text" class="invite-body-text invite-calligraphy" style="display:none;"><span id="invitation-main-text"></span></p>
           </div>
         </article>
-      </section>
-
-      <!-- Date et lieu, puis confirmation immédiate -->
-      <section id="section-family-motifs" style="padding:0 16px;margin-top:24px;display:none;">
-        <div id="groom-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;margin-bottom:12px;">
-          <h3 class="inv-text-primary">Motif de la famille du marié</h3>
-          <img id="groom-motif-img" alt="Motif de la famille du marié">
-        </div>
-        <div id="bride-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;">
-          <h3 class="inv-text-primary">Motif de la famille de la mariée</h3>
-          <img id="bride-motif-img" alt="Motif de la famille de la mariée">
-        </div>
       </section>
 
       <section id="section-when-where" style="padding:0 16px;margin-top:24px;">
@@ -2059,6 +2066,17 @@ function getOriginalHTML(): string {
         </div>
       </section>
 
+      <section id="section-family-motifs" style="padding:0 16px;margin-top:24px;display:none;">
+        <div id="groom-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;margin-bottom:12px;">
+          <h3 class="inv-text-primary">Motif de la famille du marié</h3>
+          <img id="groom-motif-img" alt="Motif de la famille du marié">
+        </div>
+        <div id="bride-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;">
+          <h3 class="inv-text-primary">Motif de la famille de la mariée</h3>
+          <img id="bride-motif-img" alt="Motif de la famille de la mariée">
+        </div>
+      </section>
+
       <!-- 9. Confirmation de présence (RSVP) -->
       <section id="section-rsvp" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
@@ -2154,7 +2172,7 @@ function getOriginalHTML(): string {
         </div>
       </section>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
-        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Enregistrer l’invitation hors ligne</button>
+        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer et enregistrer hors ligne</button>
         <p id="offline-invitation-status" style="margin:0;max-width:24rem;text-align:center;font-size:11px;font-weight:650;color:#334155;background:rgba(255,255,255,0.92);border-radius:999px;padding:4px 10px;"></p>
       </div>
     </main>

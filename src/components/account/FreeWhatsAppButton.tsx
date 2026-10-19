@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
-import { TRIAL_INVITATIONS } from '@/constants/pricing';
+import { getEventBySlug } from '@/data/events';
+import { fetchGuestLimitBySlug } from '@/lib/events/store';
+import { isFreeGuestTier } from '@/lib/pricing/tier';
 import {
   adminContactMessage,
   adminWhatsAppDigits,
@@ -41,19 +44,40 @@ export function useAdminWhatsApp() {
   return phone;
 }
 
+async function guestLimitForInvitationSlug(slug: string): Promise<number | null | undefined> {
+  if (isSupabaseReady()) {
+    const hosted = await fetchGuestLimitBySlug(createClient(), slug);
+    if (hosted != null) return hosted;
+  }
+  return getEventBySlug(slug)?.guestLimit;
+}
+
 export default function FreeWhatsAppButton() {
   const { user, loading } = useAuth();
   const phone = useAdminWhatsApp();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (loading) return;
+    let cancelled = false;
+
+    const invitationMatch = pathname.match(/^\/e\/([^/]+)/);
+    if (invitationMatch) {
+      const slug = decodeURIComponent(invitationMatch[1]);
+      void guestLimitForInvitationSlug(slug).then((limit) => {
+        if (!cancelled) setVisible(isFreeGuestTier(limit));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!user || !isSupabaseReady()) {
       setVisible(true);
       return;
     }
 
-    let cancelled = false;
     const supabase = createClient();
     void supabase
       .from('users')
@@ -72,14 +96,14 @@ export default function FreeWhatsAppButton() {
           setVisible(true);
           return;
         }
-        const paid = (events.data || []).some((row) => Number(row.guest_limit) > TRIAL_INVITATIONS);
+        const paid = (events.data || []).some((row) => !isFreeGuestTier(row.guest_limit));
         setVisible(!paid);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [user, loading]);
+  }, [user, loading, pathname]);
 
   if (!visible) return null;
 

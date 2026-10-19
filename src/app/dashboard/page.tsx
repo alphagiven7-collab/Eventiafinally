@@ -15,6 +15,7 @@ import { StoryArt } from '@/components/brand/StoryArt';
 import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
 import InstallApp from '@/components/pwa/InstallApp';
+import { useOrganizerUnlocked } from '@/hooks/useOrganizerUnlocked';
 
 function eventStatus(event: EventWithSettings) {
   if (event.isBlocked) {
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const [createError, setCreateError] = useState('');
   const [needsPermission, setNeedsPermission] = useState(false);
   const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; pending: number }>>({});
+  const organizerUnlocked = useOrganizerUnlocked();
 
   // Charger les événements
   const loadEvents = useCallback(async () => {
@@ -187,17 +189,19 @@ export default function DashboardPage() {
       <AdminLayout>
         <div id="evenements" className="space-y-6">
           <InstallApp />
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-rose-100 dark:border-gray-700">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-              {TRIAL_INVITATIONS} invitations d&apos;essai, puis 0,30 $ par invité
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {GUEST_PACKS.map((pack) => `${pack} invités · ${formatUsd(packTotalUsd(pack))}`).join(' · ')}. L&apos;essai s&apos;ajoute au forfait.
-            </p>
-            <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold">
-              Voir les forfaits
-            </a>
-          </div>
+          {organizerUnlocked === false && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-rose-100 dark:border-gray-700">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                {TRIAL_INVITATIONS} invitations d&apos;essai, puis 0,30 $ par invité
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {GUEST_PACKS.map((pack) => `${pack} invités · ${formatUsd(packTotalUsd(pack))}`).join(' · ')}. L&apos;essai s&apos;ajoute au forfait.
+              </p>
+              <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold">
+                Voir les forfaits
+              </a>
+            </div>
+          )}
 
           {/* En-tête */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

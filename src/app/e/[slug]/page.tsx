@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { getEventBySlug } from '@/data/events';
-import { EventWithSettings } from '@/types';
+import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug } from '@/lib/events/store';
@@ -15,6 +15,8 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
+  const [liveStatus, setLiveStatus] = useState<GuestStatus | null>(null);
+  const [rsvpNotice, setRsvpNotice] = useState('');
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
@@ -89,13 +91,31 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     );
   }
 
+  const shownStatus = liveStatus || matchedGuest?.status;
+
   return (
-    <InvitationExperience
-      event={event}
-      guestName={matchedGuest?.name}
-      guestToken={matchedGuest?.token}
-      guestStatus={matchedGuest?.status}
-      guestTable={matchedGuest?.table_number}
-    />
+    <>
+      {rsvpNotice && (
+        <div className="fixed inset-x-3 bottom-4 z-[80] rounded-2xl bg-violet-700 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg">
+          {rsvpNotice}
+        </div>
+      )}
+      <InvitationExperience
+        event={event}
+        guestName={matchedGuest?.name}
+        guestToken={matchedGuest?.token}
+        guestStatus={shownStatus}
+        guestTable={matchedGuest?.table_number}
+        onRsvp={(result) => {
+          if (result.error) {
+            setLiveStatus(null);
+            setRsvpNotice(result.error);
+            return;
+          }
+          setLiveStatus(result.status);
+          setRsvpNotice(result.notice || (result.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.'));
+        }}
+      />
+    </>
   );
 }

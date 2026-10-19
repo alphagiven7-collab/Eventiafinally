@@ -68,15 +68,17 @@ export function tokenFromInviteLink(value: string): string {
 }
 
 export function explainGuestError(message: string): string {
+  if (!message.trim()) return 'La confirmation n’a pas abouti. Réessayez.';
   if (message.includes('FREE_GUEST_LIMIT')) return freeGuestLimitMessage();
-  if (/group_name|table_number|schema cache|lookup_guest_by_token|submit_guest_rsvp|column/i.test(message)) {
+  if (/not assigned yet|GUEST_NOT_FOUND/i.test(message)) return 'Ce lien personnel ne correspond à aucun invité.';
+  if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n\'est pas encore publiée.';
+  if (/row-level security|permission denied/i.test(message)) {
+    return 'La confirmation n’a pas été autorisée. Relancez le script de correction dans Supabase.';
+  }
+  if (/schema cache|could not find the function|submit_guest_rsvp|lookup_guest_by_token|argument of NOT must be type boolean/i.test(message)) {
     return MIGRATION_HINT;
   }
-  if (/argument of NOT must be type boolean/i.test(message)) {
-    return 'La confirmation n’a pas pu être enregistrée. Exécutez supabase/migrations/009_checkin_and_rsvp.sql dans le SQL Editor de Supabase.';
-  }
-  if (message.includes('GUEST_NOT_FOUND')) return 'Ce lien personnel ne correspond à aucun invité.';
-  if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n\'est pas encore publiée.';
+  if (/column|ambiguous/i.test(message)) return MIGRATION_HINT;
   return message;
 }
 
@@ -298,5 +300,8 @@ export async function submitGuestRsvp(
 
   if (error) return { error: explainGuestError(error.message) };
   const row = Array.isArray(data) ? data[0] : data;
-  return { name: row?.guest_name, status: row?.guest_status };
+  if (!row?.guest_status && !row?.guest_name) {
+    return { error: 'La confirmation n’a pas été enregistrée. Réessayez.' };
+  }
+  return { name: row?.guest_name, status: row?.guest_status || input.status };
 }

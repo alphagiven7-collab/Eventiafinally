@@ -15,6 +15,7 @@ export default function InvitationExperience({
   guestStatus,
   guestTable,
   rememberAnswer = true,
+  onRsvp,
 }: {
   event: EventWithSettings;
   guestName?: string;
@@ -22,8 +23,11 @@ export default function InvitationExperience({
   guestStatus?: GuestStatus;
   guestTable?: string;
   rememberAnswer?: boolean;
+  onRsvp?: (result: { status: 'confirmed' | 'declined'; error?: string; notice?: string }) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const onRsvpRef = useRef(onRsvp);
+  onRsvpRef.current = onRsvp;
 
   useEffect(() => {
     const host = containerRef.current;
@@ -48,7 +52,7 @@ export default function InvitationExperience({
     const detachGallery = initGalleryScroll(root);
     initDrinkMenu(root, event);
     const detachMusic = initMusic(root, event);
-    const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer);
+    const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer, onRsvpRef);
     const printBtn = root.querySelector('#print-invitation-btn');
     const onPrint = () => window.print();
     printBtn?.addEventListener('click', onPrint);
@@ -646,7 +650,8 @@ function initRsvp(
   event: EventWithSettings,
   guestToken?: string,
   guestStatus?: GuestStatus,
-  rememberAnswer = true
+  rememberAnswer = true,
+  onRsvpRef?: { current?: (result: { status: 'confirmed' | 'declined'; error?: string; notice?: string }) => void },
 ) {
   const slug = event.slug;
   const responsesClosed = dayHasPassed(event.rsvpDeadline) || dayHasPassed(event.event_date);
@@ -726,49 +731,72 @@ function initRsvp(
     } catch {}
   }
 
+  const paintAnswer = (text: string) => {
+    const top = reserveBtn?.querySelector('#reserve-deadline-text');
+    const bottom = confirmBtn?.querySelector('#confirm-presence-label');
+    if (top) top.textContent = text;
+    if (bottom) bottom.textContent = text;
+  };
+
   const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
     if (responsesClosed) {
+      paintAnswer('Réponses closes');
       setNote('La date est passée. Les réponses sont closes.', false);
+      onRsvpRef?.current?.({ status, error: 'La date est passée. Les réponses sont closes.' });
       return;
     }
     if (button) button.disabled = true;
-    const label = button?.querySelector('#confirm-presence-label, #reserve-deadline-text') as HTMLElement | null;
-    const previousLabel = label?.textContent || '';
-    if (label) label.textContent = 'Enregistrement…';
+    paintAnswer('Enregistrement…');
+    setNote('Enregistrement de votre réponse…', true);
     const messageField = root.querySelector('#guest-message') as HTMLTextAreaElement | null;
     const message = messageField?.value.trim() || undefined;
 
-    if (token && isSupabaseReady()) {
-      const result = await submitGuestRsvp(createClient(), { token, status, message });
-      if (button) button.disabled = false;
-      if (result.error) {
-        if (label) label.textContent = previousLabel;
-        setNote(result.error, false);
-        return;
+    try {
+      if (token && isSupabaseReady()) {
+        const result = await Promise.race([
+          submitGuestRsvp(createClient(), { token, status, message }),
+          new Promise<{ error: string }>((resolve) => {
+            window.setTimeout(() => resolve({ error: 'La confirmation met trop de temps. Réessayez.' }), 12000);
+          }),
+        ]);
+        if (button) button.disabled = false;
+        if (result.error) {
+          paintAnswer('Réessayer');
+          setNote(result.error, false);
+          onRsvpRef?.current?.({ status, error: result.error });
+          return;
+        }
+      } else if (button) {
+        button.disabled = false;
       }
-    } else if (button) {
-      button.disabled = false;
-    }
 
-    if (rememberAnswer) {
-      try {
-        localStorage.setItem(localKey, status);
-      } catch {}
-    }
-    applyVisualState(status);
-    if (!token) {
-      setNote(
-        status === 'confirmed'
+      if (rememberAnswer) {
+        try {
+          localStorage.setItem(localKey, status);
+        } catch {}
+      }
+      applyVisualState(status);
+      paintAnswer(status === 'confirmed' ? 'Présence confirmée' : 'Réponse enregistrée');
+      const notice = !token
+        ? status === 'confirmed'
           ? rememberAnswer
             ? 'Présence confirmée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
             : 'Aperçu seulement : cette confirmation n’est pas envoyée aux mariés.'
           : rememberAnswer
             ? 'Réponse notée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
-            : 'Aperçu seulement : cette réponse n’est pas envoyée aux mariés.',
-        status === 'confirmed'
-      );
-    } else {
-      void refreshGuestbookPreview(root, slug);
+            : 'Aperçu seulement : cette réponse n’est pas envoyée aux mariés.'
+        : status === 'confirmed'
+          ? 'Présence confirmée. Merci !'
+          : 'Votre réponse est enregistrée.';
+      setNote(notice, status === 'confirmed');
+      if (token) void refreshGuestbookPreview(root, slug);
+      onRsvpRef?.current?.({ status, notice });
+    } catch {
+      if (button) button.disabled = false;
+      paintAnswer('Réessayer');
+      const failure = 'La confirmation n’a pas abouti. Réessayez.';
+      setNote(failure, false);
+      onRsvpRef?.current?.({ status, error: failure });
     }
   };
 
@@ -1902,7 +1930,7 @@ function getOriginalHTML(): string {
           <button id="decline-presence-btn" type="button" style="width:100%;margin-top:10px;border-radius:12px;padding:12px;background:#f9fafb;color:#4b5563;border:1px solid #e5e7eb;font-size:12px;font-weight:500;cursor:pointer;">
             Je ne pourrai pas venir
           </button>
-          <p id="rsvp-status-note" style="margin-top:10px;text-align:center;font-size:12px;font-weight:600;min-height:1.1rem;"></p>
+          <p id="rsvp-status-note" style="margin-top:12px;text-align:center;font-size:15px;font-weight:700;line-height:1.4;min-height:1.4rem;"></p>
           <div id="checkin-pass" class="checkin-pass" style="display:none;">
             <p class="checkin-kicker">Code d'entrée</p>
             <div class="checkin-qr-frame">

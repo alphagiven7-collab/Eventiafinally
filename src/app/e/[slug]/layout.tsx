@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { readPublicInvitation } from '@/lib/events/read-public';
+import { publicCoverUrl, shareDescription, shareTitle } from '@/lib/events/share-image';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -17,18 +18,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const rawImage = event.bestPhotos?.[0] || event.cover_image || event.branding?.ogShareImage || event.branding?.heroImage || '';
-  const image = rawImage.startsWith('http') ? rawImage : '';
-  const title = `${event.title} | Eventia`;
-  const description = event.metaDescription || event.welcomeMessage || `Découvrez l'invitation de ${event.title} sur Eventia.`;
+  const photo = publicCoverUrl(event);
+  const image = photo || `/e/${slug}/share-image`;
+  const title = shareTitle(event);
+  const description = shareDescription(event);
 
   return {
-    title,
+    title: { absolute: title },
     description,
     openGraph: {
       title,
       description,
-      images: image ? [{ url: image, width: 1200, height: 630 }] : [],
+      images: [{ url: image, width: 1200, height: 630, alt: event.title || 'Invitation Eventia' }],
       type: 'website',
       locale: 'fr_FR',
       siteName: 'Eventia',
@@ -37,12 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title,
       description,
-      images: image ? [image] : [],
-    },
-    other: {
-      'whatsapp:title': title,
-      'whatsapp:description': description,
-      ...(image ? { 'whatsapp:image': image } : {}),
+      images: [image],
     },
   };
 }

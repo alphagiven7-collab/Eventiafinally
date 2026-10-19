@@ -5,22 +5,25 @@ import { useEffect } from 'react';
 export function usePWA() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    let cancelled = false;
 
-    // Désactiver et supprimer les anciens service workers pour corriger
-    // le bug de rechargement infini sur Safari 15 (iPhone 7 Plus)
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        registration.unregister();
-      }
-    });
-
-    // Vider le cache existant
-    if ('caches' in window) {
-      caches.keys().then((names) => {
-        for (const name of names) {
-          caches.delete(name);
-        }
-      });
+    async function register() {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      if (cancelled) return;
+      await Promise.all(registrations
+        .filter((registration) => !registration.active?.scriptURL.endsWith('/sw.js')
+          && !registration.installing?.scriptURL.endsWith('/sw.js')
+          && !registration.waiting?.scriptURL.endsWith('/sw.js'))
+        .map((registration) => registration.unregister()));
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
     }
+
+    register().catch(() => {
+      /* l’installation PWA reste optionnelle */
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 }

@@ -153,17 +153,21 @@ export async function fetchEventMusic(supabase: DbClient, eventId: string): Prom
 export async function fetchInvitationMeta(
   supabase: DbClient,
   slug: string,
-): Promise<{ title: string; description: string } | null> {
+): Promise<{ title: string; description: string; coverUrl: string } | null> {
   const { data, error } = await supabase
     .from('events')
-    .select('title, description, event_settings(meta_description)')
+    .select('title, description, cover_image, event_settings(meta_description, branding)')
     .eq('slug', slug)
     .maybeSingle();
   if (error || !data) return null;
   const settings = Array.isArray(data.event_settings) ? data.event_settings[0] : data.event_settings;
+  const branding = settings?.branding;
+  const coverUrl = [data.cover_image, branding?.ogShareImage, branding?.heroImage, branding?.welcomeImage]
+    .find((value) => typeof value === 'string' && value.startsWith('https://')) || '';
   return {
     title: data.title,
     description: settings?.meta_description || data.description || '',
+    coverUrl,
   };
 }
 

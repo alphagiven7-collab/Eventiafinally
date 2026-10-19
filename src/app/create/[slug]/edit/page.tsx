@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
@@ -36,6 +35,7 @@ import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
+import { clearCreationDraft, readCreationDraft, writeCreationDraft } from '@/lib/drafts/local-draft';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -621,28 +621,62 @@ function EditEventContent() {
   const [rsvpDeadline, setRsvpDeadline] = useState('');
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   /* ── Chargement de l'événement ── */
   useEffect(() => {
     let cancelled = false;
 
     async function loadEvent() {
-      if (isSupabaseReady()) {
+      const draft = await readCreationDraft();
+      const sameDraft = draft && draft.slug === slug ? draft : null;
+
+      if (isSupabaseReady() && user?.id) {
         try {
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
-          if (hosted && !cancelled) {
+          if (cancelled) return;
+          if (hosted && hosted.user_id && hosted.user_id !== user.id) {
+            setBlocked(true);
+            setLoading(false);
+            return;
+          }
+          if (sameDraft && (!hosted || sameDraft.savedAt >= (hosted?.updated_at || ''))) {
+            const attached = await publishInvitation(createClient(), {
+              ...sameDraft.event,
+              user_id: user.id,
+              is_published: hosted?.is_published ?? false,
+            });
+            if (!attached.error) {
+              await clearCreationDraft();
+              const fresh = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
+              if (fresh && !cancelled) {
+                populateFields(fresh);
+                addToast('success', 'Votre brouillon est rattaché à votre compte.');
+                return;
+              }
+            }
+          }
+          if (hosted) {
+            if (sameDraft) await clearCreationDraft();
             populateFields(hosted);
             return;
           }
         } catch {
-          // Repli démo si hors ligne
+          // Le brouillon local reste disponible.
         }
       }
 
-      const demo = getEventBySlug(slug);
-      if (demo && !cancelled) {
-        populateFields(demo);
+      if (sameDraft && !cancelled) {
+        populateFields(sameDraft.event);
         return;
+      }
+
+      if (user?.id) {
+        const demo = getEventBySlug(slug);
+        if (demo && !cancelled) {
+          populateFields(demo);
+          return;
+        }
       }
 
       if (!cancelled) setLoading(false);
@@ -710,7 +744,7 @@ function EditEventContent() {
     return () => {
       cancelled = true;
     };
-  }, [slug, user?.id]);
+  }, [slug, user?.id, addToast]);
 
   /* ── Objet événement construit en direct (pour l'aperçu ET la sauvegarde) ── */
   const liveEvent = useMemo<EventWithSettings | null>(() => {
@@ -838,15 +872,46 @@ function EditEventContent() {
     rsvpDeadline,
   ]);
 
+  useEffect(() => {
+    if (user?.id || !liveEvent) return;
+    const handle = window.setTimeout(() => {
+      void writeCreationDraft({
+        slug: liveEvent.slug,
+        event: { ...liveEvent, updated_at: new Date().toISOString() },
+        savedAt: new Date().toISOString(),
+      });
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [user?.id, liveEvent]);
+
   /* ── Sauvegarde sur Supabase ── */
   const handleSave = useCallback(
     async (mode: 'draft' | 'preview' | 'publish' = 'draft') => {
       if (!liveEvent) return false;
+      if (!user?.id) {
+        await writeCreationDraft({
+          slug: liveEvent.slug,
+          event: { ...liveEvent, updated_at: new Date().toISOString() },
+          savedAt: new Date().toISOString(),
+        });
+        if (mode === 'preview') {
+          setShowMobilePreview(true);
+          addToast('success', 'Aperçu disponible sur cet appareil.');
+          return true;
+        }
+        if (!eventDate || !location.trim()) {
+          addToast('error', 'La date et le lieu sont obligatoires.');
+          return false;
+        }
+        router.push(`/auth/register?redirect=${encodeURIComponent(`/create/${liveEvent.slug}/edit`)}`);
+        addToast('success', 'Vos informations sont conservées. Créez un compte pour enregistrer l’invitation.');
+        return false;
+      }
       if (!eventDate || !location.trim()) {
         addToast('error', 'La date et le lieu sont obligatoires.');
         return false;
       }
-      if (!user?.id || !isSupabaseReady()) {
+      if (!isSupabaseReady()) {
         addToast('error', SUPABASE_REQUIRED);
         return false;
       }
@@ -961,6 +1026,19 @@ function EditEventContent() {
     );
   }
 
+  if (blocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="text-center max-w-sm">
+          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Cette invitation appartient à un autre organisateur.</p>
+          <button type="button" onClick={() => router.push('/dashboard')} className="mt-4 text-violet-700 dark:text-violet-300 hover:underline">
+            Retour à mes événements
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!event || !liveEvent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -968,10 +1046,10 @@ function EditEventContent() {
           <p className="text-xl text-gray-500 dark:text-gray-400">Événement introuvable</p>
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(user ? '/dashboard' : '/create')}
             className="mt-4 text-violet-700 dark:text-violet-300 hover:underline"
           >
-            Retour aux événements
+            {user ? 'Retour aux événements' : 'Commencer une invitation'}
           </button>
         </div>
       </div>
@@ -1002,7 +1080,9 @@ function EditEventContent() {
             </button>
           </div>
           <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-            Publier rend le lien visible sur les autres téléphones. Tant que le statut indique Brouillon, un autre navigateur affiche « Invitation introuvable ».
+            {user
+              ? 'Publier rend le lien visible sur les autres téléphones. Tant que le statut indique Brouillon, un autre navigateur affiche « Invitation introuvable ».'
+              : 'Vous pouvez remplir la carte et voir l’aperçu sans compte. L’inscription est demandée pour enregistrer ou publier. Le brouillon reste sur cet appareil.'}
           </p>
           <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
@@ -1528,6 +1608,16 @@ function EditEventContent() {
                 type="button"
                 disabled={saving}
                 onClick={async () => {
+                  if (!user && liveEvent) {
+                    await writeCreationDraft({
+                      slug: liveEvent.slug,
+                      event: liveEvent,
+                      savedAt: new Date().toISOString(),
+                    });
+                    setLeaveAsk(false);
+                    router.push('/create');
+                    return;
+                  }
                   const saved = await handleSave('draft');
                   if (!saved) return;
                   setLeaveAsk(false);
@@ -1539,7 +1629,7 @@ function EditEventContent() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push(user ? '/dashboard' : '/create')}
                 className="py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm"
               >
                 Revenir sans enregistrer
@@ -1574,9 +1664,5 @@ function EditEventContent() {
 }
 
 export default function EditEventPage() {
-  return (
-    <ProtectedRoute>
-      <EditEventContent />
-    </ProtectedRoute>
-  );
+  return <EditEventContent />;
 }

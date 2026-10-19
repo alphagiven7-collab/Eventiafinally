@@ -2,11 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/providers/auth-provider';
 import { Sparkles } from 'lucide-react';
 
 function CreateContent() {
   const router = useRouter();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
@@ -29,7 +30,7 @@ function CreateContent() {
             </svg>
             <span className="font-bold text-base text-gray-900 dark:text-gray-100">Eventia</span>
           </div>
-          <button onClick={() => router.push('/dashboard')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
+          <button onClick={() => router.push(user ? '/dashboard' : '/')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
             ← Retour
           </button>
         </div>
@@ -80,14 +81,12 @@ function CreateContent() {
 
 export default function CreatePage() {
   return (
-    <ProtectedRoute>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }>
-        <CreateContent />
-      </Suspense>
-    </ProtectedRoute>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <CreateContent />
+    </Suspense>
   );
 }

@@ -14,6 +14,7 @@ import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, Share2, Heart } from
 import { StoryArt } from '@/components/brand/StoryArt';
 import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
+import InstallApp from '@/components/pwa/InstallApp';
 
 function eventStatus(event: EventWithSettings) {
   if (event.isBlocked) {
@@ -185,6 +186,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <AdminLayout>
         <div id="evenements" className="space-y-6">
+          <InstallApp />
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-rose-100 dark:border-gray-700">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
               {TRIAL_INVITATIONS} invitations d&apos;essai, puis 0,30 $ par invité
@@ -282,7 +284,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center shadow-sm border border-gray-100 dark:border-gray-700">
               <StoryArt name="welcome" alt="Illustration d'accueil" className="w-40 h-auto mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Aucune invitation pour le moment. Le premier enregistrement reste un brouillon.
+                Aucune invitation pour le moment. Créez-en une, personnalisez-la, puis ajoutez vos invités. Le premier enregistrement reste un brouillon.
               </p>
               <button
                 onClick={() => {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { newDraftSlug, writeCreationDraft } from '@/lib/drafts/local-draft';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings } from '@/types';
@@ -70,7 +70,46 @@ function CreateEventContent() {
       return;
     }
 
-    if (!user?.id || !isSupabaseReady()) {
+    const finalTitleEarly = computedTitle || 'Notre mariage';
+    if (!user?.id) {
+      const localSlug = newDraftSlug(finalTitleEarly);
+      const draftEvent: EventWithSettings = {
+        id: crypto.randomUUID(),
+        slug: localSlug,
+        title: finalTitleEarly,
+        subtitle: coupleLeft.trim() && coupleRight.trim() ? `${coupleLeft.trim()} & ${coupleRight.trim()}` : undefined,
+        type: 'wedding',
+        event_date: new Date(eventDate + 'T' + (eventTime || '00:00')).toISOString(),
+        event_time: eventTime || undefined,
+        location: location.trim(),
+        venue: location.trim(),
+        address: address.trim() || undefined,
+        cover_image: '',
+        coupleLeft: coupleLeft.trim() || undefined,
+        coupleRight: coupleRight.trim() || undefined,
+        branding: {
+          primaryColor: '#5b21b6',
+          accentColor: '#2563eb',
+          heroImage: '',
+          welcomeImage: '',
+          ogShareImage: '',
+        },
+        rsvpButtonColor: '#7c3aed',
+        sections: { gallery: true, countdown: true, dressCode: true, quiz: false, donation: false, guestbook: false },
+        is_published: false,
+        guestLimit: 3,
+        invitationTemplate: 'elegance',
+        view_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await writeCreationDraft({ slug: localSlug, event: draftEvent, savedAt: new Date().toISOString() });
+      addToast('success', 'Aperçu prêt. Le compte sera demandé seulement pour enregistrer ou publier.');
+      router.push(`/create/${localSlug}/edit`);
+      return;
+    }
+
+    if (!isSupabaseReady()) {
       addToast('error', SUPABASE_REQUIRED);
       return;
     }
@@ -156,7 +195,7 @@ function CreateEventContent() {
           <span className="font-bold text-base text-gray-900 dark:text-gray-100">Eventia</span>
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(user ? '/dashboard' : '/')}
             className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
           >
             ← Retour
@@ -252,9 +291,5 @@ function CreateEventContent() {
 }
 
 export default function CreateEventPage() {
-  return (
-    <ProtectedRoute>
-      <CreateEventContent />
-    </ProtectedRoute>
-  );
+  return <CreateEventContent />;
 }

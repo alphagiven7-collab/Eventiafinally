@@ -35,7 +35,7 @@ function RegisterForm() {
       setLoading(false);
       return;
     }
-    router.push('/dashboard');
+    router.push(nextPath);
     router.refresh();
   };
 
@@ -119,7 +119,7 @@ function RegisterForm() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Déjà un compte ?{' '}
-              <Link href="/auth/login" className="text-amber-600 hover:text-amber-700 dark:text-amber-400 font-medium">Se connecter</Link>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(nextPath)}`} className="text-amber-600 hover:text-amber-700 dark:text-amber-400 font-medium">Se connecter</Link>
             </p>
           </div>
         </div>

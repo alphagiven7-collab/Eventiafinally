@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr" data-eventia-offline-shell="1">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Invitation hors ligne</title>
+  <style>
+    html, body { margin: 0; background: #f4f4f6; color: #111827; }
+    #offline-shell-status {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      margin: 0;
+      padding: 10px 14px;
+      text-align: center;
+      font: 650 12px/1.4 Montserrat, system-ui, sans-serif;
+      color: white;
+      background: #0f172a;
+    }
+    #offline-host { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <p id="offline-shell-status">Chargement de l’invitation enregistrée…</p>
+  <div id="offline-host"></div>
+  <script>
+    (function () {
+      var status = document.getElementById('offline-shell-status');
+      var host = document.getElementById('offline-host');
+
+      function setStatus(text) {
+        status.textContent = text;
+      }
+
+      function slugFromLocation() {
+        var parts = location.pathname.split('/').filter(Boolean);
+        if (parts[0] !== 'e' || !parts[1]) return '';
+        try { return decodeURIComponent(parts[1]); } catch (error) { return parts[1]; }
+      }
+
+      function readRecord(key) {
+        return new Promise(function (resolve) {
+          var open = indexedDB.open('eventia');
+          open.onerror = function () { resolve(null); };
+          open.onsuccess = function () {
+            var db = open.result;
+            if (!db.objectStoreNames.contains('offline-invitations')) {
+              resolve(null);
+              return;
+            }
+            var request = db.transaction('offline-invitations', 'readonly').objectStore('offline-invitations').get(key);
+            request.onerror = function () { resolve(null); };
+            request.onsuccess = function () { resolve(request.result || null); };
+          };
+        });
+      }
+
+      function show(record) {
+        if (!record || !record.viewHtml) {
+          setStatus('Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.');
+          return;
+        }
+        document.title = (record.event && record.event.title) ? record.event.title + ' | Eventia' : 'Invitation | Eventia';
+        var shadow = host.attachShadow({ mode: 'open' });
+        var style = document.createElement('style');
+        style.textContent = record.viewCss || '';
+        var holder = document.createElement('div');
+        holder.innerHTML = record.viewHtml;
+        shadow.append(style);
+        while (holder.firstChild) shadow.append(holder.firstChild);
+        setStatus('Invitation disponible hors ligne.');
+      }
+
+      function rememberPending(button, slug, token) {
+        var note = host.shadowRoot && host.shadowRoot.querySelector('#rsvp-status-note');
+        var message = 'En attente de synchronisation. La réponse sera envoyée dès le retour de la connexion.';
+        if (note) note.textContent = message;
+        setStatus(message);
+        try {
+          localStorage.setItem('eventia-rsvp-pending', JSON.stringify({
+            token: token,
+            slug: slug,
+            status: button.id === 'decline-presence-btn' ? 'declined' : 'confirmed',
+            message: '',
+            at: Date.now()
+          }));
+        } catch (error) { /* la file locale est indisponible */ }
+      }
+
+      host.addEventListener('click', function (event) {
+        var path = event.composedPath ? event.composedPath() : [];
+        var button = null;
+        var pdf = null;
+        for (var i = 0; i < path.length; i += 1) {
+          var node = path[i];
+          if (!node || !node.id) continue;
+          if (node.id === 'confirm-presence-btn' || node.id === 'decline-presence-btn' || node.id === 'reserve-deadline-btn') button = node;
+          if (node.id === 'print-invitation-btn') pdf = node;
+        }
+        if (pdf) {
+          event.preventDefault();
+          setStatus('Le PDF se télécharge séparément, avec une connexion. Il ne remplace pas l’enregistrement hors ligne.');
+          return;
+        }
+        if (!button) return;
+        event.preventDefault();
+        rememberPending(button, slugFromLocation(), new URLSearchParams(location.search).get('token') || '');
+      });
+
+      var slug = slugFromLocation();
+      var token = new URLSearchParams(location.search).get('token') || '';
+      var key = token ? slug + '::' + token : slug;
+      if (!slug) {
+        setStatus('Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.');
+        return;
+      }
+      readRecord(key).then(show);
+    })();
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug } from '@/lib/events/store';
 import { lookupGuestByToken, PublicGuest } from '@/lib/guests/store';
+import { readOfflineInvitation } from '@/lib/invitation/offline';
 import { Heart, Home } from 'lucide-react';
 
 export default function EventInvitationPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -17,17 +18,42 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
   const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
   const [liveStatus, setLiveStatus] = useState<GuestStatus | null>(null);
   const [rsvpNotice, setRsvpNotice] = useState('');
+  const [offlineGuest, setOfflineGuest] = useState<{ name?: string; table?: string } | null>(null);
+  const [offlineNote, setOfflineNote] = useState('');
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
     let cancelled = false;
 
     async function loadEvent() {
+      const token = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '';
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const saved = await readOfflineInvitation(slug, token);
+        if (saved && !cancelled) {
+          setEvent(saved.event);
+          setOfflineGuest({ name: saved.guestName, table: saved.guestTable });
+          setOfflineNote('Invitation disponible hors ligne.');
+          setLoading(false);
+          return;
+        }
+        if (!cancelled) {
+          setOfflineNote('Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.');
+          setEvent(null);
+          setLoading(false);
+          return;
+        }
+      }
       if (isSupabaseReady()) {
         try {
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
             setEvent(hosted);
+            const saved = await readOfflineInvitation(slug, token);
+            if (saved && saved.updatedAt && hosted.updated_at && saved.updatedAt !== hosted.updated_at) {
+              setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
+            } else if (saved) {
+              setOfflineNote('Invitation disponible hors ligne.');
+            }
             setLoading(false);
             return;
           }
@@ -39,6 +65,12 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
       const demo = getEventBySlug(slug);
       if (!cancelled) {
         setEvent(demo);
+        const saved = await readOfflineInvitation(slug, token);
+        if (saved && demo && saved.updatedAt && demo.updated_at && saved.updatedAt !== demo.updated_at) {
+          setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
+        } else if (saved) {
+          setOfflineNote('Invitation disponible hors ligne.');
+        }
         setLoading(false);
       }
     }
@@ -97,7 +129,9 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
             <Heart className="w-8 h-8" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Invitation introuvable</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Désolé, l'invitation "{slug}" n'existe pas.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {offlineNote || `Désolé, l'invitation "${slug}" n'existe pas.`}
+          </p>
           <a href="/" className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
             <Home className="w-4 h-4" />
             <span>Retour à l'accueil</span>
@@ -116,12 +150,17 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
           {rsvpNotice}
         </div>
       )}
+      {offlineNote && (
+        <div className="fixed inset-x-3 top-3 z-[70] rounded-2xl bg-slate-900 px-4 py-2 text-center text-xs font-semibold text-white shadow-lg">
+          {offlineNote}
+        </div>
+      )}
       <InvitationExperience
         event={event}
-        guestName={matchedGuest?.name}
+        guestName={matchedGuest?.name || offlineGuest?.name}
         guestToken={matchedGuest?.token}
         guestStatus={shownStatus}
-        guestTable={matchedGuest?.table_number}
+        guestTable={matchedGuest?.table_number || offlineGuest?.table}
         onRsvp={(result) => {
           if (result.error) {
             setLiveStatus(null);

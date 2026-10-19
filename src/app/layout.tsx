@@ -9,6 +9,7 @@ import { PWAActivator } from '@/providers/pwa-activator';
 import FreeWhatsAppButton from '@/components/account/FreeWhatsAppButton';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://eventiafinally.vercel.app'),
   title: {
     default: 'Eventia - Créez vos invitations en ligne',
     template: '%s | Eventia',
@@ -16,6 +17,20 @@ export const metadata: Metadata = {
   description: 'Plateforme de création d\'invitations numériques pour événements. Mariages, anniversaires, baby showers et plus encore.',
   keywords: ['invitation', 'événement', 'mariage', 'anniversaire', 'RSVP', 'WhatsApp'],
   authors: [{ name: 'Eventia' }],
+  applicationName: 'Eventia',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Eventia',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
@@ -27,7 +42,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#D4AF37',
+  themeColor: '#7c3aed',
 };
 
 export default function RootLayout({
@@ -41,6 +56,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+        <link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
         <I18nProvider>

@@ -1,15 +1,27 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { ThemeToggle } from '@/providers/theme-toggle';
 import { StoryArt, StoryCredit } from '@/components/brand/StoryArt';
 import { formatUsd, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
+import InstallApp from '@/components/pwa/InstallApp';
 
 const packs = [50, 100, 200];
 
 export default function HomePage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading || !user) return;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+    const fromInstall = new URLSearchParams(window.location.search).get('source') === 'pwa';
+    if (standalone || fromInstall) router.replace('/dashboard');
+  }, [loading, user, router]);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
@@ -32,6 +44,7 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 pb-16">
+        <InstallApp />
         <section className="grid md:grid-cols-2 gap-6 items-center py-8 md:py-12">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Invitations en ligne</p>

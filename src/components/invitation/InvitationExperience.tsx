@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
+import { readOfflineInvitation, saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -100,6 +101,72 @@ export default function InvitationExperience({
       }
     };
     printBtn?.addEventListener('click', onPdf);
+    const offlineBtn = root.querySelector('#save-offline-btn');
+    const offlineStatus = root.querySelector('#offline-invitation-status');
+    const tokenForOffline = guestToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+    const paintOffline = async () => {
+      const saved = await readOfflineInvitation(event.slug, tokenForOffline);
+      if (!(offlineBtn instanceof HTMLButtonElement) || !(offlineStatus instanceof HTMLElement)) return;
+      if (saved && navigator.onLine && event.updated_at && saved.updatedAt !== event.updated_at) {
+        offlineBtn.textContent = 'Enregistrer la nouvelle version';
+        offlineStatus.textContent = 'Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.';
+        return;
+      }
+      if (saved) {
+        offlineBtn.textContent = 'Disponible hors ligne';
+        offlineStatus.textContent = 'Cette invitation est enregistrée sur cet appareil.';
+        return;
+      }
+      offlineBtn.textContent = 'Enregistrer l’invitation hors ligne';
+      offlineStatus.textContent = navigator.onLine
+        ? 'Ouvrez l’invitation en ligne, puis enregistrez-la pour la relire sans connexion.'
+        : 'Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.';
+    };
+    void paintOffline();
+    let offlineBusy = false;
+    const onOffline = async () => {
+      if (offlineBusy || !(offlineBtn instanceof HTMLButtonElement)) return;
+      if (!navigator.onLine) {
+        if (offlineStatus instanceof HTMLElement) {
+          offlineStatus.textContent = 'Connectez-vous une fois pour enregistrer cette invitation.';
+        }
+        return;
+      }
+      offlineBusy = true;
+      offlineBtn.disabled = true;
+      offlineBtn.textContent = 'Enregistrement…';
+      try {
+        const shownName = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
+        const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
+        const tableVisible = Boolean(tableLine && tableLine.style.display !== 'none' && tableLine.textContent?.trim());
+        const tableText = tableVisible ? (tableLine?.textContent || '').replace(/^Table\s+/i, '').trim() : '';
+        const saved = await saveOfflineInvitation({
+          event,
+          token: tokenForOffline,
+          guestName: tokenForOffline ? (guestName || shownName) : undefined,
+          guestTable: tokenForOffline ? (guestTable || tableText) : undefined,
+        });
+        hydrateEventData(root, saved.event, saved.guestName, saved.guestTable);
+        await paintOffline();
+        const clone = root.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('audio, source').forEach((node) => node.remove());
+        const styleEl = shadow.querySelector('style');
+        await storeOfflineView(saved.key, {
+          css: styleEl?.textContent || '',
+          html: clone.outerHTML,
+          secrets: [event.adminCode || '', event.user_id || ''],
+        });
+      } catch {
+        if (offlineStatus instanceof HTMLElement) {
+          offlineStatus.textContent = 'L’enregistrement hors ligne n’a pas abouti. Réessayez en ligne.';
+        }
+        offlineBtn.textContent = 'Enregistrer l’invitation hors ligne';
+      } finally {
+        offlineBtn.disabled = false;
+        offlineBusy = false;
+      }
+    };
+    offlineBtn?.addEventListener('click', onOffline);
     const detachModals = initModals(root);
     const detachGuestbook = initGuestbook(root, event.slug);
 
@@ -111,6 +178,7 @@ export default function InvitationExperience({
       detachMusic();
       detachRsvp();
       printBtn?.removeEventListener('click', onPdf);
+      offlineBtn?.removeEventListener('click', onOffline);
       detachModals();
       detachGuestbook();
       shadow.replaceChildren();
@@ -783,6 +851,18 @@ function initRsvp(
   };
 
   const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const pending = { token, status, message: (root.querySelector('#guest-message') as HTMLTextAreaElement | null)?.value.trim() || '', slug, at: Date.now() };
+      try {
+        localStorage.setItem('eventia-rsvp-pending', JSON.stringify(pending));
+      } catch {
+        /* la file locale est indisponible */
+      }
+      if (button) button.disabled = false;
+      paintAnswer('En attente');
+      setNote('En attente de synchronisation. La réponse sera envoyée dès le retour de la connexion.', false);
+      return;
+    }
     if (responsesClosed) {
       paintAnswer('Réponses closes');
       setNote('La date est passée. Les réponses sont closes.', false);
@@ -867,11 +947,32 @@ function initRsvp(
     if (!alreadyAnswered) setNote('La date est passée. Les réponses sont closes.', false);
   }
 
+  const flushPendingRsvp = async () => {
+    if (!navigator.onLine || !token || !isSupabaseReady()) return;
+    const raw = localStorage.getItem('eventia-rsvp-pending');
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw) as { token?: string; status?: 'confirmed' | 'declined'; message?: string; slug?: string };
+      if (pending.slug !== slug || pending.token !== token || (pending.status !== 'confirmed' && pending.status !== 'declined')) return;
+      const result = await submitGuestRsvp(createClient(), { token, status: pending.status, message: pending.message || undefined });
+      if (result.error) return;
+      localStorage.removeItem('eventia-rsvp-pending');
+      applyVisualState(pending.status);
+      setNote(pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.', pending.status === 'confirmed');
+      onRsvpRef?.current?.({ status: pending.status, notice: pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.' });
+    } catch {
+      /* on réessaiera au prochain retour en ligne */
+    }
+  };
+  window.addEventListener('online', flushPendingRsvp);
+  void flushPendingRsvp();
+
   confirmBtn?.addEventListener('click', onConfirm);
   reserveBtn?.addEventListener('click', onReserveTopClick);
   declineBtn?.addEventListener('click', onDecline);
 
   return () => {
+    window.removeEventListener('online', flushPendingRsvp);
     confirmBtn?.removeEventListener('click', onConfirm);
     reserveBtn?.removeEventListener('click', onReserveTopClick);
     declineBtn?.removeEventListener('click', onDecline);
@@ -2052,6 +2153,10 @@ function getOriginalHTML(): string {
           </div>
         </div>
       </section>
+      <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
+        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Enregistrer l’invitation hors ligne</button>
+        <p id="offline-invitation-status" style="margin:0;max-width:24rem;text-align:center;font-size:11px;font-weight:650;color:#334155;background:rgba(255,255,255,0.92);border-radius:999px;padding:4px 10px;"></p>
+      </div>
     </main>
   `;
 }
@@ -2065,6 +2170,7 @@ export function mountInvitationForCapture(
   const style = document.createElement('style');
   style.textContent = `${getOriginalCSS()}
     .invitation-experience-root.pdf-capture #app-floating-tools,
+    .invitation-experience-root.pdf-capture #offline-invitation-bar,
     .invitation-experience-root.pdf-capture audio,
     .invitation-experience-root.pdf-capture .inv-modal,
     .invitation-experience-root.pdf-capture #welcome-gate { display: none !important; }

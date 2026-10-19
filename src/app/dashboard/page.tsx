@@ -61,8 +61,24 @@ export default function DashboardPage() {
     }
 
     try {
+      const cacheKey = `eventia-events-${user.id}`;
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          setEvents(JSON.parse(cached) as EventWithSettings[]);
+          setLoading(false);
+        }
+      } catch {
+        /* le cache local est optionnel */
+      }
       const rows = await listInvitations(createClient(), user.id);
       setEvents(rows);
+      setLoading(false);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(rows));
+      } catch {
+        /* liste trop volumineuse pour ce navigateur */
+      }
       const ids = rows.map((row) => row.id);
       if (ids.length > 0) {
         const { data } = await createClient()

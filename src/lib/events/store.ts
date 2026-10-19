@@ -135,7 +135,11 @@ export async function fetchInvitationBySlug(
     .maybeSingle();
 
   if (error || !data) return null;
-  return fromDatabase(data as EventRow);
+  const event = fromDatabase(data as EventRow);
+  if (options?.includeMusic === false && event.ambiance?.musicUrl?.startsWith('data:')) {
+    event.ambiance = { ...event.ambiance, musicUrl: '', hasFile: true };
+  }
+  return event;
 }
 
 export async function fetchEventMusic(supabase: DbClient, eventId: string): Promise<string | null> {

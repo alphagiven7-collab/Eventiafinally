@@ -42,9 +42,9 @@ export default function PhotoUploader({
 
       for (const file of selectedFiles) {
         const dataUrl = await compressImageFile(file, {
-          maxWidthOrHeight: 1000,
-          quality: 0.78,
-          maxBytes: 150 * 1024,
+          maxWidthOrHeight: 900,
+          quality: 0.7,
+          maxBytes: 70 * 1024,
         });
         newPhotos.push(dataUrl);
       }

@@ -4,18 +4,20 @@ import { useEffect, useRef } from 'react';
 import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { submitGuestRsvp } from '@/lib/guests/store';
+import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 
 export default function InvitationExperience({
   event,
   guestName,
   guestToken,
   guestStatus,
+  guestTable,
 }: {
   event: EventWithSettings;
   guestName?: string;
   guestToken?: string;
   guestStatus?: GuestStatus;
+  guestTable?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +39,7 @@ export default function InvitationExperience({
     root.innerHTML = getOriginalHTML();
     shadow.append(tailwind, style, root);
 
-    hydrateEventData(root, event, guestName);
+    hydrateEventData(root, event, guestName, guestTable);
 
     const stopCountdown = event.event_date ? initCountdown(root, event.event_date) : () => {};
     const detachTheme = initThemeToggle(root);
@@ -47,6 +49,8 @@ export default function InvitationExperience({
     initDrinkMenu(root, event);
     const detachMusic = initMusic(root, event);
     const detachRsvp = initRsvp(root, event.slug, guestToken, guestStatus);
+    const detachModals = initModals(root);
+    initGuestbook(root, event.slug);
 
     return () => {
       stopCountdown();
@@ -55,14 +59,15 @@ export default function InvitationExperience({
       detachGallery();
       detachMusic();
       detachRsvp();
+      detachModals();
       shadow.replaceChildren();
     };
-  }, [event, guestName, guestToken, guestStatus]);
+  }, [event, guestName, guestToken, guestStatus, guestTable]);
 
   return <div ref={containerRef} className="invitation-experience-host" />;
 }
 
-function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName?: string) {
+function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName?: string, guestTable?: string) {
   const $ = (sel: string) => root.querySelector(sel) as HTMLElement | null;
   const setText = (sel: string, text: string) => {
     const el = $(sel);
@@ -140,6 +145,16 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     setText('#display-guest-name', guestName);
   }
 
+  const tableLine = $('#guest-table-line');
+  if (tableLine) {
+    if (guestTable && guestTable.trim()) {
+      tableLine.textContent = `Table ${guestTable.trim()}`;
+      tableLine.style.display = 'inline-flex';
+    } else {
+      tableLine.style.display = 'none';
+    }
+  }
+
   // Textes de la carte d'invitation
   const coupleForIntro = hasBothNames ? `${leftName} et ${rightName}` : event.title;
   const introText = (
@@ -177,6 +192,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
       setText('#event-day', dayNum.toString().padStart(2, '0'));
       setText('#event-month-year', monthYear);
       setText('#calendar-month-label', monthYear);
+      setText('#summary-date', `${dayNum} ${monthYear}`);
       setText('#hero-date-pill', d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
       renderDynamicCalendar(root, d);
     }
@@ -186,6 +202,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const timeWrap = $('#event-time-badge');
   if (event.event_time) {
     setText('#event-time-range', event.event_time);
+    setText('#summary-time', event.event_time);
     if (timeWrap) timeWrap.style.display = 'block';
   } else if (timeWrap) {
     timeWrap.style.display = 'none';
@@ -234,10 +251,16 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const venueAddr = event.venueDetails?.address || event.address || event.location || '';
   setText('#venue-title', venueName);
   setText('#venue-address', venueAddr);
+  setText('#summary-venue', venueName);
+  setText('#summary-address', venueAddr);
 
   const customMapImg = event.venueDetails?.mapImage || event.mapImage || '';
+  const mapFrame = $('#map-frame');
   if (customMapImg) {
     setImg('#map-image', customMapImg);
+    if (mapFrame) mapFrame.style.display = 'block';
+  } else if (mapFrame) {
+    mapFrame.style.display = 'none';
   }
 
   const rawMapLink = event.links?.map || event.mapLink || '';
@@ -283,7 +306,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const showGallery = event.sections?.gallery !== false;
   const uploadedPhotos = (event.bestPhotos || []).filter(Boolean);
   if (gallerySection) {
-    if (!showGallery) {
+    if (!showGallery || uploadedPhotos.length === 0) {
       gallerySection.style.display = 'none';
     } else {
       gallerySection.style.display = 'block';
@@ -321,7 +344,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const dressSection = $('#section-dress-code');
   const showDress = event.sections?.dressCode !== false;
   if (dressSection) {
-    if (!showDress) {
+    if (!showDress || (!event.dressCodeTitle?.trim() && !(event.dressImages && event.dressImages.length))) {
       dressSection.style.display = 'none';
     } else {
       dressSection.style.display = 'block';
@@ -342,6 +365,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
           )
           .join('');
         if (dressWrapper) dressWrapper.style.display = 'block';
+      } else if (dressWrapper) {
+        dressWrapper.style.display = 'none';
       }
     }
   }
@@ -439,6 +464,28 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   if (giftSection) {
     giftSection.style.display = hasAnyContactAction ? 'block' : 'none';
   }
+
+  const main = root.querySelector('#main-view');
+  [
+    'section-when-where',
+    'section-dress-code',
+    'section-gallery',
+    'section-about',
+    'drink-menu-section',
+    'section-countdown',
+    'section-rsvp',
+    'section-guestbook',
+    'section-date-place',
+    'section-practical-info',
+    'section-gift-contact',
+  ].forEach((id) => {
+    const section = root.querySelector(`#${id}`);
+    if (section && main) main.appendChild(section);
+  });
+  ['date-modal', 'place-modal'].forEach((id) => {
+    const modal = root.querySelector(`#${id}`);
+    if (modal && main) main.appendChild(modal);
+  });
 }
 
 function renderDynamicCalendar(root: HTMLElement, date: Date) {
@@ -494,7 +541,12 @@ function initCountdown(root: HTMLElement, dateStr: string) {
 
     const statusEl = root.querySelector('#countdown-status');
     if (statusEl) {
-      statusEl.textContent = diff > 0 ? 'Compte à rebours avant le grand jour' : "C'est aujourd'hui !";
+      const sameDay = new Date(target).toDateString() === new Date(now).toDateString();
+      statusEl.textContent = diff > 0
+        ? 'Compte à rebours avant le grand jour'
+        : sameDay
+          ? "C'est aujourd'hui !"
+          : 'Le grand jour est passé';
     }
   }
 
@@ -581,22 +633,37 @@ function initRsvp(
 
   const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
     if (button) button.disabled = true;
+    const messageField = root.querySelector('#guest-message') as HTMLTextAreaElement | null;
+    const message = messageField?.value.trim() || undefined;
+    const token =
+      guestToken ||
+      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
 
-    if (guestToken && isSupabaseReady()) {
-      const result = await submitGuestRsvp(createClient(), { token: guestToken, status });
+    if (token && isSupabaseReady()) {
+      const result = await submitGuestRsvp(createClient(), { token, status, message });
       if (button) button.disabled = false;
       if (result.error) {
         setNote(result.error, false);
         return;
       }
-    } else {
-      if (button) button.disabled = false;
+    } else if (button) {
+      button.disabled = false;
     }
 
     try {
       localStorage.setItem(localKey, status);
     } catch {}
     applyVisualState(status);
+    if (!token) {
+      setNote(
+        status === 'confirmed'
+          ? 'Présence confirmée sur ce téléphone. Le lien personnel l’enregistre chez les mariés.'
+          : 'Réponse notée sur ce téléphone. Le lien personnel l’enregistre chez les mariés.',
+        status === 'confirmed'
+      );
+    } else {
+      void initGuestbook(root, slug);
+    }
   };
 
   const onReserveTopClick = () => {
@@ -729,17 +796,11 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
   const grid = root.querySelector('#drink-menu-grid') as HTMLElement | null;
   if (!section || !grid) return;
 
-  const defaultDrinks =
-    event?.drinks && event.drinks.length > 0
-      ? event.drinks
-      : [
-          { id: 'champagne', name: 'Champagne', desc: 'Fines bulles', emoji: '' },
-          { id: 'vin-rouge', name: 'Vin Rouge', desc: 'Sélection du couple', emoji: '' },
-          { id: 'vin-blanc', name: 'Vin Blanc', desc: 'Frais & fruité', emoji: '' },
-          { id: 'cocktail', name: 'Cocktail', desc: 'Création maison', emoji: '' },
-          { id: 'biere', name: 'Bière', desc: 'Artisanale', emoji: '' },
-          { id: 'soft', name: 'Soft & Jus', desc: 'Sans alcool', emoji: '' },
-        ];
+  const defaultDrinks = event?.drinks || [];
+  if (!section || !grid || defaultDrinks.length === 0) {
+    if (section) section.style.display = 'none';
+    return;
+  }
 
   const selected = new Set<string>();
   const storageKey = `wedding_drink_pick_${event?.slug || 'default'}`;
@@ -765,8 +826,8 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
           <span class="drink-card-check">${selected.has(d.id) ? checkSvg : ''}</span>
         </div>
         <div class="drink-card-body">
-          <span class="drink-card-title">${d.name}</span>
-          <span class="drink-card-desc">${d.desc}</span>
+          <span class="drink-card-title">${escapeHtml(d.name)}</span>
+          <span class="drink-card-desc">${escapeHtml(d.desc || '')}</span>
         </div>
       </label>
     `
@@ -833,6 +894,67 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   };
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char
+  ));
+}
+
+function initModals(root: HTMLElement) {
+  const pairs: Array<[string, string]> = [
+    ['#open-date-modal', '#date-modal'],
+    ['#open-place-modal', '#place-modal'],
+  ];
+  const cleanups: Array<() => void> = [];
+
+  pairs.forEach(([openSel, modalSel]) => {
+    const open = root.querySelector(openSel);
+    const modal = root.querySelector(modalSel) as HTMLElement | null;
+    const close = modal?.querySelector('[data-close-modal]');
+    if (!open || !modal) return;
+    const show = () => { modal.style.display = 'flex'; };
+    const hide = () => { modal.style.display = 'none'; };
+    const onBackdrop = (event: Event) => {
+      if (event.target === modal) hide();
+    };
+    open.addEventListener('click', show);
+    close?.addEventListener('click', hide);
+    modal.addEventListener('click', onBackdrop);
+    cleanups.push(() => {
+      open.removeEventListener('click', show);
+      close?.removeEventListener('click', hide);
+      modal.removeEventListener('click', onBackdrop);
+    });
+  });
+
+  return () => cleanups.forEach((cleanup) => cleanup());
+}
+
+async function initGuestbook(root: HTMLElement, slug: string) {
+  const section = root.querySelector('#section-guestbook') as HTMLElement | null;
+  const list = root.querySelector('#guestbook-list') as HTMLElement | null;
+  if (!section || !list) return;
+  if (!isSupabaseReady()) {
+    section.style.display = 'none';
+    return;
+  }
+  const notes = await listGuestbook(createClient(), slug);
+  if (!notes.length) {
+    section.style.display = 'none';
+    return;
+  }
+  list.innerHTML = notes
+    .map(
+      (note) => `
+      <article class="guestbook-note">
+        <p class="guestbook-text">« ${escapeHtml(note.message)} »</p>
+        <p class="guestbook-name">${escapeHtml(note.guest_name)}</p>
+      </article>`
+    )
+    .join('');
+  section.style.display = 'block';
+}
+
 function getOriginalCSS(): string {
   return `
     .invitation-experience-root {
@@ -892,7 +1014,7 @@ function getOriginalCSS(): string {
     .invitation-experience-root .invitation-card-inner {
       position: relative;
       z-index: 1;
-      padding: clamp(1.5rem, 5vw, 2rem) clamp(1.2rem, 4.5vw, 1.65rem);
+      padding: clamp(2rem, 6vw, 2.6rem) clamp(1.35rem, 5vw, 2rem);
     }
     .invitation-experience-root .invite-card-overline {
       font-size: clamp(0.5625rem, 2.5vw, 0.6875rem);
@@ -903,10 +1025,11 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root .invite-card-title {
       font-family: "Great Vibes", cursive;
-      font-size: clamp(2.35rem, 10vw, 3.15rem);
-      line-height: 1.05;
-      color: #1f2937;
-      margin: 0 0 0.85rem;
+      font-size: clamp(3.1rem, 14vw, 4.6rem);
+      line-height: 0.95;
+      color: #111827;
+      margin: 0.2rem 0 0.7rem;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.6);
     }
     .invitation-experience-root .invite-couple-row {
       display: flex;
@@ -918,8 +1041,8 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root .invite-couple-name {
       font-family: "Great Vibes", cursive;
-      font-size: clamp(1.95rem, 7.8vw, 2.45rem);
-      line-height: 1.1;
+      font-size: clamp(2.35rem, 9vw, 3.1rem);
+      line-height: 1;
     }
     .invitation-experience-root .invite-couple-name--left { color: var(--primary-color, #db2777); }
     .invitation-experience-root .invite-couple-name--right { color: var(--accent-color, #be185d); }
@@ -934,16 +1057,29 @@ function getOriginalCSS(): string {
       border: 1px solid rgba(229, 231, 235, 0.9);
     }
     .invitation-experience-root .invite-greeting {
-      font-size: clamp(0.95rem, 3.8vw, 1.08rem);
-      color: #374151;
-      margin-bottom: 0.75rem;
-    }
-    .invitation-experience-root .invite-guest-name { color: #111827; font-weight: 600; }
-    .invitation-experience-root .invite-body-text {
-      font-size: clamp(0.8125rem, 3.45vw, 0.9375rem);
-      line-height: 1.72;
-      color: #4b5563;
+      font-size: clamp(1.15rem, 4.4vw, 1.35rem);
+      color: #111827;
       margin-bottom: 0.85rem;
+    }
+    .invitation-experience-root .invite-guest-name { color: #111827; font-weight: 700; }
+    .invitation-experience-root .guest-table-line {
+      display: none;
+      margin: 0 auto 0.9rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid rgba(37, 99, 235, 0.35);
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root .invite-body-text {
+      font-size: clamp(1rem, 4.1vw, 1.16rem);
+      line-height: 1.75;
+      color: #1f2937;
+      margin-bottom: 0.9rem;
     }
     .invitation-experience-root .invitation-rsvp-wrap { margin-top: 1rem; padding: 0 0.15rem; }
     .invitation-experience-root .btn-rsvp {
@@ -1133,6 +1269,77 @@ function getOriginalCSS(): string {
       color: #cbd5e1 !important;
       border-color: rgba(148, 163, 184, 0.25) !important;
     }
+    .invitation-experience-root .guest-message {
+      width: 100%;
+      min-height: 88px;
+      margin: 0 0 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      color: #111827;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .invitation-experience-root .guestbook-list { display: flex; flex-direction: column; gap: 10px; }
+    .invitation-experience-root .guestbook-note {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      text-align: left;
+    }
+    .invitation-experience-root .guestbook-text {
+      margin: 0;
+      font-family: "Playfair Display", serif;
+      font-size: 15px;
+      line-height: 1.55;
+      color: #111827;
+    }
+    .invitation-experience-root .guestbook-name {
+      margin: 8px 0 0;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .invitation-experience-root .inv-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.55);
+      padding: 16px;
+    }
+    .invitation-experience-root .inv-modal-card {
+      width: min(100%, 26rem);
+      max-height: min(82vh, 640px);
+      overflow: auto;
+      background: white;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+    }
+    .invitation-experience-root.dark-mode-applied .guest-message,
+    .invitation-experience-root.dark-mode-applied .guestbook-note,
+    .invitation-experience-root.dark-mode-applied .inv-modal-card {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border-color: rgba(148, 163, 184, 0.25) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .guestbook-text,
+    .invitation-experience-root.dark-mode-applied .guest-message {
+      color: #f8fafc !important;
+    }
+    .invitation-experience-root.dark-mode-applied .guest-table-line {
+      background: rgba(37, 99, 235, 0.2);
+      color: #bfdbfe;
+    }
   `;
 }
 
@@ -1188,12 +1395,24 @@ function getOriginalHTML(): string {
               <span id="couple-name-right" class="invite-couple-name invite-couple-name--right">Prénom</span>
             </div>
             <p class="invite-greeting font-serif">Cher/Chère <span id="display-guest-name" class="invite-guest-name">Invité(e)</span>,</p>
+            <p id="guest-table-line" class="guest-table-line"></p>
             <p id="invite-intro-paragraph" class="invite-body-text"></p>
             <p id="invite-secondary-text" class="invite-body-text" style="display:none;"></p>
             <p id="invite-main-text" class="invite-body-text" style="display:none;"><span id="invitation-main-text"></span></p>
           </div>
         </article>
-        <div class="invitation-rsvp-wrap">
+      </section>
+
+      <!-- Date et lieu, puis confirmation immédiate -->
+      <section id="section-when-where" style="padding:0 16px;margin-top:24px;">
+        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
+          <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Date et lieu</p>
+          <p id="summary-date" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:28px;line-height:1.15;margin-bottom:4px;"></p>
+          <p id="summary-time" class="inv-text-muted" style="font-size:13px;margin-bottom:14px;"></p>
+          <h3 id="summary-venue" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px;"></h3>
+          <p id="summary-address" class="inv-text-muted" style="font-size:13px;line-height:1.5;margin-bottom:16px;"></p>
+          <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Programme de la journée</p>
+          <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;text-align:left;margin-bottom:16px;"></div>
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(236,72,153,0.35);min-height:3.25rem;">
             <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Confirmer ma présence</span>
           </button>
@@ -1220,65 +1439,56 @@ function getOriginalHTML(): string {
       </section>
 
       <!-- 4. Galerie Photos -->
-      <section id="section-gallery" style="padding:0 16px;margin-top:24px;">
+      <section id="section-gallery" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="best-photos-shell" style="padding:18px 16px;color:white;">
           <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Moments d'exception</p>
           <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white !important;">Les plus belles photos</h3>
-          <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">
-            <img src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=700&q=80" style="height:165px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo 1">
-            <img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=700&q=80" style="height:165px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo 2">
-          </div>
+          <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;"></div>
           <div class="premium-marquee">
-            <div class="premium-marquee-track">
-              <img src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=500&q=80" alt="Souvenir 1">
-              <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=500&q=80" alt="Souvenir 2">
-              <img src="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=500&q=80" alt="Souvenir 3">
-              <img src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=500&q=80" alt="Souvenir 4">
-              <img src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=500&q=80" alt="Souvenir 1b">
-              <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=500&q=80" alt="Souvenir 2b">
-            </div>
+            <div class="premium-marquee-track"></div>
           </div>
           <p id="gallery-open-text" style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:10px;cursor:pointer;">Faire défiler les souvenirs ›</p>
         </div>
       </section>
 
       <!-- 5. Dress Code -->
-      <section id="section-dress-code" style="padding:0 16px;margin-top:24px;">
+      <section id="section-dress-code" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
           <div class="inv-icon-badge" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
             <svg style="width:20px;height:20px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
           </div>
           <h3 id="dress-code-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
           <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">Code vestimentaire</p>
-          <div class="dress-marquee-wrapper">
-            <div class="dress-marquee-track">
-              <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=500&q=80" alt="Tenue 1">
-              <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=500&q=80" alt="Tenue 2">
-              <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=500&q=80" alt="Tenue 3">
-              <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=500&q=80" alt="Tenue 4">
-              <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=500&q=80" alt="Tenue 1b">
-              <img src="https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=500&q=80" alt="Tenue 2b">
-            </div>
+          <div class="dress-marquee-wrapper" style="display:none;">
+            <div class="dress-marquee-track"></div>
           </div>
         </div>
       </section>
 
-      <!-- 6. Date, Calendrier & Programme -->
-      <section style="padding:0 16px;margin-top:24px;">
-        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;border:1px solid #f3f4f6;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <!-- Calendrier et lieu, discrets, en bas de page -->
+      <section id="section-date-place" style="padding:0 16px;margin-top:24px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button id="open-date-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Calendrier</button>
+          <button id="open-place-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Plan du lieu</button>
+        </div>
+      </section>
+
+      <div id="date-modal" class="inv-modal">
+        <div class="inv-modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <p class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;">La date</p>
+            <button type="button" data-close-modal style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#64748b;">×</button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div>
               <p id="event-day" class="inv-text-primary" style="font-size:32px;font-weight:300;line-height:1;">30</p>
               <p id="event-month-year" style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;margin-top:4px;">Avril 2026</p>
             </div>
             <div id="event-time-badge" class="inv-subsurface" style="padding:8px 14px;border-radius:12px;text-align:center;">
-              <svg style="width:16px;height:16px;margin:0 auto 4px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <p id="event-time-range" class="inv-text-primary" style="font-size:11px;font-weight:600;">19h00</p>
+              <p id="event-time-range" class="inv-text-primary" style="font-size:12px;font-weight:700;">19h00</p>
             </div>
           </div>
-
-          <!-- Calendrier dynamique du mois -->
-          <div class="inv-subsurface" style="margin-bottom:24px;border-radius:14px;padding:16px;">
+          <div class="inv-subsurface" style="border-radius:14px;padding:16px;">
             <div style="display:flex;justify-content:center;align-items:center;margin-bottom:14px;">
               <span id="calendar-month-label" class="inv-text-primary" style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.2em;">Avril 2026</span>
             </div>
@@ -1287,33 +1497,23 @@ function getOriginalHTML(): string {
             </div>
             <div id="calendar-days-grid" class="inv-text-muted" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;"></div>
           </div>
-
-          <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:18px;text-align:center;">Programme de la journée</p>
-          <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
-      </section>
+      </div>
 
-      <!-- 7. Lieu & Itinéraire -->
-      <section style="padding:0 16px;margin-top:24px;">
-        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:6px;border:1px solid #f3f4f6;overflow:hidden;">
-          <div style="height:11.5rem;position:relative;background:#1e293b;border-radius:12px;overflow:hidden;">
-            <img id="map-image" src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" style="width:100%;height:100%;object-fit:cover;opacity:0.75;" alt="Lieu">
-            <div style="position:absolute;inset:0;display:flex;justify-content:center;align-items:center;pointer-events:none;">
-              <div style="width:46px;height:46px;background:white;border-radius:999px;box-shadow:0 10px 20px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">
-                <svg style="width:22px;height:22px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              </div>
-            </div>
+      <div id="place-modal" class="inv-modal">
+        <div class="inv-modal-card" style="text-align:center;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <p class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;">Le lieu</p>
+            <button type="button" data-close-modal style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#64748b;">×</button>
           </div>
-          <div style="padding:18px 16px;text-align:center;">
-            <h3 id="venue-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Lieu</h3>
-            <p id="venue-address" class="inv-text-muted" style="font-size:12px;margin-bottom:14px;padding:0 12px;"></p>
-            <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-rsvp" style="display:inline-flex;width:100%;justify-content:center;align-items:center;gap:8px;padding:13px 20px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
-              <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
-              <span>Ouvrir l'itinéraire sur Google Maps</span>
-            </a>
+          <div id="map-frame" style="display:none;height:9rem;border-radius:12px;overflow:hidden;margin-bottom:12px;">
+            <img id="map-image" alt="" style="width:100%;height:100%;object-fit:cover;">
           </div>
+          <h3 id="venue-title" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:24px;margin-bottom:6px;">Lieu</h3>
+          <p id="venue-address" class="inv-text-muted" style="font-size:14px;line-height:1.5;margin-bottom:12px;"></p>
+          <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none;">Voir sur la carte</a>
         </div>
-      </section>
+      </div>
 
       <!-- 8. Compte à rebours -->
       <section id="section-countdown" style="padding:0 16px;margin-top:24px;">
@@ -1345,6 +1545,8 @@ function getOriginalHTML(): string {
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
           <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;">Votre réponse</h3>
           <p id="rsvp-deadline-caption" class="inv-text-muted" style="font-size:11px;margin-bottom:14px;display:none;"></p>
+          <label for="guest-message" class="inv-text-muted" style="display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;">Laisser un message aux mariés</label>
+          <textarea id="guest-message" class="guest-message" maxlength="500" placeholder="Un mot, un souvenir, une pensée…"></textarea>
           <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:15px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
             <span style="width:26px;height:26px;border-radius:999px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;">
               <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -1355,6 +1557,14 @@ function getOriginalHTML(): string {
             Je ne pourrai pas venir
           </button>
           <p id="rsvp-status-note" style="margin-top:10px;text-align:center;font-size:12px;font-weight:600;min-height:1.1rem;"></p>
+        </div>
+      </section>
+
+      <section id="section-guestbook" style="padding:0 16px;margin-top:24px;display:none;">
+        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;">
+          <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#2563eb;text-align:center;margin-bottom:4px;">Livre d'or</p>
+          <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:22px;text-align:center;margin-bottom:14px;">Leurs mots</h3>
+          <div id="guestbook-list" class="guestbook-list"></div>
         </div>
       </section>
 

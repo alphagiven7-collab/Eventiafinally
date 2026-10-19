@@ -197,6 +197,7 @@ export interface EventWithSettings extends Event {
     address?: string;
     coupleLeft?: string;
     coupleRight?: string;
+    tables?: { name: string; seats: number }[];
   }
 
 export interface EventSettings {

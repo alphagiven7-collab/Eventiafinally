@@ -95,6 +95,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
       guestName={matchedGuest?.name}
       guestToken={matchedGuest?.token}
       guestStatus={matchedGuest?.status}
+      guestTable={matchedGuest?.table_number}
     />
   );
 }

@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
-import { compressImageFile, formatDataUrlSize } from '@/lib/utils/image-compression';
+import { compressImageFile, formatDataUrlSize, shrinkDataUrl, slimImageList } from '@/lib/utils/image-compression';
 import {
   Music,
   Upload,
@@ -262,9 +262,9 @@ function SingleImageUploader({
     setUploading(true);
     try {
       const dataUrl = await compressImageFile(file, {
-        maxWidthOrHeight: 1100,
-        quality: 0.78,
-        maxBytes: 170 * 1024,
+        maxWidthOrHeight: 900,
+        quality: 0.7,
+        maxBytes: 80 * 1024,
       });
       onChange(dataUrl);
     } catch {
@@ -562,6 +562,7 @@ function EditEventContent() {
   const [secCountdown, setSecCountdown] = useState(true);
   const [programSectionTitle, setProgramSectionTitle] = useState('');
   const [program, setProgram] = useState<ProgramItem[]>([]);
+  const [drinks, setDrinks] = useState<{ id: string; name: string; desc: string; emoji: string }[]>([]);
   const [secDressCode, setSecDressCode] = useState(true);
   const [dressCodeTitle, setDressCodeTitle] = useState('');
   const [dressImages, setDressImages] = useState<string[]>([]);
@@ -636,6 +637,7 @@ function EditEventContent() {
 
       setProgramSectionTitle(evt.programSectionTitle || '');
       setProgram(evt.program || []);
+      setDrinks(evt.drinks || []);
       setDressCodeTitle(evt.dressCodeTitle || '');
       setDressImages(evt.dressImages || []);
       setPracticalSectionTitle(evt.practicalSectionTitle || '');
@@ -704,6 +706,7 @@ function EditEventContent() {
       aboutImage: aboutImage || undefined,
       programSectionTitle: undefined,
       program: program.length > 0 ? program : undefined,
+      drinks: drinks.filter((drink) => drink.name.trim()).length > 0 ? drinks.filter((drink) => drink.name.trim()) : undefined,
       venueDetails: {
         title: location || 'Lieu de réception',
         address: address || '',
@@ -758,6 +761,7 @@ function EditEventContent() {
     aboutStory1,
     aboutImage,
     program,
+    drinks,
     dressCodeTitle,
     dressImages,
     practicalInfo,
@@ -786,12 +790,44 @@ function EditEventContent() {
       }
 
       setSaving(true);
-      const result = await publishInvitation(createClient(), {
+      const hero = liveEvent.heroImage ? await shrinkDataUrl(liveEvent.heroImage, 90 * 1024) : liveEvent.heroImage;
+      const about = liveEvent.aboutImage ? await shrinkDataUrl(liveEvent.aboutImage, 80 * 1024) : liveEvent.aboutImage;
+      const rawMap = liveEvent.venueDetails?.mapImage || liveEvent.mapImage || '';
+      const map = rawMap ? await shrinkDataUrl(rawMap, 80 * 1024) : rawMap;
+      const cover = liveEvent.cover_image?.startsWith('data:')
+        ? await shrinkDataUrl(liveEvent.cover_image, 90 * 1024)
+        : liveEvent.cover_image;
+      const welcome = liveEvent.branding?.welcomeImage?.startsWith('data:')
+        ? await shrinkDataUrl(liveEvent.branding.welcomeImage, 90 * 1024)
+        : liveEvent.branding?.welcomeImage;
+      const ogImage = liveEvent.branding?.ogShareImage?.startsWith('data:')
+        ? await shrinkDataUrl(liveEvent.branding.ogShareImage, 90 * 1024)
+        : liveEvent.branding?.ogShareImage;
+      const prepared = {
         ...liveEvent,
         user_id: user.id,
         is_published: true,
         updated_at: new Date().toISOString(),
-      });
+        heroImage: hero,
+        hero_image: hero,
+        aboutImage: about,
+        mapImage: map,
+        cover_image: cover,
+        bestPhotos: await slimImageList(liveEvent.bestPhotos),
+        dressImages: await slimImageList(liveEvent.dressImages),
+        branding: liveEvent.branding
+          ? {
+              ...liveEvent.branding,
+              heroImage: hero || liveEvent.branding.heroImage,
+              welcomeImage: welcome || liveEvent.branding.welcomeImage,
+              ogShareImage: ogImage || liveEvent.branding.ogShareImage,
+            }
+          : liveEvent.branding,
+        venueDetails: liveEvent.venueDetails
+          ? { ...liveEvent.venueDetails, mapImage: map }
+          : liveEvent.venueDetails,
+      };
+      const result = await publishInvitation(createClient(), prepared);
       setSaving(false);
 
       if (result.error) {
@@ -1140,6 +1176,45 @@ function EditEventContent() {
                   Déroulé de la journée (heures et étapes)
                 </label>
                 <ProgramEditor items={program} onChange={setProgram} />
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Boissons proposées
+                </label>
+                <p className="text-[10px] text-gray-400">Si vous n’en ajoutez aucune, le menu ne s’affiche pas.</p>
+                {drinks.map((drink, index) => (
+                  <div key={drink.id} className="flex gap-2">
+                    <input
+                      value={drink.name}
+                      onChange={(e) => {
+                        const next = [...drinks];
+                        next[index] = { ...drink, name: e.target.value };
+                        setDrinks(next);
+                      }}
+                      placeholder="Champagne"
+                      className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                    <input
+                      value={drink.desc}
+                      onChange={(e) => {
+                        const next = [...drinks];
+                        next[index] = { ...drink, desc: e.target.value };
+                        setDrinks(next);
+                      }}
+                      placeholder="Fines bulles"
+                      className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                    <button type="button" onClick={() => setDrinks(drinks.filter((_, i) => i !== index))} className="px-2 text-red-400">✕</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setDrinks([...drinks, { id: crypto.randomUUID(), name: '', desc: '', emoji: '' }])}
+                  className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400"
+                >
+                  + Ajouter une boisson
+                </button>
               </div>
 
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">

@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
-import { listInvitations } from '@/lib/events/store';
+import { listInvitations, publishInvitation } from '@/lib/events/store';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -49,6 +49,9 @@ function GuestManagementContent() {
   const [newPhone, setNewPhone] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newGroup, setNewGroup] = useState('');
+  const [newTable, setNewTable] = useState('');
+  const [tableName, setTableName] = useState('');
+  const [tableSeats, setTableSeats] = useState('8');
 
   // WhatsApp template
   const [waTemplate, setWaTemplate] = useState('Bonjour {nom}, voici votre invitation personnelle : {lien}');
@@ -115,6 +118,28 @@ function GuestManagementContent() {
     return `${window.location.origin}${guestInvitePath(slug, guest)}`;
   };
 
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
+  const tables = selectedEvent?.tables || [];
+  const seatsUsed = (name: string) => guests.filter((guest) => guest.table_number === name).length;
+
+  const saveTables = async (next: { name: string; seats: number }[]) => {
+    if (!selectedEvent || !user?.id || !isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    const result = await publishInvitation(createClient(), {
+      ...selectedEvent,
+      tables: next,
+      user_id: user.id,
+      is_published: true,
+    });
+    if (result.error) {
+      addToast('error', result.error);
+      return;
+    }
+    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: next } : event));
+  };
+
   // Ajouter un invité
   const handleAddGuest = async () => {
     if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
@@ -123,13 +148,14 @@ function GuestManagementContent() {
       phone: newPhone,
       email: newEmail,
       group: newGroup,
+      tableNumber: newTable,
     });
     if (result.error || !result.guest) {
       addToast('error', result.error || 'Invité non enregistré');
       return;
     }
     setGuests((current) => [result.guest!, ...current]);
-    setNewName(''); setNewPhone(''); setNewEmail(''); setNewGroup('');
+    setNewName(''); setNewPhone(''); setNewEmail(''); setNewGroup(''); setNewTable('');
     setShowAddForm(false);
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
   };
@@ -349,6 +375,49 @@ function GuestManagementContent() {
               </div>
             </div>
 
+            {/* Tables */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                Donnez un nom et un nombre de places. La table choisie apparaît sur la carte de l’invité. Le QR, lui, sert à ouvrir son lien : il se partage ou s’imprime depuis la liste, il ne s’affiche pas sur la carte.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
+                  className="flex-1 min-w-[140px] px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                <input value={tableSeats} onChange={(e) => setTableSeats(e.target.value)} type="number" min={1} placeholder="Places"
+                  className="w-24 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = tableName.trim();
+                    const seats = Math.max(1, Number(tableSeats) || 1);
+                    if (!name) return;
+                    void saveTables([...tables.filter((table) => table.name !== name), { name, seats }]);
+                    setTableName('');
+                  }}
+                  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-medium"
+                >
+                  Ajouter la table
+                </button>
+              </div>
+              {tables.length > 0 && (
+                <div className="space-y-2">
+                  {tables.map((table) => {
+                    const used = seatsUsed(table.name);
+                    return (
+                      <div key={table.name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{table.name}</p>
+                          <p className="text-[11px] text-blue-600 dark:text-blue-300">{used}/{table.seats} places</p>
+                        </div>
+                        <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500">Retirer</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Formulaire ajout */}
             {showAddForm && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
@@ -371,6 +440,18 @@ function GuestManagementContent() {
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                     <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@..."
                       className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Table</label>
+                    <select value={newTable} onChange={(e) => setNewTable(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                      <option value="">Sans table</option>
+                      {tables.map((table) => (
+                        <option key={table.name} value={table.name}>
+                          {table.name} · {seatsUsed(table.name)}/{table.seats}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
@@ -439,7 +520,7 @@ function GuestManagementContent() {
                         <tr key={g.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
                           <td className="px-4 py-3">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[10px] text-gray-400">{g.adults || 1} ad. {g.children > 0 ? `· ${g.children} enf.` : ''}</p>
+                            <p className="text-[10px] text-gray-400">{g.adults || 1} ad. {g.children > 0 ? `· ${g.children} enf.` : ''}{g.table_number ? ` · ${g.table_number}` : ''}</p>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs text-gray-600 dark:text-gray-400">{g.phone || '—'}</p>
@@ -485,7 +566,7 @@ function GuestManagementContent() {
                                     }
                                   };
                                 }}
-                                title="QR Code"
+                                title="QR du lien personnel"
                                 className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs"><QrCode className="w-3.5 h-3.5" /></button>
                               {g.phone && (
                                 <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', personalLink(g)))}`}

@@ -28,6 +28,7 @@ export type PublicGuest = {
   adults: number;
   children: number;
   token: string;
+  table_number?: string;
 };
 
 export type GuestDraft = {
@@ -221,7 +222,17 @@ export async function lookupGuestByToken(client: SupabaseClient, token: string):
     adults: row.adults ?? 1,
     children: row.children ?? 0,
     token: row.token,
+    table_number: (row as PublicGuest & { table_number?: string }).table_number || undefined,
   };
+}
+
+export async function listGuestbook(
+  client: SupabaseClient,
+  slug: string,
+): Promise<{ guest_name: string; message: string }[]> {
+  const { data, error } = await client.rpc('list_event_guestbook', { p_slug: slug });
+  if (error || !Array.isArray(data)) return [];
+  return data as { guest_name: string; message: string }[];
 }
 
 export async function submitGuestRsvp(

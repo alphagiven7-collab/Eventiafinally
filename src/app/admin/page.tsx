@@ -52,21 +52,20 @@ function SuperAdminContent() {
         const supabase = createClient();
 
         // Charger les statistiques
-        const { count: eventsCount, error: eventsErr } = await supabase
-          .from('events')
-          .select('*', { count: 'exact', head: true });
-
-        const { count: usersCount, error: usersErr } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true });
-
-        const { count: guestsCount, error: guestsErr } = await supabase
-          .from('guests')
-          .select('*', { count: 'exact', head: true });
-
-        const { count: rsvpsCount, error: rsvpsErr } = await supabase
-          .from('rsvps')
-          .select('*', { count: 'exact', head: true });
+        const [eventsCountRes, usersCountRes, guestsCountRes, rsvpsCountRes] = await Promise.all([
+          supabase.from('events').select('id', { count: 'exact', head: true }),
+          supabase.from('users').select('id', { count: 'exact', head: true }),
+          supabase.from('guests').select('id', { count: 'exact', head: true }),
+          supabase.from('rsvps').select('id', { count: 'exact', head: true }),
+        ]);
+        const eventsCount = eventsCountRes.count;
+        const usersCount = usersCountRes.count;
+        const guestsCount = guestsCountRes.count;
+        const rsvpsCount = rsvpsCountRes.count;
+        const eventsErr = eventsCountRes.error;
+        const usersErr = usersCountRes.error;
+        const guestsErr = guestsCountRes.error;
+        const rsvpsErr = rsvpsCountRes.error;
 
         if (eventsErr || usersErr || guestsErr || rsvpsErr) {
           console.warn('Erreur stats, utilisation des données complètes');
@@ -80,23 +79,14 @@ function SuperAdminContent() {
         });
 
         // Charger tous les événements
-        const { data: eventsData, error: eventsLoadErr } = await supabase
-          .from('events')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
+        const [{ data: eventsData, error: eventsLoadErr }, { data: usersData, error: usersLoadErr }] = await Promise.all([
+          supabase.from('events').select('id, title, slug, event_date, location, created_at, user_id, is_published').order('created_at', { ascending: false }).limit(100),
+          supabase.from('users').select('id, email, full_name, role, created_at').order('created_at', { ascending: false }).limit(100),
+        ]);
 
         if (eventsLoadErr) console.warn('Erreur chargement événements:', eventsLoadErr);
-        setEvents(eventsData || []);
-
-        // Charger tous les utilisateurs
-        const { data: usersData, error: usersLoadErr } = await supabase
-          .from('users')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
         if (usersLoadErr) console.warn('Erreur chargement utilisateurs:', usersLoadErr);
+        setEvents(eventsData || []);
         setUsers(usersData || []);
       } catch (error) {
         console.error('Error loading platform data:', error);

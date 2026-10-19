@@ -166,7 +166,7 @@ export async function fetchInvitationMeta(
 export async function listInvitations(supabase: DbClient, userId: string): Promise<EventWithSettings[]> {
   const { data, error } = await supabase
     .from('events')
-    .select('*, event_settings(*)')
+    .select('id, user_id, slug, title, subtitle, event_type, event_date, event_time, location, address, is_published, created_at, updated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -198,7 +198,12 @@ export async function publishInvitation(
   const id = existing?.id || (isUuid(event.id) ? event.id : crypto.randomUUID());
   const now = new Date().toISOString();
   const stored: EventWithSettings = { ...event, id, updated_at: now };
-  const musicUrl = event.ambiance?.musicUrl || '';
+  let ambianceToStore = event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35 };
+  if (ambianceToStore.hasFile && !ambianceToStore.musicUrl) {
+    const existingMusic = await fetchEventMusic(supabase, id);
+    if (existingMusic) ambianceToStore = { ...ambianceToStore, musicUrl: existingMusic };
+  }
+  const musicUrl = ambianceToStore.musicUrl || '';
   const payloadEvent: EventWithSettings = musicUrl.startsWith('data:')
     ? {
         ...stored,
@@ -252,7 +257,7 @@ export async function publishInvitation(
     practical_section_title: event.practicalSectionTitle ?? null,
     practical_info: event.practicalInfo ?? [],
     dress_code_title: event.dressCodeTitle ?? null,
-    ambiance: event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35 },
+    ambiance: ambianceToStore,
     branding: event.branding ?? {},
     sections: event.sections ?? {},
     links: event.links ?? {},

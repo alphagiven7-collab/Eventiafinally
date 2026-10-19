@@ -31,17 +31,13 @@ export default function InvitationExperience({
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
     shadow.replaceChildren();
 
-    const tailwind = document.createElement('link');
-    tailwind.rel = 'stylesheet';
-    tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
-
     const style = document.createElement('style');
     style.textContent = getOriginalCSS();
 
     const root = document.createElement('div');
     root.className = 'invitation-experience-root';
     root.innerHTML = getOriginalHTML();
-    shadow.append(tailwind, style, root);
+    shadow.append(style, root);
 
     hydrateEventData(root, event, guestName, guestTable);
 
@@ -983,12 +979,10 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   const hasFile = Boolean(event.ambiance.hasFile) || customUrl.startsWith('data:');
   const directSrc = customUrl.startsWith('data:') || customUrl.startsWith('http') ? customUrl : '';
   const defaultMusic = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-  let started = false;
-  let loading = false;
 
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
-  audio.preload = 'none';
+  audio.preload = 'auto';
   audio.setAttribute('playsinline', '');
   audio.style.display = 'block';
   audio.style.position = 'absolute';
@@ -996,75 +990,75 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   audio.style.height = '0';
   audio.style.opacity = '0';
   audio.style.pointerEvents = 'none';
-  if (directSrc) audio.src = directSrc;
 
-  btn.textContent = 'Lancer la musique';
+  btn.textContent = 'Musique';
   btn.style.display = 'flex';
-  btn.style.position = 'fixed';
-  btn.style.left = '16px';
-  btn.style.right = '16px';
-  btn.style.bottom = '16px';
   btn.style.width = 'auto';
-  btn.style.height = '48px';
-  btn.style.borderRadius = '14px';
+  btn.style.height = '32px';
+  btn.style.padding = '0 10px';
+  btn.style.borderRadius = '999px';
   btn.style.background = '#7c3aed';
   btn.style.color = 'white';
-  btn.style.fontSize = '14px';
+  btn.style.fontSize = '11px';
   btn.style.fontWeight = '700';
-  btn.style.zIndex = '70';
-  btn.style.boxShadow = '0 10px 24px rgba(124, 58, 237, 0.35)';
 
-  function updateBtn() {
-    if (!btn || !audio) return;
-    if (!audio.paused) btn.textContent = 'Couper la musique';
-    else btn.textContent = started ? 'Relancer la musique' : 'Lancer la musique';
+  const onPlay = () => { btn.textContent = 'Couper'; };
+  const onPause = () => { if (audio.paused) btn.textContent = 'Musique'; };
+
+  const tryPlay = () => {
+    if (!audio.src) return;
+    void audio.play().then(onPlay).catch(() => {
+      btn.textContent = 'Musique';
+    });
+  };
+
+  const arm = (src: string) => {
+    audio.src = src;
+    tryPlay();
+  };
+
+  if (directSrc) arm(directSrc);
+  else if (hasFile) {
+    void fetchEventMusic(createClient(), event.id).then((url) => arm(url || defaultMusic)).catch(() => arm(defaultMusic));
+  } else {
+    arm(defaultMusic);
   }
 
-  const playNow = (src?: string) => {
-    if (src) audio.src = src;
-    audio.preload = 'auto';
-    started = true;
-    void audio.play().then(updateBtn).catch(() => {
-      if (btn) btn.textContent = 'Touchez encore pour lancer la musique';
-    });
-  };
-
-  const onClick = () => {
-    if (loading) return;
+  const onFirstGesture = (event: Event) => {
+    if (event.composedPath().includes(btn)) return;
     if (!audio.paused) {
-      audio.pause();
-      updateBtn();
+      document.removeEventListener('pointerdown', onFirstGesture);
       return;
     }
-    if (directSrc || audio.dataset.loaded === '1' || !hasFile) {
-      playNow(directSrc || defaultMusic);
-      return;
-    }
-    loading = true;
-    btn.textContent = 'Chargement de la musique…';
-    void fetchEventMusic(createClient(), event.id).then((url) => {
-      loading = false;
-      if (!url) {
-        btn.textContent = 'Publiez l’invitation pour entendre la musique';
-        return;
-      }
-      audio.dataset.loaded = '1';
-      playNow(url);
+    if (!audio.src) return;
+    void audio.play().then(() => {
+      onPlay();
+      document.removeEventListener('pointerdown', onFirstGesture);
     }).catch(() => {
-      loading = false;
-      btn.textContent = 'Touchez encore pour lancer la musique';
+      btn.textContent = 'Musique';
     });
   };
+  const onClick = (event: Event) => {
+    event.stopPropagation();
+    document.removeEventListener('pointerdown', onFirstGesture);
+    if (audio.paused) tryPlay();
+    else {
+      audio.pause();
+      btn.textContent = 'Musique';
+    }
+  };
 
+  document.addEventListener('pointerdown', onFirstGesture);
   btn.addEventListener('click', onClick);
-  audio.addEventListener('play', updateBtn);
-  audio.addEventListener('pause', updateBtn);
+  audio.addEventListener('play', onPlay);
+  audio.addEventListener('pause', onPause);
 
   return () => {
     audio.pause();
+    document.removeEventListener('pointerdown', onFirstGesture);
     btn.removeEventListener('click', onClick);
-    audio.removeEventListener('play', updateBtn);
-    audio.removeEventListener('pause', updateBtn);
+    audio.removeEventListener('play', onPlay);
+    audio.removeEventListener('pause', onPause);
   };
 }
 
@@ -1189,6 +1183,16 @@ function getOriginalCSS(): string {
       transition: background-color 0.25s ease, color 0.25s ease;
     }
     .invitation-experience-root .font-serif { font-family: 'Playfair Display', serif; }
+    .invitation-experience-root .text-center { text-align: center; }
+    .invitation-experience-root .mb-1 { margin-bottom: 0.25rem; }
+    .invitation-experience-root .mb-3 { margin-bottom: 0.75rem; }
+    .invitation-experience-root .text-lg { font-size: 1.125rem; }
+    .invitation-experience-root .text-xl { font-size: 1.25rem; }
+    .invitation-experience-root .text-2xl { font-size: 1.5rem; }
+    .invitation-experience-root .rounded-2xl { border-radius: 1rem; }
+    @media (min-width: 768px) {
+      .invitation-experience-root .md\\:text-3xl { font-size: 1.875rem; }
+    }
     .invitation-experience-root .font-cursive { font-family: 'Great Vibes', cursive; }
     .invitation-experience-root .inv-text-primary { color: #1f2937; }
     .invitation-experience-root .inv-text-muted { color: #6b7280; }
@@ -1676,7 +1680,7 @@ function getOriginalCSS(): string {
 function getOriginalHTML(): string {
   return `
     <!-- Audio pour musique d'ambiance -->
-    <audio id="background-music" loop preload="none" playsinline style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;"></audio>
+    <audio id="background-music" loop preload="auto" playsinline style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;"></audio>
 
     <!-- Outils flottants (Thème & Musique) -->
     <div id="app-floating-tools" style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">

@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
-import { listInvitations, publishInvitation } from '@/lib/events/store';
+import { fetchInvitationBySlug, listInvitations, publishInvitation } from '@/lib/events/store';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -45,7 +45,10 @@ function GuestManagementContent() {
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailsReady, setDetailsReady] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
   const [shareOrigin, setShareOrigin] = useState('');
 
   // Formulaire ajout : seul le nom est obligatoire
@@ -88,6 +91,19 @@ function GuestManagementContent() {
     }
     load();
   }, [user?.id]);
+
+  useEffect(() => {
+    const selected = eventsRef.current.find((event) => event.id === selectedEventId);
+    if (!selected?.slug || !isSupabaseReady()) return;
+    let cancelled = false;
+    setDetailsReady(false);
+    fetchInvitationBySlug(createClient(), selected.slug, { includeMusic: false }).then((full) => {
+      if (cancelled || !full) return;
+      setEvents((current) => current.map((event) => event.id === full.id ? { ...event, ...full } : event));
+      setDetailsReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [selectedEventId]);
 
   // Charger les invités enregistrés pour cette invitation
   useEffect(() => {
@@ -169,6 +185,10 @@ function GuestManagementContent() {
   const saveTables = async (next: { name: string; seats: number }[]) => {
     if (!selectedEvent || !user?.id || !isSupabaseReady()) {
       addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    if (!detailsReady) {
+      addToast('error', 'L’invitation est encore en chargement.');
       return;
     }
     const result = await publishInvitation(createClient(), {

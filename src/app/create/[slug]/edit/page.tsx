@@ -158,10 +158,14 @@ const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 
 function AudioUploader({
   value,
+  saved,
   onChange,
+  onClear,
 }: {
   value: string;
+  saved?: boolean;
   onChange: (dataUrl: string) => void;
+  onClear?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -208,21 +212,26 @@ function AudioUploader({
 
   return (
     <div className="space-y-2">
-      {value ? (
+      {value || saved ? (
         <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 min-w-0">
           <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
             <Music className="w-5 h-5 text-blue-600 dark:text-blue-300" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-              {fileName || 'Musique importée'}
+              {fileName || (saved && !value ? 'Musique enregistrée' : 'Musique importée')}
             </p>
-            <audio src={value} controls className="w-full max-w-full h-8 mt-1" />
+            {value ? (
+              <audio src={value} controls className="w-full max-w-full h-8 mt-1" />
+            ) : (
+              <p className="text-[10px] text-gray-400 mt-1">Elle démarre sur l&apos;invitation, sans alourdir cette page.</p>
+            )}
           </div>
           <button
             type="button"
             onClick={() => {
               onChange('');
+              onClear?.();
               setFileName('');
               setError('');
             }}
@@ -583,6 +592,7 @@ function EditEventContent() {
   const [secGallery, setSecGallery] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [musicUrl, setMusicUrl] = useState('');
+  const [musicHasFile, setMusicHasFile] = useState(false);
   const [musicVolume, setMusicVolume] = useState(35);
 
   // ── 4. Programme, Tenue & Infos ──
@@ -619,7 +629,7 @@ function EditEventContent() {
     async function loadEvent() {
       if (isSupabaseReady()) {
         try {
-          const hosted = await fetchInvitationBySlug(createClient(), slug);
+          const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
             populateFields(hosted);
             return;
@@ -678,6 +688,7 @@ function EditEventContent() {
 
       setMusicEnabled(evt.ambiance?.enabled || false);
       setMusicUrl(evt.ambiance?.musicUrl || '');
+      setMusicHasFile(Boolean(evt.ambiance?.hasFile) || (evt.ambiance?.musicUrl || '').startsWith('data:'));
       setMusicVolume(Math.round((evt.ambiance?.volume || 0.35) * 100));
 
       setSupportEmail(evt.links?.supportEmail || evt.supportEmail || '');
@@ -759,6 +770,7 @@ function EditEventContent() {
         enabled: musicEnabled,
         musicUrl,
         volume: musicVolume / 100,
+        hasFile: musicHasFile || musicUrl.startsWith('data:'),
       },
       links: {
         map: mapLink || undefined,
@@ -812,6 +824,7 @@ function EditEventContent() {
     practicalInfo,
     musicEnabled,
     musicUrl,
+    musicHasFile,
     musicVolume,
     supportEmail,
     donationLink,
@@ -1269,7 +1282,7 @@ function EditEventContent() {
                       Musique de fond sur l&apos;invitation
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      Sur un autre téléphone, l&apos;invité touche le bouton violet « Lancer la musique ». Le son ne part pas tout seul.
+                      La musique démarre à l&apos;ouverture. Un petit bouton Musique permet de la couper.
                     </span>
                   </span>
                   <input
@@ -1281,10 +1294,15 @@ function EditEventContent() {
                 </label>
                 <AudioUploader
                   value={musicUrl}
+                  saved={musicHasFile && !musicUrl}
                   onChange={(url) => {
                     setMusicUrl(url);
-                    if (url) setMusicEnabled(true);
+                    if (url) {
+                      setMusicEnabled(true);
+                      setMusicHasFile(true);
+                    }
                   }}
+                  onClear={() => setMusicHasFile(false)}
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { isSupabaseReady } from '@/config/supabase';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { EventWithSettings } from '@/types';
 import { fetchInvitationMeta } from '@/lib/events/store';
 import { getEventBySlug } from '@/data/events';
@@ -8,8 +8,8 @@ import { getEventBySlug } from '@/data/events';
 export async function readPublicInvitation(slug: string): Promise<Pick<EventWithSettings, 'title' | 'metaDescription' | 'welcomeMessage' | 'bestPhotos' | 'cover_image' | 'branding' | 'description'> | null> {
   if (isSupabaseReady()) {
     try {
-      const { supabase } = await createClient();
-      const hosted = await fetchInvitationMeta(supabase, slug);
+      const supabase = createPublicClient();
+      const hosted = supabase ? await fetchInvitationMeta(supabase, slug) : null;
       if (hosted) {
         return {
           title: hosted.title,

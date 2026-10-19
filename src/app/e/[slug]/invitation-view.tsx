@@ -6,7 +6,7 @@ import { getEventBySlug } from '@/data/events';
 import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { fetchInvitationBySlug } from '@/lib/events/store';
+import { fetchInvitationBySlug, fetchInvitationStamp } from '@/lib/events/store';
 import { lookupGuestByToken, PublicGuest } from '@/lib/guests/store';
 import { readOfflineInvitation } from '@/lib/invitation/offline';
 import { Heart, Home } from 'lucide-react';
@@ -57,6 +57,20 @@ export default function InvitationView({
       }
       if (isSupabaseReady()) {
         try {
+          if (known?.updated_at) {
+            const stamp = await fetchInvitationStamp(createClient(), slug);
+            if (
+              !cancelled &&
+              stamp &&
+              stamp.updated_at === known.updated_at &&
+              stamp.is_published === Boolean(known.is_published) &&
+              stamp.is_blocked === Boolean(known.isBlocked)
+            ) {
+              setLoading(false);
+              return;
+            }
+          }
+          if (cancelled) return;
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
             setEvent((current) => (

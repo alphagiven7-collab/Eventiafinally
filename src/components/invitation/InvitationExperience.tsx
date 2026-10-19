@@ -1424,6 +1424,7 @@ function initGuestbook(root: HTMLElement, slug: string) {
 
 function getOriginalCSS(): string {
   return `
+    .invitation-experience-root, .invitation-experience-root *, .invitation-experience-root *::before, .invitation-experience-root *::after { box-sizing: border-box; }
     .invitation-experience-root {
       --hero-image-url: url("https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80");
       --welcome-image-url: url("https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80");
@@ -1755,7 +1756,9 @@ function getOriginalCSS(): string {
       border-color: rgba(148, 163, 184, 0.25) !important;
     }
     .invitation-experience-root .guest-message {
+      display: block;
       width: 100%;
+      max-width: 100%;
       min-height: 88px;
       margin: 0 0 12px;
       padding: 12px 14px;

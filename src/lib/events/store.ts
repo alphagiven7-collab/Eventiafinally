@@ -122,6 +122,23 @@ export function fromDatabase(row: EventRow): EventWithSettings {
   };
 }
 
+export async function fetchInvitationStamp(
+  supabase: DbClient,
+  slug: string,
+): Promise<{ updated_at: string; is_published: boolean; is_blocked: boolean } | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('updated_at, is_published, is_blocked')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    updated_at: data.updated_at || '',
+    is_published: Boolean(data.is_published),
+    is_blocked: Boolean(data.is_blocked),
+  };
+}
+
 export async function fetchInvitationBySlug(
   supabase: DbClient,
   slug: string,

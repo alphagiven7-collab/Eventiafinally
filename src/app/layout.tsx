@@ -64,7 +64,7 @@ export default function RootLayout({
         </noscript>
         <script
           dangerouslySetInnerHTML={{
-            __html: 'window.addEventListener("beforeinstallprompt",function(event){event.preventDefault();window.__eventiaInstallPrompt=event;});',
+            __html: 'if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(function(){})}window.addEventListener("beforeinstallprompt",function(event){event.preventDefault();window.__eventiaInstallPrompt=event;});',
           }}
         />
         <link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" />

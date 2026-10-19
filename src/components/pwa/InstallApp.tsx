@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import {
+  captureInstallClick,
   ensureInstallPromptListener,
   iosInstallHint,
   isIosDevice,
   isStandalonePwa,
-  tryInstallPwa,
+  launchInstalledApp,
 } from '@/lib/pwa/install-prompt';
 
 export default function InstallApp() {
@@ -21,11 +22,12 @@ export default function InstallApp() {
 
   if (standalone) return null;
 
-  const install = async () => {
-    const outcome = await tryInstallPwa();
-    if (outcome === 'ios' || outcome === 'unavailable') {
-      window.alert(ios ? iosInstallHint() : 'Ouvrez le menu du navigateur, puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
-    }
+  const install = () => {
+    const outcome = captureInstallClick();
+    void outcome.then((result) => {
+      if (result === 'accepted' || result === 'standalone') launchInstalledApp();
+      else if (result === 'ios') window.alert(iosInstallHint());
+    });
   };
 
   return (

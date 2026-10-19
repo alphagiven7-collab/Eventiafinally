@@ -19,6 +19,12 @@ function currentPrompt(): BeforeInstallPromptEvent | null {
   return deferredPrompt || installWindow()?.__eventiaInstallPrompt || null;
 }
 
+function clearPrompt(): void {
+  deferredPrompt = null;
+  const host = installWindow();
+  if (host) host.__eventiaInstallPrompt = null;
+}
+
 export function isStandalonePwa(): boolean {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(display-mode: standalone)').matches
@@ -28,6 +34,17 @@ export function isStandalonePwa(): boolean {
 export function isIosDevice(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+export function isAndroidDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /android/i.test(navigator.userAgent);
+}
+
+export function isAndroidInAppBrowser(): boolean {
+  if (!isAndroidDevice()) return false;
+  const agent = navigator.userAgent || '';
+  return /; wv\)|WhatsApp|FBAN|FBAV|Instagram|Line\/|Twitter|Snapchat/i.test(agent);
 }
 
 export function iosInstallHint(): string {
@@ -69,18 +86,45 @@ export function readGuestEntry(): string {
   return '';
 }
 
-export async function tryInstallPwa(): Promise<'accepted' | 'dismissed' | 'standalone' | 'ios' | 'unavailable'> {
-  ensureInstallPromptListener();
-  if (isStandalonePwa()) return 'standalone';
-  const promptEvent = currentPrompt();
-  if (promptEvent) {
-    await promptEvent.prompt();
-    const choice = await promptEvent.userChoice;
-    deferredPrompt = null;
-    const host = installWindow();
-    if (host) host.__eventiaInstallPrompt = null;
-    return choice.outcome;
+function openInChrome(url: string): void {
+  const parsed = new URL(url, window.location.origin);
+  const fallback = parsed.href;
+  window.location.href = `intent://${parsed.host}${parsed.pathname}${parsed.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
+}
+
+export function launchInstalledApp(path?: string): void {
+  if (path) rememberGuestEntry(path);
+  const start = new URL('/', window.location.origin);
+  start.searchParams.set('source', 'pwa');
+  if (isStandalonePwa()) {
+    window.location.replace(path && path.startsWith('/e/') ? path : start.pathname + start.search);
+    return;
   }
-  if (isIosDevice()) return 'ios';
-  return 'unavailable';
+  if (isAndroidDevice()) {
+    const target = path && path.startsWith('/e/') ? new URL(path, window.location.origin) : start;
+    window.location.href = `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(start.href)};end`;
+    return;
+  }
+  window.location.href = start.href;
+}
+
+/** À appeler dans le clic, avant tout autre await, pour garder le geste Android. */
+export function captureInstallClick(): Promise<'accepted' | 'dismissed' | 'standalone' | 'ios' | 'unavailable' | 'chrome'> {
+  ensureInstallPromptListener();
+  if (isStandalonePwa()) return Promise.resolve('standalone');
+  if (isAndroidInAppBrowser()) {
+    openInChrome(window.location.href);
+    return Promise.resolve('chrome');
+  }
+  if (isIosDevice()) return Promise.resolve('ios');
+  const event = currentPrompt();
+  if (!event) return Promise.resolve('unavailable');
+  return event.prompt().then(() => event.userChoice).then((choice) => {
+    clearPrompt();
+    return choice.outcome;
+  });
+}
+
+export async function tryInstallPwa(): Promise<'accepted' | 'dismissed' | 'standalone' | 'ios' | 'unavailable' | 'chrome'> {
+  return captureInstallClick();
 }

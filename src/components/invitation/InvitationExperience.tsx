@@ -8,7 +8,7 @@ import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { readOfflineInvitation, saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
-import { iosInstallHint, rememberGuestEntry, tryInstallPwa } from '@/lib/pwa/install-prompt';
+import { captureInstallClick, iosInstallHint, launchInstalledApp, rememberGuestEntry } from '@/lib/pwa/install-prompt';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -128,11 +128,10 @@ export default function InvitationExperience({
       offlineBusy = true;
       offlineBtn.disabled = true;
       offlineBtn.textContent = 'Installation…';
+      const invitationPath = `${window.location.pathname}${window.location.search}`;
+      rememberGuestEntry(invitationPath);
+      const installResult = captureInstallClick();
       try {
-        const installed = await tryInstallPwa();
-        if (installed === 'ios') window.alert(iosInstallHint());
-        else if (installed === 'unavailable') window.alert('Ouvrez le menu du navigateur, puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
-        offlineBtn.textContent = 'Enregistrement…';
         const shownName = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
         const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
         const tableVisible = Boolean(tableLine && tableLine.style.display !== 'none' && tableLine.textContent?.trim());
@@ -154,6 +153,9 @@ export default function InvitationExperience({
           html: clone.outerHTML,
           secrets: [event.adminCode || '', event.user_id || ''],
         });
+        const installed = await installResult;
+        if (installed === 'accepted' || installed === 'standalone') launchInstalledApp(invitationPath);
+        else if (installed === 'ios') window.alert(iosInstallHint());
       } catch {
         offlineBtn.textContent = 'Installer et enregistrer hors ligne';
       } finally {

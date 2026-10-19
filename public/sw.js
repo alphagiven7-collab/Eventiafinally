@@ -13,7 +13,7 @@ async function putShell(cache) {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE)
-      .then((cache) => putShell(cache))
+      .then((cache) => putShell(cache).catch(() => undefined))
       .then(() => self.skipWaiting()),
   );
 });

@@ -59,7 +59,15 @@ export default function InvitationView({
         try {
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
-            setEvent(hosted);
+            setEvent((current) => (
+              current &&
+              current.id === hosted.id &&
+              current.updated_at === hosted.updated_at &&
+              current.is_published === hosted.is_published &&
+              current.isBlocked === hosted.isBlocked
+                ? current
+                : hosted
+            ));
             const saved = await readOfflineInvitation(slug, token);
             if (saved && saved.updatedAt && hosted.updated_at && saved.updatedAt !== hosted.updated_at) {
               setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');

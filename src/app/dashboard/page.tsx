@@ -10,7 +10,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { deleteInvitation, listInvitations, ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, Share2, Heart } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, MessageCircle, Heart } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
 import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
@@ -375,9 +375,9 @@ export default function DashboardPage() {
                     href={`/dashboard/invites?event=${event.id}`}
                     className="mt-4 inline-flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-violet-600 px-4 py-2.5 text-center text-white shadow-md hover:bg-violet-700 active:scale-[0.99]"
                   >
-                    <span className="inline-flex items-center justify-center gap-2 text-sm font-bold">
+                    <span className="inline-flex flex-wrap items-center justify-center gap-2 text-center text-sm font-bold">
                       <Users className="w-4 h-4 shrink-0" />
-                      Ajouter vos invités
+                      Ajouter et gérer vos invités
                     </span>
                     <span className="text-[11px] font-medium leading-snug text-violet-100">Noms, tables et lien WhatsApp</span>
                   </a>
@@ -397,18 +397,13 @@ export default function DashboardPage() {
                       <Edit3 className="w-3.5 h-3.5" />
                       Modifier
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = `${window.location.origin}/e/${event.slug}`;
-                        const text = `Tu es invité(e) à "${event.title}" ! ${url}`;
-                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
-                      }}
+                    <a
+                      href={`/dashboard/invites?event=${event.id}`}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition"
                     >
-                      <Share2 className="w-3.5 h-3.5" />
+                      <MessageCircle className="w-3.5 h-3.5" />
                       WhatsApp
-                    </button>
+                    </a>
                     <button
                       onClick={() => setDeleteTarget(event)}
                       className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition sm:ml-auto"

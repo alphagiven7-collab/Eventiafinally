@@ -1170,29 +1170,59 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
   section.style.display = 'block';
 }
 
+const pageMusic: { audio: HTMLAudioElement | null; eventId: string; source: string; trackKey: string; holders: number } = {
+  audio: null,
+  eventId: '',
+  source: '',
+  trackKey: '',
+  holders: 0,
+};
+
+function silenceAudio(audio: HTMLAudioElement) {
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+}
+
 function initMusic(root: HTMLElement, event: EventWithSettings) {
+  const templateAudio = root.querySelector('#background-music') as HTMLAudioElement | null;
+  if (templateAudio) {
+    silenceAudio(templateAudio);
+    templateAudio.remove();
+  }
   if (!event.ambiance?.enabled) return () => {};
 
   const btn = root.querySelector('#music-toggle-btn') as HTMLButtonElement | null;
-  const audio = root.querySelector('#background-music') as HTMLAudioElement | null;
-  if (!btn || !audio) return () => {};
+  if (!btn) return () => {};
 
   const customUrl = event.ambiance.musicUrl || '';
   const hasFile = Boolean(event.ambiance.hasFile) || customUrl.startsWith('data:');
   const directSrc = customUrl.startsWith('data:') || customUrl.startsWith('http') ? customUrl : '';
 
+  let audio = pageMusic.audio;
+  if (!audio || !audio.isConnected) {
+    audio = document.createElement('audio');
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.setAttribute('playsinline', '');
+    audio.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
+    document.body.appendChild(audio);
+    pageMusic.audio = audio;
+    pageMusic.source = '';
+    pageMusic.trackKey = '';
+  }
+  if (pageMusic.eventId && pageMusic.eventId !== event.id) {
+    silenceAudio(audio);
+    pageMusic.source = '';
+    pageMusic.trackKey = '';
+  }
+  pageMusic.eventId = event.id;
+  pageMusic.holders += 1;
+
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
-  audio.preload = 'none';
-  audio.setAttribute('playsinline', '');
-  audio.style.display = 'block';
-  audio.style.position = 'absolute';
-  audio.style.width = '0';
-  audio.style.height = '0';
-  audio.style.opacity = '0';
-  audio.style.pointerEvents = 'none';
 
-  btn.textContent = 'Musique';
+  btn.textContent = audio.paused ? 'Musique' : 'Couper';
   btn.style.display = 'flex';
   btn.style.width = 'auto';
   btn.style.height = '32px';
@@ -1203,32 +1233,42 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   btn.style.fontSize = '11px';
   btn.style.fontWeight = '700';
 
-  const onPlay = () => { btn.textContent = 'Couper'; };
-  const onPause = () => { if (audio.paused) btn.textContent = 'Musique'; };
+  let cancelled = false;
+  const onPlay = () => { if (btn.isConnected) btn.textContent = 'Couper'; };
+  const onPause = () => { if (audio.paused && btn.isConnected) btn.textContent = 'Musique'; };
 
   const tryPlay = () => {
-    if (!audio.src) return;
+    if (cancelled || !audio.src) return;
     void audio.play().then(onPlay).catch(() => {
-      btn.textContent = 'Musique';
+      if (btn.isConnected) btn.textContent = 'Musique';
     });
   };
 
-  const arm = (src: string) => {
+  const trackKey = directSrc || (hasFile ? `file:${event.id}:${event.updated_at || ''}` : '');
+
+  const arm = (src: string, key: string) => {
+    if (cancelled || pageMusic.audio !== audio) return;
+    if (pageMusic.trackKey === key && pageMusic.source === src && audio.src) return;
+    pageMusic.trackKey = key;
+    pageMusic.source = src;
     audio.src = src;
     tryPlay();
   };
 
-  if (directSrc.startsWith('http') || directSrc.startsWith('data:')) arm(directSrc);
-  else if (hasFile) {
-    void fetchEventMusic(createClient(), event.id).then((url) => {
-      if (url) arm(url);
-    }).catch(() => {
-      /* pas de musique distante de secours : elle ralentit l’ouverture */
-    });
+  const sameTrack = trackKey !== '' && pageMusic.trackKey === trackKey && Boolean(audio.src);
+  if (!sameTrack && trackKey) {
+    if (directSrc.startsWith('http') || directSrc.startsWith('data:')) arm(directSrc, trackKey);
+    else if (hasFile) {
+      void fetchEventMusic(createClient(), event.id).then((url) => {
+        if (url) arm(url, trackKey);
+      }).catch(() => {
+        /* pas de musique distante de secours : elle ralentit l’ouverture */
+      });
+    }
   }
 
-  const onFirstGesture = (event: Event) => {
-    if (event.composedPath().includes(btn)) return;
+  const onFirstGesture = (gesture: Event) => {
+    if (gesture.composedPath().includes(btn)) return;
     if (!audio.paused) {
       document.removeEventListener('pointerdown', onFirstGesture);
       return;
@@ -1238,11 +1278,11 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
       onPlay();
       document.removeEventListener('pointerdown', onFirstGesture);
     }).catch(() => {
-      btn.textContent = 'Musique';
+      if (btn.isConnected) btn.textContent = 'Musique';
     });
   };
-  const onClick = (event: Event) => {
-    event.stopPropagation();
+  const onClick = (click: Event) => {
+    click.stopPropagation();
     document.removeEventListener('pointerdown', onFirstGesture);
     if (audio.paused) tryPlay();
     else {
@@ -1257,11 +1297,24 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   audio.addEventListener('pause', onPause);
 
   return () => {
-    audio.pause();
+    cancelled = true;
     document.removeEventListener('pointerdown', onFirstGesture);
     btn.removeEventListener('click', onClick);
     audio.removeEventListener('play', onPlay);
     audio.removeEventListener('pause', onPause);
+    pageMusic.holders = Math.max(0, pageMusic.holders - 1);
+    if (pageMusic.holders === 0) {
+      queueMicrotask(() => {
+        if (pageMusic.holders === 0 && pageMusic.audio) {
+          silenceAudio(pageMusic.audio);
+          pageMusic.audio.remove();
+          pageMusic.audio = null;
+          pageMusic.eventId = '';
+          pageMusic.source = '';
+          pageMusic.trackKey = '';
+        }
+      });
+    }
   };
 }
 

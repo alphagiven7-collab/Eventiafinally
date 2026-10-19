@@ -25,10 +25,11 @@ import {
   Trash2,
   Mail,
   ChevronDown,
+  UserPlus,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
-type GuestTool = 'import' | 'tables' | 'whatsapp';
+type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp';
 
 function GuestManagementContent() {
   const { user } = useAuth();
@@ -44,6 +45,7 @@ function GuestManagementContent() {
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const [shareOrigin, setShareOrigin] = useState('');
 
   // Formulaire ajout : seul le nom est obligatoire
   const [newName, setNewName] = useState('');
@@ -125,9 +127,23 @@ function GuestManagementContent() {
 
   const personalLink = (guest: Guest) => {
     const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
-    const origin = typeof window === 'undefined' ? '' : window.location.origin;
-    return `${origin}${guestInvitePath(slug, guest)}`;
+    return `${shareOrigin}${guestInvitePath(slug, guest)}`;
   };
+
+  const whatsAppShareHref = (guest: Guest) => {
+    const text = waTemplate.replaceAll('{nom}', guest.name).replaceAll('{lien}', personalLink(guest));
+    const phone = (guest.phone || '').replace(/[^0-9]/g, '');
+    const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+    return `${base}?text=${encodeURIComponent(text)}`;
+  };
+
+  useEffect(() => {
+    setShareOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    if (openTool === 'add') nameInputRef.current?.focus();
+  }, [openTool]);
 
   const selectedEvent = events.find((event) => event.id === selectedEventId);
   const tables = selectedEvent?.tables || [];
@@ -339,20 +355,6 @@ function GuestManagementContent() {
     <AdminLayout>
       <div className="space-y-3">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Invités</h1>
-        {events.length > 0 && (
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 px-3 py-2">
-            <label htmlFor="current-event" className="text-xs font-medium text-gray-700 dark:text-gray-300 shrink-0">Événement</label>
-            <select id="current-event" value={selectedEventId} onChange={(e) => {
-              setSelectedEventId(e.target.value);
-              const url = new URL(window.location.href);
-              url.searchParams.set('event', e.target.value);
-              window.history.replaceState(null, '', `${url.pathname}${url.search}`);
-            }}
-              className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-              {events.map(evt => <option key={evt.id} value={evt.id}>{evt.title}</option>)}
-            </select>
-          </div>
-        )}
 
         {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl p-1 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -392,54 +394,71 @@ function GuestManagementContent() {
         {/* ═══════ INVITÉS ═══════ */}
         {activeTab === 'guests' && (
           <div className="space-y-3">
-            <form
-              onSubmit={(event) => { event.preventDefault(); void handleAddGuest(); }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 space-y-2"
+            <button
+              type="button"
+              aria-expanded={openTool === 'add'}
+              onClick={() => setOpenTool((current) => current === 'add' ? null : 'add')}
+              className={`w-full min-h-12 px-4 rounded-2xl text-sm font-semibold inline-flex items-center justify-between gap-2 ${
+                openTool === 'add' ? 'bg-violet-700 text-white' : 'bg-violet-600 text-white hover:bg-violet-700'
+              }`}
             >
-              <div className="flex gap-2">
-                <input
-                  id="guest-name"
-                  ref={nameInputRef}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Nom de l'invité"
-                  aria-label="Nom de l'invité"
-                  className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
-                <button type="submit" className="shrink-0 min-h-11 px-4 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
-                  Ajouter
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <select
-                  aria-label="Table du nouvel invité"
-                  value={newTable}
-                  onChange={(e) => setNewTable(e.target.value)}
-                  className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Sans table</option>
-                  {tableChoices(newTable).map((name) => {
-                    const table = tables.find((item) => item.name === name);
-                    return (
-                      <option key={name} value={name}>
-                        {table ? `${name} · ${seatsUsed(name)}/${table.seats}` : name}
-                      </option>
-                    );
-                  })}
-                </select>
-                <input
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  placeholder="Tél. facultatif"
-                  inputMode="tel"
-                  aria-label="Téléphone, facultatif"
-                  className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Seul le nom est obligatoire. {guests.length}/{capacity} places, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
-              </p>
-            </form>
+              <span className="inline-flex items-center gap-2">
+                <UserPlus className="w-4 h-4 shrink-0" />
+                Ajouter un invité
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition ${openTool === 'add' ? 'rotate-180' : ''}`} />
+            </button>
+            {openTool === 'add' && (
+              <form
+                onSubmit={(event) => { event.preventDefault(); void handleAddGuest(); }}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-violet-200 dark:border-violet-900 p-3 space-y-2"
+              >
+                <p className="text-xs text-gray-600 dark:text-gray-300">Écrivez le nom, puis validez. Le téléphone et la table sont facultatifs.</p>
+                <div className="flex gap-2">
+                  <input
+                    id="guest-name"
+                    ref={nameInputRef}
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Nom de l'invité"
+                    aria-label="Nom de l'invité"
+                    className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <button type="submit" className="shrink-0 min-h-11 px-4 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
+                    Ajouter
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Table du nouvel invité"
+                    value={newTable}
+                    onChange={(e) => setNewTable(e.target.value)}
+                    className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">Sans table</option>
+                    {tableChoices(newTable).map((name) => {
+                      const table = tables.find((item) => item.name === name);
+                      return (
+                        <option key={name} value={name}>
+                          {table ? `${name} · ${seatsUsed(name)}/${table.seats}` : name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <input
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="Tél. facultatif"
+                    inputMode="tel"
+                    aria-label="Téléphone, facultatif"
+                    className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Seul le nom est obligatoire. {guests.length}/{capacity} places, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
+                </p>
+              </form>
+            )}
 
             <div className="grid grid-cols-3 gap-2">
               {([
@@ -574,7 +593,7 @@ function GuestManagementContent() {
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center mx-auto mb-3">
                   <Users className="w-6 h-6" />
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité pour l&apos;instant. Écrivez un nom dans le champ du haut.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité pour l&apos;instant. Ouvrez « Ajouter un invité ».</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -590,6 +609,15 @@ function GuestManagementContent() {
                               {statusLabel(g.status)}
                             </span>
                             </div>
+                            <a
+                              href={whatsAppShareHref(g)}
+                              target="_blank"
+                              rel="noopener"
+                              className="mt-3 inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d]"
+                            >
+                              <MessageCircle className="w-4 h-4 shrink-0" />
+                              Partager l&apos;invitation sur WhatsApp
+                            </a>
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <select
                               aria-label={`Table de ${g.name}`}
@@ -632,11 +660,6 @@ function GuestManagementContent() {
                                 }}
                                 title="QR d'entrée"
                                 className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition text-xs"><QrCode className="w-3.5 h-3.5" /></button>
-                              {g.phone && (
-                                <a href={`https://wa.me/${g.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waTemplate.replace('{nom}', g.name).replace('{lien}', personalLink(g)))}`}
-                                  target="_blank" rel="noopener" title="WhatsApp"
-                                  className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs"><MessageCircle className="w-3.5 h-3.5" /></a>
-                              )}
                               <button onClick={() => handleDelete(g.id)} title="Supprimer"
                                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>

@@ -67,6 +67,9 @@ export function hasInstallPrompt(): boolean {
   return currentPrompt() != null;
 }
 
+const ENTRY_CACHE = 'eventia-v2-shell';
+const ENTRY_URL = '/eventia-guest-entry';
+
 export function rememberGuestEntry(path: string): void {
   if (!path.startsWith('/e/')) return;
   try {
@@ -74,6 +77,13 @@ export function rememberGuestEntry(path: string): void {
   } catch {
     /* le lien reste dans l’invitation enregistrée */
   }
+}
+
+export async function rememberGuestEntryOffline(path: string): Promise<void> {
+  rememberGuestEntry(path);
+  if (!path.startsWith('/e/') || typeof caches === 'undefined') return;
+  const cache = await caches.open(ENTRY_CACHE);
+  await cache.put(ENTRY_URL, new Response(path, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
 }
 
 export function readGuestEntry(): string {
@@ -100,12 +110,13 @@ export function launchInstalledApp(path?: string): void {
     window.location.replace(path && path.startsWith('/e/') ? path : start.pathname + start.search);
     return;
   }
+  const guestUrl = path && path.startsWith('/e/') ? new URL(path, window.location.origin) : null;
   if (isAndroidDevice()) {
-    const target = path && path.startsWith('/e/') ? new URL(path, window.location.origin) : start;
-    window.location.href = `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(start.href)};end`;
+    const target = guestUrl || start;
+    window.location.href = `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(target.href)};end`;
     return;
   }
-  window.location.href = start.href;
+  window.location.href = guestUrl ? guestUrl.href : start.href;
 }
 
 /** À appeler dans le clic, avant tout autre await, pour garder le geste Android. */

@@ -27,7 +27,7 @@ self.addEventListener('activate', (event) => {
         const requests = await cache.keys();
         await Promise.all(requests.map((request) => {
           const path = new URL(request.url).pathname;
-          if (path !== SHELL_URL) return cache.delete(request);
+          if (path !== SHELL_URL && path !== '/eventia-guest-entry') return cache.delete(request);
           return Promise.resolve(false);
         }));
       })
@@ -46,10 +46,19 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (/\/(api|auth|dashboard|create|admin)\b/.test(url.pathname)) return;
 
+  const startNavigation = request.mode === 'navigate' && url.pathname === '/';
   const invitationNavigation = request.mode === 'navigate' && /^\/e\/[^/]+\/?$/.test(url.pathname);
-  if (!invitationNavigation) return;
+  if (!startNavigation && !invitationNavigation) return;
 
   event.respondWith((async () => {
+    if (startNavigation) {
+      if (self.navigator.onLine === false) return guestStartResponse();
+      try {
+        return await fetch(request);
+      } catch {
+        return guestStartResponse();
+      }
+    }
     const offline = self.navigator.onLine === false;
     if (offline) {
       const cache = await caches.open(SHELL_CACHE);
@@ -69,6 +78,22 @@ self.addEventListener('fetch', (event) => {
     }
   })());
 });
+
+async function guestStartResponse() {
+  const cache = await caches.open(SHELL_CACHE);
+  const saved = await cache.match('/eventia-guest-entry');
+  const path = saved ? (await saved.text()).trim() : '';
+  if (path.startsWith('/e/')) {
+    return Response.redirect(new URL(path, self.location.origin).href, 302);
+  }
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Eventia</title></head><body><script>
+    var entry = '';
+    try { entry = localStorage.getItem('eventia-guest-entry') || ''; } catch (e) {}
+    if (entry.indexOf('/e/') === 0) location.replace(entry);
+    else document.body.textContent = 'Ouvrez votre invitation en ligne pour l’installer.';
+  </script></body></html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
 
 function shellResponse(shell) {
   const headers = new Headers(shell.headers);

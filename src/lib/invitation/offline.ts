@@ -110,7 +110,11 @@ export async function saveOfflineInvitation(input: {
     updatedAt: event.updated_at || new Date().toISOString(),
   };
   await offlineStore.setItem(saved.key, saved);
-  await cacheInvitationShell();
+  try {
+    await cacheInvitationShell();
+  } catch {
+    /* L’installation continue : le service worker peut prendre le relais juste après. */
+  }
   return saved;
 }
 

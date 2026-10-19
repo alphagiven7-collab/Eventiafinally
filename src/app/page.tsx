@@ -17,17 +17,17 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
     const fromInstall = new URLSearchParams(window.location.search).get('source') === 'pwa';
     if (!standalone && !fromInstall) return;
-    if (user) {
-      router.replace('/dashboard');
+    const entry = readGuestEntry();
+    if (entry) {
+      router.replace(entry);
       return;
     }
-    const entry = readGuestEntry();
-    if (entry) router.replace(entry);
+    if (loading) return;
+    if (user) router.replace('/dashboard');
   }, [loading, user, router]);
 
   return (

@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
-import { readOfflineInvitation, saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
-import { captureInstallClick, iosInstallHint, launchInstalledApp, rememberGuestEntry } from '@/lib/pwa/install-prompt';
+import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
+import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -104,34 +104,21 @@ export default function InvitationExperience({
     printBtn?.addEventListener('click', onPdf);
     const offlineBtn = root.querySelector('#save-offline-btn');
     const tokenForOffline = guestToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
-    const paintOffline = async () => {
-      const saved = await readOfflineInvitation(event.slug, tokenForOffline);
-      if (!(offlineBtn instanceof HTMLButtonElement)) return;
-      if (saved && navigator.onLine && event.updated_at && saved.updatedAt !== event.updated_at) {
-        offlineBtn.textContent = 'Enregistrer la nouvelle version';
-        return;
-      }
-      if (saved) {
-        offlineBtn.textContent = 'Disponible hors ligne';
-        return;
-      }
-      offlineBtn.textContent = 'Installer et enregistrer hors ligne';
-    };
-    void paintOffline();
+    if (offlineBtn instanceof HTMLButtonElement) {
+      if (isStandalonePwa()) offlineBtn.style.display = 'none';
+      else offlineBtn.textContent = 'Installer';
+    }
     let offlineBusy = false;
-    const onOffline = async () => {
+    const onInstall = () => {
       if (offlineBusy || !(offlineBtn instanceof HTMLButtonElement)) return;
-      if (!navigator.onLine) {
-        offlineBtn.textContent = 'Ouvrir en ligne pour enregistrer';
-        return;
-      }
-      offlineBusy = true;
-      offlineBtn.disabled = true;
-      offlineBtn.textContent = 'Installation…';
       const invitationPath = `${window.location.pathname}${window.location.search}`;
       rememberGuestEntry(invitationPath);
       const installResult = captureInstallClick();
-      try {
+      offlineBusy = true;
+      offlineBtn.disabled = true;
+      offlineBtn.textContent = 'Installation…';
+      const persisted = (async () => {
+        await rememberGuestEntryOffline(invitationPath);
         const shownName = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
         const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
         const tableVisible = Boolean(tableLine && tableLine.style.display !== 'none' && tableLine.textContent?.trim());
@@ -142,9 +129,6 @@ export default function InvitationExperience({
           guestName: tokenForOffline ? (guestName || shownName) : undefined,
           guestTable: tokenForOffline ? (guestTable || tableText) : undefined,
         });
-        rememberGuestEntry(`${window.location.pathname}${window.location.search}`);
-        hydrateEventData(root, saved.event, saved.guestName, saved.guestTable);
-        await paintOffline();
         const clone = root.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('audio, source').forEach((node) => node.remove());
         const styleEl = shadow.querySelector('style');
@@ -153,17 +137,32 @@ export default function InvitationExperience({
           html: clone.outerHTML,
           secrets: [event.adminCode || '', event.user_id || ''],
         });
-        const installed = await installResult;
-        if (installed === 'accepted' || installed === 'standalone') launchInstalledApp(invitationPath);
-        else if (installed === 'ios') window.alert(iosInstallHint());
-      } catch {
-        offlineBtn.textContent = 'Installer et enregistrer hors ligne';
-      } finally {
+      })().catch(() => {
+        /* Le lien est déjà mémorisé. L’installation ne doit pas attendre une copie parfaite. */
+      });
+      void (async () => {
+        let installed: Awaited<ReturnType<typeof captureInstallClick>> = 'unavailable';
+        try {
+          installed = await installResult;
+        } catch {
+          installed = 'unavailable';
+        }
+        await persisted;
+        if (installed === 'accepted' || installed === 'standalone') {
+          launchInstalledApp(invitationPath);
+          return;
+        }
+        if (!(offlineBtn instanceof HTMLButtonElement) || !offlineBtn.isConnected) return;
         offlineBtn.disabled = false;
         offlineBusy = false;
-      }
+        offlineBtn.textContent = 'Installer';
+        if (installed === 'ios') window.alert(iosInstallHint());
+        else if (installed === 'unavailable') {
+          window.alert('Touchez le menu du navigateur, puis « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
+        }
+      })();
     };
-    offlineBtn?.addEventListener('click', onOffline);
+    offlineBtn?.addEventListener('click', onInstall);
     const detachModals = initModals(root);
     const detachGuestbook = initGuestbook(root, event.slug);
 
@@ -175,7 +174,7 @@ export default function InvitationExperience({
       detachMusic();
       detachRsvp();
       printBtn?.removeEventListener('click', onPdf);
-      offlineBtn?.removeEventListener('click', onOffline);
+      offlineBtn?.removeEventListener('click', onInstall);
       detachModals();
       detachGuestbook();
       shadow.replaceChildren();
@@ -2243,7 +2242,7 @@ function getOriginalHTML(): string {
         </div>
       </section>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
-        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer et enregistrer hors ligne</button>
+        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer</button>
       </div>
     </main>
   `;

@@ -1,10 +1,9 @@
-import { EventWithSettings } from '@/types';
+import type { EventWithSettings } from '@/types';
 
 type ShareSource = Partial<Pick<EventWithSettings, 'title' | 'cover_image' | 'heroImage' | 'hero_image' | 'bestPhotos' | 'branding' | 'metaDescription' | 'welcomeMessage' | 'description'>> | null | undefined;
 
-/** Première photo publique https, jamais une image locale ni une donnée d’invité. */
-export function publicCoverUrl(event: ShareSource): string {
-  const candidates = [
+function coverCandidates(event: ShareSource): string[] {
+  return [
     event?.branding?.ogShareImage,
     event?.cover_image,
     event?.heroImage,
@@ -12,11 +11,20 @@ export function publicCoverUrl(event: ShareSource): string {
     event?.branding?.heroImage,
     event?.branding?.welcomeImage,
     event?.bestPhotos?.[0],
-  ];
-  for (const value of candidates) {
-    if (value && /^https:\/\//i.test(value)) return value;
+  ].filter((value): value is string => Boolean(value));
+}
+
+/** Photo de couverture publique. Une photo locale est servie par /e/[slug]/cover. */
+export function publicCoverUrl(event: ShareSource, slug?: string): string {
+  for (const value of coverCandidates(event)) {
+    if (/^https:\/\//i.test(value)) return value;
+    if (slug && value.startsWith('data:image/')) return `/e/${slug}/cover`;
   }
   return '';
+}
+
+export function firstCoverSource(event: ShareSource): string {
+  return coverCandidates(event).find((value) => /^https:\/\//i.test(value) || value.startsWith('data:image/')) || '';
 }
 
 export function shareTitle(event: ShareSource): string {

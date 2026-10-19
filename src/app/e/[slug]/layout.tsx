@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const photo = publicCoverUrl(event);
+  const photo = publicCoverUrl(event, slug);
   const image = photo || `/e/${slug}/share-image`;
   const title = shareTitle(event);
   const description = shareDescription(event);

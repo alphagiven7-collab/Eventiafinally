@@ -176,8 +176,8 @@ export async function fetchInvitationMeta(
   if (error || !data) return null;
   const settings = Array.isArray(data.event_settings) ? data.event_settings[0] : data.event_settings;
   const branding = settings?.branding;
-  const coverUrl = [data.cover_image, branding?.ogShareImage, branding?.heroImage, branding?.welcomeImage]
-    .find((value) => typeof value === 'string' && value.startsWith('https://')) || '';
+  const coverUrl = [branding?.ogShareImage, data.cover_image, branding?.heroImage, branding?.welcomeImage]
+    .find((value) => typeof value === 'string' && (/^https:\/\//i.test(value) || value.startsWith('data:image/'))) || '';
   return {
     title: data.title,
     description: settings?.meta_description || data.description || '',

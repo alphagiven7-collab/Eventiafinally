@@ -8,7 +8,7 @@ import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { readOfflineInvitation, saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
-import { iosInstallHint, tryInstallPwa } from '@/lib/pwa/install-prompt';
+import { iosInstallHint, rememberGuestEntry, tryInstallPwa } from '@/lib/pwa/install-prompt';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -103,47 +103,35 @@ export default function InvitationExperience({
     };
     printBtn?.addEventListener('click', onPdf);
     const offlineBtn = root.querySelector('#save-offline-btn');
-    const offlineStatus = root.querySelector('#offline-invitation-status');
     const tokenForOffline = guestToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
     const paintOffline = async () => {
       const saved = await readOfflineInvitation(event.slug, tokenForOffline);
-      if (!(offlineBtn instanceof HTMLButtonElement) || !(offlineStatus instanceof HTMLElement)) return;
+      if (!(offlineBtn instanceof HTMLButtonElement)) return;
       if (saved && navigator.onLine && event.updated_at && saved.updatedAt !== event.updated_at) {
         offlineBtn.textContent = 'Enregistrer la nouvelle version';
-        offlineStatus.textContent = 'Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.';
         return;
       }
       if (saved) {
         offlineBtn.textContent = 'Disponible hors ligne';
-        offlineStatus.textContent = 'Cette invitation est enregistrée sur cet appareil.';
         return;
       }
       offlineBtn.textContent = 'Installer et enregistrer hors ligne';
-      offlineStatus.textContent = navigator.onLine
-        ? 'Installe l’application sur cet appareil et enregistre l’invitation pour la relire sans connexion.'
-        : 'Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.';
     };
     void paintOffline();
     let offlineBusy = false;
     const onOffline = async () => {
       if (offlineBusy || !(offlineBtn instanceof HTMLButtonElement)) return;
       if (!navigator.onLine) {
-        if (offlineStatus instanceof HTMLElement) {
-          offlineStatus.textContent = 'Connectez-vous une fois pour enregistrer cette invitation.';
-        }
+        offlineBtn.textContent = 'Ouvrir en ligne pour enregistrer';
         return;
       }
       offlineBusy = true;
       offlineBtn.disabled = true;
       offlineBtn.textContent = 'Installation…';
-      let installNote = '';
       try {
-        const installOutcome = await tryInstallPwa();
-        if (installOutcome === 'accepted') {
-          installNote = 'Application installée. ';
-        } else if (installOutcome === 'ios') {
-          installNote = `${iosInstallHint()} `;
-        }
+        const installed = await tryInstallPwa();
+        if (installed === 'ios') window.alert(iosInstallHint());
+        else if (installed === 'unavailable') window.alert('Ouvrez le menu du navigateur, puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
         offlineBtn.textContent = 'Enregistrement…';
         const shownName = root.querySelector('#display-guest-name')?.textContent?.trim() || '';
         const tableLine = root.querySelector('#guest-table-line') as HTMLElement | null;
@@ -155,6 +143,7 @@ export default function InvitationExperience({
           guestName: tokenForOffline ? (guestName || shownName) : undefined,
           guestTable: tokenForOffline ? (guestTable || tableText) : undefined,
         });
+        rememberGuestEntry(`${window.location.pathname}${window.location.search}`);
         hydrateEventData(root, saved.event, saved.guestName, saved.guestTable);
         await paintOffline();
         const clone = root.cloneNode(true) as HTMLElement;
@@ -165,13 +154,7 @@ export default function InvitationExperience({
           html: clone.outerHTML,
           secrets: [event.adminCode || '', event.user_id || ''],
         });
-        if (offlineStatus instanceof HTMLElement && installNote) {
-          offlineStatus.textContent = `${installNote}Cette invitation est enregistrée sur cet appareil.`;
-        }
       } catch {
-        if (offlineStatus instanceof HTMLElement) {
-          offlineStatus.textContent = 'L’enregistrement hors ligne n’a pas abouti. Réessayez en ligne.';
-        }
         offlineBtn.textContent = 'Installer et enregistrer hors ligne';
       } finally {
         offlineBtn.disabled = false;
@@ -1522,12 +1505,12 @@ function getOriginalCSS(): string {
       margin-bottom: 0.9rem;
     }
     .invitation-experience-root .invite-calligraphy {
-      font-family: "Great Vibes", cursive;
-      font-size: clamp(1.55rem, 6.2vw, 2rem);
-      font-weight: 400;
-      line-height: 1.45;
+      font-family: "Dancing Script", cursive;
+      font-size: clamp(1.35rem, 5.2vw, 1.7rem);
+      font-weight: 500;
+      line-height: 1.55;
       color: #374151;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.01em;
     }
     .invitation-experience-root .invitation-rsvp-wrap { margin-top: 1rem; padding: 0 0.15rem; }
     .invitation-experience-root .btn-rsvp {
@@ -2206,7 +2189,6 @@ function getOriginalHTML(): string {
       </section>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
         <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer et enregistrer hors ligne</button>
-        <p id="offline-invitation-status" style="margin:0;max-width:24rem;text-align:center;font-size:11px;font-weight:650;color:#334155;background:rgba(255,255,255,0.92);border-radius:999px;padding:4px 10px;"></p>
       </div>
     </main>
   `;

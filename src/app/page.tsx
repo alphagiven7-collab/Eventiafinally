@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/providers/theme-toggle';
 import { StoryArt, StoryCredit } from '@/components/brand/StoryArt';
 import { formatUsd, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
 import InstallApp from '@/components/pwa/InstallApp';
+import { readGuestEntry } from '@/lib/pwa/install-prompt';
 
 const packs = [50, 100, 200];
 
@@ -16,11 +17,17 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading) return;
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
     const fromInstall = new URLSearchParams(window.location.search).get('source') === 'pwa';
-    if (standalone || fromInstall) router.replace('/dashboard');
+    if (!standalone && !fromInstall) return;
+    if (user) {
+      router.replace('/dashboard');
+      return;
+    }
+    const entry = readGuestEntry();
+    if (entry) router.replace(entry);
   }, [loading, user, router]);
 
   return (

@@ -2,6 +2,7 @@
   "name": "Eventia",
   "short_name": "Eventia",
   "description": "Créez et partagez des invitations d’événement",
+  "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

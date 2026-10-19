@@ -446,7 +446,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   }
 
   // Texte du bouton RSVP
-  const btnText = event.reserveText || 'Confirmer ma présence';
+  const btnText = event.reserveText || 'Oui, je viens';
   setText('#reserve-deadline-text', btnText);
   setText('#confirm-presence-label', btnText);
   if (event.rsvpDeadlineText) {
@@ -837,7 +837,7 @@ function initRsvp(
     ]);
     if (generation !== passGeneration || !box.isConnected) return;
     img.src = qrSrc;
-    img.alt = `Code d’entrée de ${name}`;
+    img.alt = `Carte d’entrée de ${name}`;
     if (caption) caption.textContent = [name, tableLabel].filter(Boolean).join(' · ');
     const download = root.querySelector('#download-checkin-qr') as HTMLAnchorElement | null;
     if (download) {
@@ -854,21 +854,23 @@ function initRsvp(
   };
 
   const applyVisualState = (status: 'confirmed' | 'declined', revealPass: boolean) => {
+    const prompt = root.querySelector('#rsvp-prompt') as HTMLElement | null;
+    if (prompt) prompt.style.display = 'none';
     if (status === 'confirmed') {
-      setNote('Votre présence est bien confirmée. Merci !', true);
+      setNote('C’est confirmé. On vous attend.', true);
       if (confirmBtn) {
         const lbl = confirmBtn.querySelector('#confirm-presence-label');
-        if (lbl) lbl.textContent = 'Présence confirmée';
+        if (lbl) lbl.textContent = 'C’est confirmé';
       }
       if (reserveBtn) {
         const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
-        if (topLbl) topLbl.textContent = 'Présence confirmée';
+        if (topLbl) topLbl.textContent = 'C’est confirmé';
       }
       if (revealPass && token) void showCheckinQr();
       else hideCheckinQr();
     } else if (status === 'declined') {
       hideCheckinQr();
-      setNote('Votre réponse (ne pourra pas venir) est bien enregistrée.', false);
+      setNote('C’est noté. Merci d’avoir répondu.', false);
     }
   };
 
@@ -904,19 +906,19 @@ function initRsvp(
         /* la file locale est indisponible */
       }
       if (button) button.disabled = false;
-      paintAnswer('En attente');
-      setNote('En attente de synchronisation. La réponse sera envoyée dès le retour de la connexion.', false);
+      paintAnswer('Pas de réseau');
+      setNote('Pas de réseau. Votre réponse partira dès que vous serez connecté.', false);
       return;
     }
     if (responsesClosed) {
-      paintAnswer('Réponses closes');
-      setNote('La date est passée. Les réponses sont closes.', false);
-      onRsvpRef?.current?.({ status, error: 'La date est passée. Les réponses sont closes.' });
+      paintAnswer('Trop tard');
+      setNote('Il est trop tard pour répondre.', false);
+      onRsvpRef?.current?.({ status, error: 'Il est trop tard pour répondre.' });
       return;
     }
     if (button) button.disabled = true;
-    paintAnswer('Enregistrement…');
-    setNote('Enregistrement de votre réponse…', true);
+    paintAnswer('Un instant…');
+    setNote('On enregistre votre réponse…', true);
     const messageField = root.querySelector('#guest-message') as HTMLTextAreaElement | null;
     const message = messageField?.value.trim() || undefined;
 
@@ -925,7 +927,7 @@ function initRsvp(
         const result = await Promise.race([
           submitGuestRsvp(createClient(), { token, status, message }),
           new Promise<{ error: string }>((resolve) => {
-            window.setTimeout(() => resolve({ error: 'La confirmation met trop de temps. Réessayez.' }), 12000);
+            window.setTimeout(() => resolve({ error: 'Ça prend trop de temps. Réessayez.' }), 12000);
           }),
         ]);
         if (button) button.disabled = false;
@@ -946,25 +948,19 @@ function initRsvp(
         } catch {}
       }
       applyVisualState(status, status === 'confirmed' && recorded);
-      paintAnswer(status === 'confirmed' ? 'Présence confirmée' : 'Réponse enregistrée');
+      paintAnswer(status === 'confirmed' ? 'C’est confirmé' : 'C’est noté');
       const notice = !token
-        ? status === 'confirmed'
-          ? rememberAnswer
-            ? 'Présence confirmée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
-            : 'Aperçu seulement : cette confirmation n’est pas envoyée aux mariés.'
-          : rememberAnswer
-            ? 'Réponse notée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
-            : 'Aperçu seulement : cette réponse n’est pas envoyée aux mariés.'
+        ? 'Ceci est un essai. Les mariés voient la réponse seulement avec le lien personnel de l’invité.'
         : status === 'confirmed'
-          ? 'Présence confirmée. Merci !'
-          : 'Votre réponse est enregistrée.';
+          ? 'C’est confirmé. Voici votre carte : gardez-la et montrez-la à l’entrée.'
+          : 'C’est noté. Merci d’avoir répondu.';
       setNote(notice, status === 'confirmed');
       if (token) void refreshGuestbookPreview(root, slug);
       onRsvpRef?.current?.({ status, notice });
     } catch {
       if (button) button.disabled = false;
       paintAnswer('Réessayer');
-      const failure = 'La confirmation n’a pas abouti. Réessayez.';
+      const failure = 'Ça n’a pas marché. Réessayez.';
       setNote(failure, false);
       onRsvpRef?.current?.({ status, error: failure });
     }
@@ -990,7 +986,7 @@ function initRsvp(
       button.style.opacity = '0.55';
       button.style.cursor = 'not-allowed';
     });
-    if (!alreadyAnswered) setNote('La date est passée. Les réponses sont closes.', false);
+    if (!alreadyAnswered) setNote('Il est trop tard pour répondre.', false);
   }
 
   const flushPendingRsvp = async () => {
@@ -1009,8 +1005,11 @@ function initRsvp(
         } catch {}
       }
       applyVisualState(pending.status, pending.status === 'confirmed');
-      setNote(pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.', pending.status === 'confirmed');
-      onRsvpRef?.current?.({ status: pending.status, notice: pending.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.' });
+      const synced = pending.status === 'confirmed'
+        ? 'C’est confirmé. Voici votre carte : gardez-la et montrez-la à l’entrée.'
+        : 'C’est noté. Merci d’avoir répondu.';
+      setNote(synced, pending.status === 'confirmed');
+      onRsvpRef?.current?.({ status: pending.status, notice: synced });
     } catch {
       /* on réessaiera au prochain retour en ligne */
     }
@@ -2051,7 +2050,7 @@ function getOriginalHTML(): string {
           <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Programme de la journée</p>
           <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;text-align:left;margin-bottom:16px;"></div>
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(124,58,237,0.35);min-height:3.25rem;">
-            <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Confirmer ma présence</span>
+            <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Oui, je viens</span>
           </button>
         </div>
       </section>
@@ -2191,28 +2190,29 @@ function getOriginalHTML(): string {
       <!-- 9. Confirmation de présence (RSVP) -->
       <section id="section-rsvp" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
-          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;">Votre réponse</h3>
+          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;">Vous venez ?</h3>
+          <p id="rsvp-prompt" class="inv-text-muted" style="font-size:13px;line-height:1.45;margin:0 0 12px;">Dites oui maintenant. Votre carte d'entrée apparaît juste après.</p>
           <p id="rsvp-deadline-caption" class="inv-text-muted" style="font-size:11px;margin-bottom:14px;display:none;"></p>
-          <label for="guest-message" class="inv-text-muted" style="display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;">Laisser un message aux mariés</label>
-          <textarea id="guest-message" class="guest-message" maxlength="500" placeholder="Un mot, un souvenir, une pensée…"></textarea>
+          <label for="guest-message" class="inv-text-muted" style="display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;">Un mot pour les mariés</label>
+          <textarea id="guest-message" class="guest-message" maxlength="500" placeholder="Un souvenir, un souhait, un simple oui…"></textarea>
           <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:15px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
             <span style="width:26px;height:26px;border-radius:999px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;">
               <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </span>
-            <span id="confirm-presence-label" style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.1em;">Confirmer ma présence</span>
+            <span id="confirm-presence-label" style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.1em;">Oui, je viens</span>
           </button>
           <button id="decline-presence-btn" type="button" style="width:100%;margin-top:10px;border-radius:12px;padding:12px;background:#f9fafb;color:#4b5563;border:1px solid #e5e7eb;font-size:12px;font-weight:500;cursor:pointer;">
-            Je ne pourrai pas venir
+            Non, je ne pourrai pas
           </button>
           <p id="rsvp-status-note" style="margin-top:12px;text-align:center;font-size:15px;font-weight:700;line-height:1.4;min-height:1.4rem;"></p>
           <div id="checkin-pass" class="checkin-pass" style="display:none;">
-            <p class="checkin-kicker">Code d'entrée</p>
+            <p class="checkin-kicker">Votre carte d'entrée</p>
             <div class="checkin-qr-frame">
-              <img id="checkin-qr" alt="Code d'entrée" width="168" height="168">
+              <img id="checkin-qr" alt="Carte d'entrée" width="168" height="168">
             </div>
             <p id="checkin-qr-caption" class="checkin-caption"></p>
-            <p class="checkin-help">Cette image est votre carte d'entrée. Présentez-la à l'accueil le jour J.</p>
-            <a id="download-checkin-qr" class="checkin-download" href="#">Télécharger la carte d'entrée</a>
+            <p class="checkin-help">Gardez-la. Le jour de la fête, montrez-la à l'entrée.</p>
+            <a id="download-checkin-qr" class="checkin-download" href="#">Enregistrer ma carte</a>
           </div>
         </div>
       </section>

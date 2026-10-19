@@ -68,10 +68,10 @@ export function tokenFromInviteLink(value: string): string {
 }
 
 export function explainGuestError(message: string): string {
-  if (!message.trim()) return 'La confirmation n’a pas abouti. Réessayez.';
+  if (!message.trim()) return 'Ça n’a pas marché. Réessayez.';
   if (message.includes('FREE_GUEST_LIMIT')) return freeGuestLimitMessage();
-  if (/not assigned yet|GUEST_NOT_FOUND/i.test(message)) return 'Ce lien personnel ne correspond à aucun invité.';
-  if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n\'est pas encore publiée.';
+  if (/not assigned yet|GUEST_NOT_FOUND/i.test(message)) return 'Ce lien ne correspond à aucun invité.';
+  if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n’est pas encore ouverte.';
   if (/row-level security|permission denied/i.test(message)) {
     return 'La confirmation n’a pas été autorisée. Relancez le script de correction dans Supabase.';
   }
@@ -323,7 +323,7 @@ export async function submitGuestRsvp(
   if (error) return { error: explainGuestError(error.message) };
   const row = Array.isArray(data) ? data[0] : data;
   if (!row?.guest_status && !row?.guest_name) {
-    return { error: 'La confirmation n’a pas été enregistrée. Réessayez.' };
+    return { error: 'Ça n’a pas été enregistré. Réessayez.' };
   }
   return { name: row?.guest_name, status: row?.guest_status || input.status };
 }

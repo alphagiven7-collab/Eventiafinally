@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 onClick={() => router.push('/checkin')}
                 className="inline-flex items-center gap-2 px-4 py-2.5 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 rounded-xl font-medium text-sm"
               >
-                Scanner le jour J
+                Accueillir les invités
               </button>
               <button
                 onClick={() => {

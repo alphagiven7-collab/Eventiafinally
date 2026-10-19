@@ -134,7 +134,7 @@ export async function checkinEntryCardDataUrl(input: {
   ctx.font = '500 22px Montserrat, sans-serif';
   ctx.fillText(name, width / 2, 1168);
   ctx.font = '400 18px Montserrat, sans-serif';
-  ctx.fillText('À présenter à l’accueil le jour J', width / 2, 1208);
+  ctx.fillText('Montrez cette carte à l’entrée', width / 2, 1208);
 
   return canvas.toDataURL('image/png');
 }

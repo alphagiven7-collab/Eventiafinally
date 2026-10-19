@@ -861,7 +861,7 @@ function GuestManagementContent() {
                                     if (!w) return;
                                     const safe = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
                                     const tableLine = g.table_number ? `Table ${g.table_number}` : 'Sans table';
-                                    w.document.write(`<title>Entrée - ${safe(g.name)}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${src}" style="width:280px;height:280px"><p style="margin-top:16px;font-size:18px;color:#111"><strong>${safe(g.name)}</strong></p><p style="font-size:14px;color:#2563eb">${safe(tableLine)}</p><p style="font-size:12px;color:#666;margin-top:8px">Code d'entrée — à scanner à l'accueil</p></div>`);
+                                    w.document.write(`<title>Entrée - ${safe(g.name)}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${src}" style="width:280px;height:280px"><p style="margin-top:16px;font-size:18px;color:#111"><strong>${safe(g.name)}</strong></p><p style="font-size:14px;color:#2563eb">${safe(tableLine)}</p><p style="font-size:12px;color:#666;margin-top:8px">Montrez cette carte à l'entrée</p></div>`);
                                   });
                                 }}
                                 title="QR d'entrée"

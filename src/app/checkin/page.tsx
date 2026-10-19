@@ -27,50 +27,50 @@ function arrivalCopy(result: Arrival) {
   if (!guest) {
     return {
       tone: 'refused' as const,
-      kicker: 'Code non reconnu',
-      title: 'Entrée impossible',
+      kicker: 'Pas reconnu',
+      title: 'Ce code ne marche pas',
       name: '',
       detail: '',
-      message: result.message || 'Ce code ne correspond à aucun invité.',
+      message: result.message || 'Ce n’est pas une carte d’entrée. Demandez le message reçu des mariés.',
     };
   }
   if (guest.status === 'declined') {
     return {
       tone: 'refused' as const,
-      kicker: 'Invitation déclinée',
-      title: 'Entrée non ouverte',
+      kicker: 'A dit non',
+      title: 'Ne peut pas venir',
       name: guest.name,
       detail: table,
-      message: 'Cette personne a indiqué qu’elle ne pourra pas venir.',
+      message: 'Cette personne a répondu qu’elle ne viendrait pas.',
     };
   }
   if (guest.status !== 'confirmed') {
     return {
       tone: 'waiting' as const,
-      kicker: 'Confirmation manquante',
-      title: 'Pas encore confirmé',
+      kicker: 'Pas encore dit oui',
+      title: 'Attendez',
       name: guest.name,
       detail: table,
-      message: 'Le code d’entrée s’affiche seulement après la confirmation de présence.',
+      message: 'Cette personne n’a pas confirmé. Demandez-lui d’ouvrir son invitation et de dire qu’elle vient.',
     };
   }
   if (guest.alreadyInside) {
     return {
       tone: 'known' as const,
-      kicker: 'Déjà accueilli(e)',
+      kicker: 'Déjà là',
       title: 'Bon retour',
       name: guest.name,
       detail: table,
-      message: 'Cette personne est déjà entrée. Aucune nouvelle arrivée n’est enregistrée.',
+      message: 'Cette personne est déjà entrée. Laissez-la passer.',
     };
   }
   return {
     tone: 'welcome' as const,
-    kicker: 'Entrée validée',
+    kicker: 'C’est bon',
     title: 'Bienvenue',
     name: guest.name,
     detail: table,
-    message: 'La présence est enregistrée. Bonne fête.',
+    message: 'La place est prête. Vous pouvez entrer.',
   };
 }
 
@@ -83,7 +83,7 @@ function CheckInContent() {
   const confirmArrival = async (raw: string) => {
     const token = tokenFromInviteLink(raw);
     if (!token || !isSupabaseReady()) {
-      setArrival({ message: 'Invité introuvable. Le code doit venir de la carte d’entrée.' });
+      setArrival({ message: 'On ne trouve personne. Utilisez la carte d’entrée.' });
       return;
     }
     const client = createClient();
@@ -101,7 +101,7 @@ function CheckInContent() {
     }
     const result = await checkInGuest(client, token);
     if (result.error || !result.guest) {
-      setArrival({ message: result.error || 'Invité introuvable' });
+      setArrival({ message: result.error || 'On ne trouve personne.' });
       return;
     }
     setArrival({ guest: result.guest });
@@ -131,9 +131,9 @@ function CheckInContent() {
           <Link href="/dashboard" className="inline-flex text-sm font-semibold underline underline-offset-4">
             Retour aux événements
           </Link>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight">Accueil du jour J</h1>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">Accueillir les invités</h1>
           <p className="mt-1 text-sm leading-relaxed text-white/80">
-            Visez le code d’entrée sur le téléphone de l’invité, ou la carte qu’il a téléchargée.
+            Scannez la carte sur le téléphone, ou celle qui a été enregistrée.
           </p>
         </div>
       </header>
@@ -151,7 +151,7 @@ function CheckInContent() {
                   inputMode === 'scan' ? 'bg-[#1A1A2E] text-white' : 'text-[#6B5B4F]'
                 }`}
               >
-                Scanner
+                Caméra
               </button>
               <button
                 type="button"
@@ -163,22 +163,22 @@ function CheckInContent() {
                   inputMode === 'manual' ? 'bg-[#1A1A2E] text-white' : 'text-[#6B5B4F]'
                 }`}
               >
-                Saisie
+                Écrire
               </button>
             </div>
 
             {inputMode === 'scan' ? (
               <section className="flex flex-col items-center rounded-[28px] border border-[#E8E0D8] bg-white px-5 py-6 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">Contrôle d’entrée</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">À l’entrée</p>
                 <h2 className="mt-2 text-2xl text-[#1A1A2E]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                  Présentez le code
+                  Scannez la carte
                 </h2>
                 <div className="relative mt-5 aspect-square w-full overflow-hidden rounded-2xl bg-[#F8F4F0]">
                   {scanning ? (
                     <QRScanner onScanSuccess={handleScanSuccess} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center px-6">
-                      <p className="text-sm leading-relaxed text-[#6B5B4F]">Le cadre de scan apparaît ici.</p>
+                      <p className="text-sm leading-relaxed text-[#6B5B4F]">La caméra s’ouvre ici.</p>
                     </div>
                   )}
                 </div>
@@ -188,24 +188,24 @@ function CheckInContent() {
                   disabled={scanning}
                   className="mt-5 flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#1A1A2E] text-sm font-bold text-white disabled:opacity-50"
                 >
-                  {scanning ? 'Scan en cours…' : 'Démarrer le scan'}
+                  {scanning ? 'Caméra ouverte…' : 'Ouvrir la caméra'}
                 </button>
               </section>
             ) : (
               <section className="flex flex-col items-stretch rounded-[28px] border border-[#E8E0D8] bg-white px-5 py-6 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">Saisie du code</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">Sans caméra</p>
                 <h2 className="mt-2 text-2xl text-[#1A1A2E]" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                  Valider une entrée
+                  Coller le code
                 </h2>
                 <label htmlFor="checkin-token" className="mt-5 text-left text-sm font-semibold text-[#1A1A2E]">
-                  Code ou lien de l’invité
+                  Code ou lien
                 </label>
                 <input
                   id="checkin-token"
                   type="text"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Collez le code d’entrée"
+                  placeholder="Collez le code ici"
                   className="mt-2 w-full rounded-2xl border border-[#E8E0D8] bg-[#F8F4F0] px-4 py-3 text-center text-[#1A1A2E] outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 />
                 <button
@@ -213,7 +213,7 @@ function CheckInContent() {
                   onClick={handleManualCheckin}
                   className="mt-4 flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#1A1A2E] text-sm font-bold text-white"
                 >
-                  Valider la présence
+                  Faire entrer
                 </button>
               </section>
             )}
@@ -256,7 +256,7 @@ function ArrivalMessage({ result, onNext }: { result: Arrival; onNext: () => voi
         onClick={onNext}
         className="mt-8 flex min-h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-[#1A1A2E] text-sm font-bold text-white"
       >
-        Scanner le suivant
+        Personne suivante
       </button>
     </section>
   );

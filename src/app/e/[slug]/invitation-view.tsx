@@ -203,7 +203,7 @@ export default function InvitationView({
             return;
           }
           setLiveStatus(result.status);
-          setRsvpNotice(result.notice || (result.status === 'confirmed' ? 'Présence confirmée. Merci !' : 'Votre réponse est enregistrée.'));
+          setRsvpNotice(result.notice || (result.status === 'confirmed' ? 'C’est confirmé. On vous attend.' : 'C’est noté. Merci d’avoir répondu.'));
         }}
       />
     </>

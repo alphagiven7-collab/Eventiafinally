@@ -118,15 +118,49 @@ export function fromDatabase(row: EventRow): EventWithSettings {
   };
 }
 
-export async function fetchInvitationBySlug(supabase: DbClient, slug: string): Promise<EventWithSettings | null> {
+export async function fetchInvitationBySlug(
+  supabase: DbClient,
+  slug: string,
+  options?: { includeMusic?: boolean },
+): Promise<EventWithSettings | null> {
+  const settings = options?.includeMusic === false ? 'event_settings(payload)' : 'event_settings(*)';
   const { data, error } = await supabase
     .from('events')
-    .select('*, event_settings(*)')
+    .select(`*, ${settings}`)
     .eq('slug', slug)
     .maybeSingle();
 
   if (error || !data) return null;
   return fromDatabase(data as EventRow);
+}
+
+export async function fetchEventMusic(supabase: DbClient, eventId: string): Promise<string | null> {
+  if (!isUuid(eventId)) return null;
+  const { data, error } = await supabase
+    .from('event_settings')
+    .select('ambiance')
+    .eq('event_id', eventId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const url = (data.ambiance as { musicUrl?: string } | null)?.musicUrl;
+  return url || null;
+}
+
+export async function fetchInvitationMeta(
+  supabase: DbClient,
+  slug: string,
+): Promise<{ title: string; description: string } | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('title, description, event_settings(meta_description)')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const settings = Array.isArray(data.event_settings) ? data.event_settings[0] : data.event_settings;
+  return {
+    title: data.title,
+    description: settings?.meta_description || data.description || '',
+  };
 }
 
 export async function listInvitations(supabase: DbClient, userId: string): Promise<EventWithSettings[]> {
@@ -164,6 +198,18 @@ export async function publishInvitation(
   const id = existing?.id || (isUuid(event.id) ? event.id : crypto.randomUUID());
   const now = new Date().toISOString();
   const stored: EventWithSettings = { ...event, id, updated_at: now };
+  const musicUrl = event.ambiance?.musicUrl || '';
+  const payloadEvent: EventWithSettings = musicUrl.startsWith('data:')
+    ? {
+        ...stored,
+        ambiance: {
+          enabled: Boolean(event.ambiance?.enabled),
+          volume: event.ambiance?.volume ?? 0.35,
+          musicUrl: '',
+          hasFile: true,
+        },
+      }
+    : stored;
 
   const { error: eventError } = await supabase.from('events').upsert({
     id,
@@ -210,7 +256,7 @@ export async function publishInvitation(
     branding: event.branding ?? {},
     sections: event.sections ?? {},
     links: event.links ?? {},
-    payload: stored,
+    payload: payloadEvent,
     updated_at: now,
   }, { onConflict: 'event_id' });
 

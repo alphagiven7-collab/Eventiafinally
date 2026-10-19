@@ -1269,7 +1269,7 @@ function EditEventContent() {
                       Musique de fond sur l&apos;invitation
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      L&apos;invité la lance avec le bouton musique en haut de l&apos;invitation.
+                      Sur un autre téléphone, l&apos;invité touche le bouton violet « Lancer la musique ». Le son ne part pas tout seul.
                     </span>
                   </span>
                   <input

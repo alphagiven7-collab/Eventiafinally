@@ -154,6 +154,7 @@ export interface Ambiance {
   musicUrl: string;
   volume: number;
   enabled: boolean;
+  hasFile?: boolean;
 }
 
 // Complete Event with customization (from JSON files)

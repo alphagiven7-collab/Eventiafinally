@@ -23,7 +23,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
     async function loadEvent() {
       if (isSupabaseReady()) {
         try {
-          const hosted = await fetchInvitationBySlug(createClient(), slug);
+          const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
             setEvent(hosted);
             setLoading(false);

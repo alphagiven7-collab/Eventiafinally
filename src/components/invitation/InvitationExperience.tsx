@@ -5,6 +5,7 @@ import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
+import { fetchEventMusic } from '@/lib/events/store';
 import { checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 
 export default function InvitationExperience({
@@ -974,15 +975,20 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
 function initMusic(root: HTMLElement, event: EventWithSettings) {
   if (!event.ambiance?.enabled) return () => {};
 
-  const btn = root.querySelector('#music-toggle-btn') as HTMLElement | null;
+  const btn = root.querySelector('#music-toggle-btn') as HTMLButtonElement | null;
   const audio = root.querySelector('#background-music') as HTMLAudioElement | null;
   if (!btn || !audio) return () => {};
 
+  const customUrl = event.ambiance.musicUrl || '';
+  const hasFile = Boolean(event.ambiance.hasFile) || customUrl.startsWith('data:');
+  const directSrc = customUrl.startsWith('data:') || customUrl.startsWith('http') ? customUrl : '';
   const defaultMusic = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-  audio.src = event.ambiance.musicUrl || defaultMusic;
+  let started = false;
+  let loading = false;
+
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
-  audio.preload = 'auto';
+  audio.preload = 'none';
   audio.setAttribute('playsinline', '');
   audio.style.display = 'block';
   audio.style.position = 'absolute';
@@ -990,28 +996,69 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   audio.style.height = '0';
   audio.style.opacity = '0';
   audio.style.pointerEvents = 'none';
+  if (directSrc) audio.src = directSrc;
+
+  btn.textContent = 'Lancer la musique';
   btn.style.display = 'flex';
+  btn.style.position = 'fixed';
+  btn.style.left = '16px';
+  btn.style.right = '16px';
+  btn.style.bottom = '16px';
+  btn.style.width = 'auto';
+  btn.style.height = '48px';
+  btn.style.borderRadius = '14px';
+  btn.style.background = '#7c3aed';
+  btn.style.color = 'white';
+  btn.style.fontSize = '14px';
+  btn.style.fontWeight = '700';
+  btn.style.zIndex = '70';
+  btn.style.boxShadow = '0 10px 24px rgba(124, 58, 237, 0.35)';
 
   function updateBtn() {
     if (!btn || !audio) return;
-    const isPlaying = !audio.paused;
-    btn.style.opacity = isPlaying ? '1' : '0.65';
-    btn.title = isPlaying ? 'Couper la musique' : 'Lancer la musique';
+    if (!audio.paused) btn.textContent = 'Couper la musique';
+    else btn.textContent = started ? 'Relancer la musique' : 'Lancer la musique';
   }
 
+  const playNow = (src?: string) => {
+    if (src) audio.src = src;
+    audio.preload = 'auto';
+    started = true;
+    void audio.play().then(updateBtn).catch(() => {
+      if (btn) btn.textContent = 'Touchez encore pour lancer la musique';
+    });
+  };
+
   const onClick = () => {
-    if (audio.paused) {
-      audio.play().catch(() => {});
-    } else {
+    if (loading) return;
+    if (!audio.paused) {
       audio.pause();
+      updateBtn();
+      return;
     }
-    updateBtn();
+    if (directSrc || audio.dataset.loaded === '1' || !hasFile) {
+      playNow(directSrc || defaultMusic);
+      return;
+    }
+    loading = true;
+    btn.textContent = 'Chargement de la musique…';
+    void fetchEventMusic(createClient(), event.id).then((url) => {
+      loading = false;
+      if (!url) {
+        btn.textContent = 'Publiez l’invitation pour entendre la musique';
+        return;
+      }
+      audio.dataset.loaded = '1';
+      playNow(url);
+    }).catch(() => {
+      loading = false;
+      btn.textContent = 'Touchez encore pour lancer la musique';
+    });
   };
 
   btn.addEventListener('click', onClick);
   audio.addEventListener('play', updateBtn);
   audio.addEventListener('pause', updateBtn);
-  audio.play().catch(() => {});
 
   return () => {
     audio.pause();
@@ -1629,7 +1676,7 @@ function getOriginalCSS(): string {
 function getOriginalHTML(): string {
   return `
     <!-- Audio pour musique d'ambiance -->
-    <audio id="background-music" loop preload="auto" playsinline style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;"></audio>
+    <audio id="background-music" loop preload="none" playsinline style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;"></audio>
 
     <!-- Outils flottants (Thème & Musique) -->
     <div id="app-floating-tools" style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">

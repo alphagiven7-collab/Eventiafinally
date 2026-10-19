@@ -103,13 +103,13 @@ function CreateEventContent() {
       coupleLeft: coupleLeft.trim() || undefined,
       coupleRight: coupleRight.trim() || undefined,
       branding: {
-        primaryColor: '#db2777',
-        accentColor: '#be185d',
+        primaryColor: '#5b21b6',
+        accentColor: '#2563eb',
         heroImage: '',
         welcomeImage: '',
         ogShareImage: '',
       },
-      rsvpButtonColor: '#ec4899',
+      rsvpButtonColor: '#7c3aed',
       sections: {
         gallery: true,
         countdown: true,
@@ -221,7 +221,7 @@ function CreateEventContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-xl transition-all active:scale-[0.99] disabled:opacity-50"
+            className="w-full mt-2 py-4 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-[0.99] disabled:opacity-50"
           >
             {loading ? 'Création en cours...' : 'Continuer vers la personnalisation ›'}
           </button>

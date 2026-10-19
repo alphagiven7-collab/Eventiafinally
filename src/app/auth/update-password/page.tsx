@@ -59,7 +59,7 @@ export default function UpdatePasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-2xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? 'Enregistrement...' : <>Enregistrer <ArrowRight className="w-4 h-4" /></>}
               </button>

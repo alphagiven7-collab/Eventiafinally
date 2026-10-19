@@ -496,7 +496,7 @@ function PracticalInfoEditor({
    Palettes d'harmonies rapides
    ───────────────────────────────────────────── */
 const COLOR_PRESETS = [
-  { name: 'Rose & Framboise', primary: '#db2777', accent: '#be185d', rsvp: '#ec4899' },
+  { name: 'Mauve & Bleu', primary: '#5b21b6', accent: '#2563eb', rsvp: '#7c3aed' },
   { name: 'Or & Champagne', primary: '#b45309', accent: '#92400e', rsvp: '#d97706' },
   { name: 'Sauge & Émeraude', primary: '#047857', accent: '#065f46', rsvp: '#10b981' },
   { name: 'Bleu Nuit & Royal', primary: '#1d4ed8', accent: '#1e40af', rsvp: '#2563eb' },
@@ -547,9 +547,9 @@ function EditEventContent() {
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
-  const [primaryColor, setPrimaryColor] = useState('#db2777');
-  const [accentColor, setAccentColor] = useState('#be185d');
-  const [rsvpButtonColor, setRsvpButtonColor] = useState('#ec4899');
+  const [primaryColor, setPrimaryColor] = useState('#5b21b6');
+  const [accentColor, setAccentColor] = useState('#2563eb');
+  const [rsvpButtonColor, setRsvpButtonColor] = useState('#7c3aed');
 
   // ── 3. Photos & Musique ──
   const [heroImage, setHeroImage] = useState('');
@@ -632,9 +632,9 @@ function EditEventContent() {
       setReserveText(evt.reserveText || '');
       setRsvpDeadlineText(evt.rsvpDeadlineText || '');
 
-      setPrimaryColor(evt.branding?.primaryColor || '#db2777');
-      setAccentColor(evt.branding?.accentColor || '#be185d');
-      setRsvpButtonColor(evt.rsvpButtonColor || '#ec4899');
+      setPrimaryColor(evt.branding?.primaryColor || '#5b21b6');
+      setAccentColor(evt.branding?.accentColor || '#2563eb');
+      setRsvpButtonColor(evt.rsvpButtonColor || '#7c3aed');
 
       setAboutTitle(evt.aboutTitle || '');
       setAboutStory1(evt.aboutStory1 || '');
@@ -941,7 +941,7 @@ function EditEventContent() {
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <button type="button" onClick={() => router.push('/dashboard')} className="text-[11px] text-rose-600 dark:text-rose-300 font-semibold">
+            <button type="button" onClick={() => router.push('/dashboard')} className="text-[11px] text-violet-700 dark:text-violet-300 font-semibold">
               Tableau de bord
             </button>
             <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
@@ -1093,7 +1093,7 @@ function EditEventContent() {
                   onClick={() => setInvitationTemplate(value)}
                   className={`text-left rounded-2xl border p-4 ${
                     invitationTemplate === value
-                      ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30'
+                      ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30'
                       : 'border-gray-200 dark:border-gray-700'
                   }`}
                 >
@@ -1401,7 +1401,7 @@ function EditEventContent() {
               type="button"
               onClick={() => handleSave('preview')}
               disabled={saving}
-              className="py-3.5 px-4 border border-rose-200 text-rose-600 dark:text-rose-300 rounded-2xl font-semibold text-sm disabled:opacity-50"
+              className="py-3.5 px-4 border border-violet-300 text-violet-700 dark:text-violet-300 rounded-2xl font-semibold text-sm disabled:opacity-50"
             >
               Aperçu
             </button>
@@ -1409,7 +1409,7 @@ function EditEventContent() {
               type="button"
               onClick={() => setConfirmPublish(true)}
               disabled={saving}
-              className="py-3.5 px-4 bg-rose-500 text-white rounded-2xl font-bold text-sm disabled:opacity-50"
+              className="py-3.5 px-4 bg-violet-600 text-white rounded-2xl font-bold text-sm disabled:opacity-50"
             >
               Publier
             </button>
@@ -1436,7 +1436,7 @@ function EditEventContent() {
                 href={`/e/${event.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-rose-600 dark:text-rose-400 font-medium hover:underline"
+                className="text-[11px] text-violet-700 dark:text-violet-300 font-medium hover:underline"
               >
                 Plein écran ↗
               </a>
@@ -1458,7 +1458,7 @@ function EditEventContent() {
             <p className="text-xs text-gray-500 mt-2">La publication rend le lien disponible avec le statut Publiée. Vous pouvez encore le modifier ensuite.</p>
             <div className="flex gap-2 mt-4">
               <button type="button" onClick={() => setConfirmPublish(false)} className="flex-1 py-3 border rounded-xl text-sm">Annuler</button>
-              <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-rose-500 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+              <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
                 {saving ? 'Publication...' : 'Confirmer la publication'}
               </button>
             </div>

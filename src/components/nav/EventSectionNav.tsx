@@ -37,7 +37,7 @@ export function EventSectionNav({
             href={href[item.id]}
             className={`shrink-0 px-3 py-2 rounded-xl text-xs font-semibold ${
               active === item.id
-                ? 'bg-rose-500 text-white'
+                ? 'bg-violet-600 text-white'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700'
             }`}
           >

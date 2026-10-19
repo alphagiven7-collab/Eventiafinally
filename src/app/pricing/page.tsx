@@ -25,7 +25,7 @@ export default function PricingPage() {
           <Link href="/" className="text-sm font-bold">Invitia</Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-rose-500 text-white rounded-xl">
+            <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
               Tableau de bord
             </Link>
           </div>
@@ -93,7 +93,7 @@ export default function PricingPage() {
           </ul>
           <Link
             href="/dashboard"
-            className="mt-5 inline-flex w-full justify-center py-3 bg-rose-500 text-white rounded-xl text-sm font-bold"
+            className="mt-5 inline-flex w-full justify-center py-3 bg-violet-600 text-white rounded-xl text-sm font-bold"
           >
             Retourner au tableau de bord
           </Link>

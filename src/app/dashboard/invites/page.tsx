@@ -371,7 +371,7 @@ function GuestManagementContent() {
             { id: 'exports' as Tab, icon: <Download className="w-3.5 h-3.5" />, label: 'Exports' },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 min-h-11 px-3 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5 transition ${activeTab === tab.id ? 'bg-rose-500 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+              className={`shrink-0 min-h-11 px-3 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5 transition ${activeTab === tab.id ? 'bg-violet-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
               {tab.icon} <span>{tab.label}</span>
             </button>
           ))}
@@ -408,7 +408,7 @@ function GuestManagementContent() {
               </h2>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">Format CSV : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom,telephone,groupe,email</code></p>
               <div className="flex flex-wrap gap-2">
-                <label className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-rose-600 transition">
+                <label className="px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
                 </label>
@@ -430,7 +430,7 @@ function GuestManagementContent() {
                     </ul>
                   )}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-rose-500 text-white rounded-lg font-semibold">Importer ces lignes</button>
+                    <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
                     <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
                   </div>
                 </div>
@@ -446,13 +446,13 @@ function GuestManagementContent() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {GUEST_PACKS.map((pack) => (
                   <button key={pack} type="button" onClick={() => { setPackChoice(pack); setConfirmPack(false); }}
-                    className={`rounded-xl border p-3 text-left ${packChoice === pack ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
+                    className={`rounded-xl border p-3 text-left ${packChoice === pack ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
                     <span className="block text-xs font-semibold">{pack}</span>
                     <span className="block text-sm font-bold">{formatUsd(packTotalUsd(pack))}</span>
                   </button>
                 ))}
                 <button type="button" onClick={() => setPackChoice(0)}
-                  className={`rounded-xl border p-3 text-left ${packChoice === 0 ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
+                  className={`rounded-xl border p-3 text-left ${packChoice === 0 ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
                   <span className="block text-xs font-semibold">Autre</span>
                   <span className="block text-[11px]">0,30 $ × nombre</span>
                 </button>
@@ -470,7 +470,7 @@ function GuestManagementContent() {
                 <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
                   <p className="text-xs">Valider {chosenPackSize} invités pour {formatUsd(packTotalUsd(chosenPackSize))} ? Les {TRIAL_INVITATIONS} invitations d&apos;essai restent en plus. La publication de l&apos;invitation ne change pas.</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => void applyPack()} className="px-3 py-2 bg-rose-500 text-white rounded-lg text-xs font-bold">Valider ce forfait</button>
+                    <button type="button" onClick={() => void applyPack()} className="px-3 py-2 bg-violet-600 text-white rounded-lg text-xs font-bold">Valider ce forfait</button>
                     <button type="button" onClick={() => setConfirmPack(false)} className="px-3 py-2 border rounded-lg text-xs">Annuler</button>
                   </div>
                 </div>
@@ -705,7 +705,7 @@ function GuestManagementContent() {
             </h2>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-4">Téléchargez vos listes pour archivage ou impression.</p>
             <div className="flex flex-wrap gap-2">
-              <button onClick={handleExportCSV} className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-medium hover:bg-rose-600 transition">
+              <button onClick={handleExportCSV} className="px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium hover:bg-violet-700 transition">
                 Export CSV
               </button>
               <button onClick={handleExportJSON} className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">

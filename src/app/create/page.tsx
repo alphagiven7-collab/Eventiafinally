@@ -67,7 +67,7 @@ function CreateContent() {
             </div>
           </div>
           <div className="mt-4 flex items-center justify-center">
-            <button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-2xl transition-all active:scale-95">
+            <button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-2xl transition-all active:scale-95">
               <Sparkles className="w-4 h-4" />
               Commencer
             </button>

@@ -80,7 +80,7 @@ export default function EventInvitationPage({ params }: { params: Promise<{ slug
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Invitation introuvable</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Désolé, l'invitation "{slug}" n'existe pas.</p>
-          <a href="/" className="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
+          <a href="/" className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-3 px-6 rounded-xl text-sm font-semibold transition">
             <Home className="w-4 h-4" />
             <span>Retour à l'accueil</span>
           </a>

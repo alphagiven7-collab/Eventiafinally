@@ -19,11 +19,11 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {!loading && user ? (
-              <Link href="/dashboard" className="px-4 py-2 text-xs font-semibold bg-rose-500 text-white rounded-xl">
+              <Link href="/dashboard" className="px-4 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
                 Tableau de bord
               </Link>
             ) : (
-              <Link href="/auth/login" className="px-4 py-2 text-xs font-semibold bg-rose-500 text-white rounded-xl">
+              <Link href="/auth/login" className="px-4 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
                 Connexion
               </Link>
             )}
@@ -42,10 +42,10 @@ export default function HomePage() {
               Invitia sert à préparer un mariage ou une fête : texte, photos, date, lieu, liste d’invités et confirmation de présence. Vous commencez gratuitement avec {TRIAL_INVITATIONS} invitations d’essai.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href={user ? '/dashboard' : '/create'} className="inline-flex justify-center px-5 py-3 bg-rose-500 text-white rounded-2xl text-sm font-bold">
+              <Link href={user ? '/dashboard' : '/create'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
                 Créer mon invitation
               </Link>
-              <Link href="/e/yanick-keren" className="inline-flex justify-center px-5 py-3 border border-rose-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
+              <Link href="/e/yanick-keren" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
                 Voir un exemple
               </Link>
             </div>
@@ -87,7 +87,7 @@ export default function HomePage() {
           <p className="text-xs text-gray-500 mt-3">
             Au-delà de 200 invités, le total est {formatUsd(PRICE_PER_GUEST_USD)} multiplié par le nombre choisi. Il s’affiche avant validation.
           </p>
-          <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-rose-600">Voir le détail des offres</Link>
+          <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir le détail des offres</Link>
         </section>
 
         <footer className="pt-4 border-t border-gray-200 dark:border-gray-800">

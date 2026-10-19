@@ -161,7 +161,7 @@ export default function PhotoUploader({
                     e.stopPropagation();
                     removePhoto(index);
                   }}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 text-white flex items-center justify-center transition shadow"
+                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-violet-700 text-white flex items-center justify-center transition shadow"
                   aria-label={`Supprimer la photo ${index + 1}`}
                 >
                   <X className="w-3.5 h-3.5" />

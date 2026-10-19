@@ -164,7 +164,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 href={item.href}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium ${
                   isActive(item.href)
-                    ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300'
+                    ? 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -186,7 +186,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-semibold ${
-                isActive(item.href) ? 'text-rose-600' : 'text-gray-500'
+                isActive(item.href) ? 'text-violet-700' : 'text-gray-500'
               }`}
             >
               <item.icon className="w-5 h-5" />

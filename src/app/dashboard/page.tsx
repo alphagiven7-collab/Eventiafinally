@@ -181,7 +181,7 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {GUEST_PACKS.map((pack) => `${pack} invités · ${formatUsd(packTotalUsd(pack))}`).join(' · ')}. L&apos;essai s&apos;ajoute au forfait.
             </p>
-            <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-rose-500 text-white rounded-xl text-xs font-bold">
+            <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold">
               Voir les forfaits
             </a>
           </div>
@@ -196,7 +196,7 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => setShowCreateInput(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl font-medium text-sm shadow-lg shadow-rose-200/50 dark:shadow-rose-900/30 hover:shadow-xl transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
               Créer
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleCreateEvent}
                   disabled={creating}
-                  className="px-5 py-3 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95 disabled:opacity-50"
+                  className="px-5 py-3 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95 disabled:opacity-50"
                 >
                   {creating ? 'Création...' : 'Créer'}
                 </button>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={() => setShowCreateInput(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-blue-500 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-medium text-sm hover:shadow-lg transition active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 Créer mon invitation
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                     <a
                       href={`/e/${event.slug}`}
                       target="_blank"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Aperçu
@@ -379,7 +379,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleDeleteEvent}
                 disabled={deleting}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-violet-700 text-white rounded-xl text-sm font-bold hover:bg-violet-800 transition disabled:opacity-50"
               >
                 {deleting ? 'Suppression...' : 'Supprimer'}
               </button>

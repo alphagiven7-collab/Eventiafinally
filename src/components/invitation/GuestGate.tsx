@@ -31,7 +31,7 @@ export default function GuestGate({ event, onOpen }: GuestGateProps) {
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-md flex items-center justify-center px-5">
       <div className="w-full max-w-sm">
         {/* Envelope seal */}
-        <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl animate-pulse">
+        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-violet-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl animate-pulse">
           <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
@@ -69,7 +69,7 @@ export default function GuestGate({ event, onOpen }: GuestGateProps) {
           <button
             type="submit"
             disabled={!guestName.trim() || isOpening}
-            className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white p-4 text-sm font-semibold tracking-wide rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white p-4 text-sm font-semibold tracking-wide rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {isOpening ? (
               <span className="flex items-center justify-center gap-2">

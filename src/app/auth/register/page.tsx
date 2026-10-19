@@ -111,7 +111,7 @@ function RegisterForm() {
             </div>
 
             <button type="submit" disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-2xl font-semibold shadow-lg shadow-amber-200/50 dark:shadow-amber-900/30 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
+              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white rounded-2xl font-semibold shadow-lg shadow-blue-200/40 dark:shadow-violet-900/30 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
               {loading ? 'Création...' : (<>Créer mon compte <ArrowRight className="w-4 h-4" /></>)}
             </button>
           </form>

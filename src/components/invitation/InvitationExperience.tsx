@@ -73,6 +73,29 @@ export default function InvitationExperience({
   return <div ref={containerRef} className="invitation-experience-host" />;
 }
 
+function mauveButton(hex: string): string {
+  const match = hex.trim().toLowerCase().match(/^#([0-9a-f]{6})$/);
+  if (!match) return '#7c3aed';
+  const value = Number.parseInt(match[1], 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+  if (delta !== 0) {
+    if (max === red) hue = ((green - blue) / delta) % 6;
+    else if (max === green) hue = (blue - red) / delta + 2;
+    else hue = (red - green) / delta + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+  }
+  const saturation = max === 0 ? 0 : delta / max;
+  if (saturation > 0.28 && (hue <= 28 || hue >= 320)) return '#7c3aed';
+  return hex;
+}
+
 function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName?: string, guestTable?: string) {
   const $ = (sel: string) => root.querySelector(sel) as HTMLElement | null;
   const setText = (sel: string, text: string) => {
@@ -88,10 +111,10 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     if (el && href) el.href = href;
   };
 
-  // Couleurs personnalisées
-  const primaryColor = event.branding?.primaryColor || '#db2777';
-  const accentColor = event.branding?.accentColor || '#be185d';
-  const rsvpColor = event.rsvpButtonColor || accentColor || '#ec4899';
+  // Couleurs personnalisées. Un bouton rouge ou rose devient mauve.
+  const primaryColor = event.branding?.primaryColor || '#5b21b6';
+  const accentColor = event.branding?.accentColor || '#2563eb';
+  const rsvpColor = mauveButton(event.rsvpButtonColor || accentColor || '#7c3aed');
   root.style.setProperty('--primary-color', primaryColor);
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
@@ -230,14 +253,14 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
           const colors: Record<string, string> = {
             blue: '#3b82f6',
             green: '#10b981',
-            pink: '#ec4899',
+            pink: '#7c3aed',
             purple: '#8b5cf6',
           };
           const dotColor = colors[item.color] || rsvpColor;
           return `
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="display:flex;flex-direction:column;align-items:center;padding-top:3px;">
-                <div style="width:11px;height:11px;border-radius:999px;background:${dotColor};box-shadow:0 0 0 4px rgba(236,72,153,0.1);"></div>
+                <div style="width:11px;height:11px;border-radius:999px;background:${dotColor};box-shadow:0 0 0 4px rgba(124,58,237,0.1);"></div>
                 ${i < event.program!.length - 1 ? '<div class="inv-divider-line" style="width:1px;height:36px;background:#e5e7eb;margin-top:4px;"></div>' : ''}
               </div>
               <div style="padding-bottom:6px;">
@@ -533,7 +556,7 @@ function renderDynamicCalendar(root: HTMLElement, date: Date) {
   for (let d = 1; d <= daysInMonth; d++) {
     if (d === targetDay) {
       cells.push(`
-        <div id="calendar-event-day" style="padding:5px 0;background:var(--rsvp-color, #ec4899);color:white;border-radius:8px;font-weight:700;box-shadow:0 4px 10px rgba(236,72,153,0.3);position:relative;">
+        <div id="calendar-event-day" style="padding:5px 0;background:var(--rsvp-color, #7c3aed);color:white;border-radius:8px;font-weight:700;box-shadow:0 4px 10px rgba(124,58,237,0.3);position:relative;">
           ${d}
         </div>
       `);
@@ -637,7 +660,7 @@ function initRsvp(
   const setNote = (text: string, isConfirmed?: boolean) => {
     if (!note) return;
     note.textContent = text;
-    note.style.color = isConfirmed === false ? '#9ca3af' : 'var(--rsvp-color, #ec4899)';
+    note.style.color = isConfirmed === false ? '#9ca3af' : 'var(--rsvp-color, #7c3aed)';
   };
 
   const token =
@@ -1091,9 +1114,9 @@ function getOriginalCSS(): string {
     .invitation-experience-root {
       --hero-image-url: url("https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80");
       --welcome-image-url: url("https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80");
-      --primary-color: #db2777;
-      --accent-color: #be185d;
-      --rsvp-color: #ec4899;
+      --primary-color: #5b21b6;
+      --accent-color: #2563eb;
+      --rsvp-color: #7c3aed;
       --icon-color: #2563eb;
       font-family: 'Montserrat', sans-serif;
       background-color: #f4f4f6;
@@ -1116,7 +1139,7 @@ function getOriginalCSS(): string {
       position: relative;
       overflow: hidden;
       background:
-        radial-gradient(circle at 88% 8%, rgba(236, 72, 153, 0.08), transparent 42%),
+        radial-gradient(circle at 88% 8%, rgba(124, 58, 237, 0.08), transparent 42%),
         radial-gradient(circle at 12% 92%, rgba(15, 23, 42, 0.04), transparent 40%),
         linear-gradient(168deg, #ffffff 0%, #faf8f6 48%, #f8fafc 100%);
       box-shadow: 0 22px 48px rgba(17, 24, 39, 0.09);
@@ -1175,8 +1198,8 @@ function getOriginalCSS(): string {
       font-size: clamp(2.35rem, 9vw, 3.1rem);
       line-height: 1;
     }
-    .invitation-experience-root .invite-couple-name--left { color: var(--primary-color, #db2777); }
-    .invitation-experience-root .invite-couple-name--right { color: var(--accent-color, #be185d); }
+    .invitation-experience-root .invite-couple-name--left { color: var(--primary-color, #5b21b6); }
+    .invitation-experience-root .invite-couple-name--right { color: var(--accent-color, #2563eb); }
     .invitation-experience-root .invite-couple-join {
       font-size: clamp(0.5625rem, 2.4vw, 0.625rem);
       letter-spacing: 0.22em;
@@ -1214,7 +1237,7 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root .invitation-rsvp-wrap { margin-top: 1rem; padding: 0 0.15rem; }
     .invitation-experience-root .btn-rsvp {
-      background: var(--rsvp-color, linear-gradient(135deg, #ec4899, #f43f5e));
+      background: var(--rsvp-color, linear-gradient(135deg, #2563eb, #7c3aed));
       color: white;
       border: none;
       cursor: pointer;
@@ -1222,7 +1245,7 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root .btn-rsvp:hover {
       transform: translateY(-1px);
-      box-shadow: 0 12px 24px -6px rgba(236, 72, 153, 0.45);
+      box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.35);
     }
     .invitation-experience-root .btn-rsvp:active { transform: scale(0.99); }
     .invitation-experience-root .best-photos-shell {
@@ -1287,8 +1310,8 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root label.drink-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
     .invitation-experience-root label.drink-card.is-selected {
-      border-color: var(--rsvp-color, #ec4899);
-      box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.25), 0 10px 24px rgba(236, 72, 153, 0.12);
+      border-color: var(--rsvp-color, #7c3aed);
+      box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25), 0 10px 24px rgba(124, 58, 237, 0.12);
     }
     .invitation-experience-root .drink-card-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
     .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 78px; overflow: hidden; background: linear-gradient(135deg, #eff6ff, #dbeafe); }
@@ -1309,8 +1332,8 @@ function getOriginalCSS(): string {
       z-index: 2;
     }
     .invitation-experience-root label.drink-card.is-selected .drink-card-check {
-      background: var(--rsvp-color, #ec4899);
-      border-color: var(--rsvp-color, #ec4899);
+      background: var(--rsvp-color, #7c3aed);
+      border-color: var(--rsvp-color, #7c3aed);
       color: #fff;
     }
     .invitation-experience-root .drink-card-body { padding: 0.6rem 0.65rem 0.7rem; text-align: center; }
@@ -1384,7 +1407,7 @@ function getOriginalCSS(): string {
       border-color: rgba(148, 163, 184, 0.2) !important;
     }
     .invitation-experience-root.dark-mode-applied label.drink-card.is-selected {
-      border-color: var(--rsvp-color, #ec4899) !important;
+      border-color: var(--rsvp-color, #7c3aed) !important;
     }
     .invitation-experience-root.dark-mode-applied .drink-card-media {
       background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(30, 64, 175, 0.28)) !important;
@@ -1668,7 +1691,7 @@ function getOriginalHTML(): string {
           <p id="summary-address" class="inv-text-muted" style="font-size:13px;line-height:1.5;margin-bottom:16px;"></p>
           <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Programme de la journée</p>
           <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;text-align:left;margin-bottom:16px;"></div>
-          <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(236,72,153,0.35);min-height:3.25rem;">
+          <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(124,58,237,0.35);min-height:3.25rem;">
             <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Confirmer ma présence</span>
           </button>
         </div>
@@ -1773,7 +1796,7 @@ function getOriginalHTML(): string {
       <!-- 8. Compte à rebours -->
       <section id="section-countdown" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
-          <p id="countdown-status" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--rsvp-color, #ec4899);margin-bottom:16px;min-height:18px;"></p>
+          <p id="countdown-status" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--rsvp-color, #7c3aed);margin-bottom:16px;min-height:18px;"></p>
           <div style="display:flex;justify-content:center;gap:10px;">
             <div style="text-align:center;width:60px;">
               <div id="days" class="inv-subsurface inv-text-primary" style="width:100%;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">00</div>
@@ -1788,7 +1811,7 @@ function getOriginalHTML(): string {
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Min</p>
             </div>
             <div style="text-align:center;width:60px;">
-              <div id="seconds" class="inv-icon-badge" style="width:100%;height:56px;color:var(--rsvp-color, #ec4899);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;border:1px solid rgba(236,72,153,0.2);">00</div>
+              <div id="seconds" class="inv-icon-badge" style="width:100%;height:56px;color:var(--rsvp-color, #7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;border:1px solid rgba(124,58,237,0.2);">00</div>
               <p style="font-size:9px;color:#9ca3af;margin-top:6px;text-transform:uppercase;letter-spacing:0.08em;">Sec</p>
             </div>
           </div>
@@ -1874,7 +1897,7 @@ function getOriginalHTML(): string {
           <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Une attention ou une question ?</h3>
           <p class="inv-text-muted" style="font-size:11px;margin-bottom:14px;">Retrouvez nos liens directs ci-dessous</p>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <a id="gift-donation-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:var(--rsvp-color, #ec4899);color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
+            <a id="gift-donation-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:var(--rsvp-color, #7c3aed);color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
               <span>Accéder à la cagnotte / Liste de cadeaux</span>
             </a>

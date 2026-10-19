@@ -46,13 +46,13 @@ export default function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-rose-500 text-white rounded-2xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-violet-600 text-white rounded-2xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? 'Envoi...' : <>Envoyer le lien <ArrowRight className="w-4 h-4" /></>}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-gray-500">
-        <Link href="/auth/login" className="text-rose-600 dark:text-rose-400 font-medium">Retour à la connexion</Link>
+        <Link href="/auth/login" className="text-violet-700 dark:text-violet-300 font-medium">Retour à la connexion</Link>
       </p>
     </AuthFrame>
   );

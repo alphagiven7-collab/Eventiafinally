@@ -982,6 +982,14 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   audio.src = event.ambiance.musicUrl || defaultMusic;
   audio.volume = event.ambiance.volume || 0.35;
   audio.loop = true;
+  audio.preload = 'auto';
+  audio.setAttribute('playsinline', '');
+  audio.style.display = 'block';
+  audio.style.position = 'absolute';
+  audio.style.width = '0';
+  audio.style.height = '0';
+  audio.style.opacity = '0';
+  audio.style.pointerEvents = 'none';
   btn.style.display = 'flex';
 
   function updateBtn() {
@@ -1621,7 +1629,7 @@ function getOriginalCSS(): string {
 function getOriginalHTML(): string {
   return `
     <!-- Audio pour musique d'ambiance -->
-    <audio id="background-music" loop preload="auto" style="display:none;"></audio>
+    <audio id="background-music" loop preload="auto" playsinline style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;"></audio>
 
     <!-- Outils flottants (Thème & Musique) -->
     <div id="app-floating-tools" style="position:fixed;top:12px;right:12px;z-index:50;display:flex;align-items:center;gap:8px;">

@@ -154,6 +154,8 @@ function Field({
 /* ─────────────────────────────────────────────
    Uploader audio local
    ───────────────────────────────────────────── */
+const MAX_AUDIO_BYTES = 1_200_000;
+
 function AudioUploader({
   value,
   onChange,
@@ -164,20 +166,41 @@ function AudioUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [error, setError] = useState('');
 
   const handleFile = async (file: File) => {
+    setError('');
+    const audioName = /\.(mp3|m4a|aac|wav|ogg|mp4|webm)$/i.test(file.name);
+    const audioType = file.type.startsWith('audio/') || file.type === 'video/mp4';
+    if (!audioName && !audioType) {
+      setError('Choisissez un fichier MP3, M4A ou WAV.');
+      return;
+    }
+    if (file.size <= 0) {
+      setError('Ce morceau est protégé. Choisissez un fichier MP3 dans Fichiers.');
+      return;
+    }
+    if (file.size > MAX_AUDIO_BYTES) {
+      const mega = (file.size / (1024 * 1024)).toFixed(1).replace('.', ',');
+      setError(`Ce fichier fait ${mega} Mo. L'invitation accepte un extrait jusqu'à 1,2 Mo.`);
+      return;
+    }
+
     setUploading(true);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string' && reader.result.startsWith('data:')) resolve(reader.result);
+          else reject(new Error('empty'));
+        };
+        reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
       });
       setFileName(file.name);
       onChange(dataUrl);
     } catch {
-      alert("Erreur lors de l'import du fichier audio.");
+      setError('La lecture du fichier a échoué. Réessayez avec un MP3.');
     }
     setUploading(false);
     if (inputRef.current) inputRef.current.value = '';
@@ -185,59 +208,62 @@ function AudioUploader({
 
   return (
     <div className="space-y-2">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="audio/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFile(file);
-        }}
-      />
       {value ? (
-        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 min-w-0">
           <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
             <Music className="w-5 h-5 text-blue-600 dark:text-blue-300" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-              {fileName || 'Musique personnalisée'}
+              {fileName || 'Musique importée'}
             </p>
-            <audio src={value} controls className="w-full h-8 mt-1" />
+            <audio src={value} controls className="w-full max-w-full h-8 mt-1" />
           </div>
           <button
             type="button"
             onClick={() => {
               onChange('');
               setFileName('');
+              setError('');
             }}
-            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+            className="p-2 text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition"
+            aria-label="Retirer la musique"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition text-left"
-        >
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-            {uploading ? (
-              <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Upload className="w-5 h-5 text-blue-600 dark:text-blue-300" />
-            )}
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
-              {uploading ? 'Import en cours...' : 'Importer un fichier audio (ou laisser la musique par défaut)'}
-            </p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">MP3, OGG, WAV</p>
-          </div>
-        </button>
+        <label className="relative block w-full cursor-pointer">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".mp3,.m4a,.aac,.wav,.ogg,.mp4,.webm,audio/*"
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleFile(file);
+            }}
+          />
+          <span className="flex items-center gap-3 p-4 border-2 border-dashed border-violet-300 dark:border-violet-700 rounded-xl text-left">
+            <span className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+              {uploading ? (
+                <span className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Upload className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+              )}
+            </span>
+            <span>
+              <span className="block text-xs font-semibold text-gray-800 dark:text-gray-100">
+                {uploading ? 'Import en cours...' : 'Importer une musique'}
+              </span>
+              <span className="block text-[10px] text-gray-400 dark:text-gray-500">
+                MP3, M4A ou WAV, 1,2 Mo maximum. Un titre protégé du téléphone ne peut pas être lu.
+              </span>
+            </span>
+          </span>
+        </label>
       )}
+      {error && <p className="text-xs text-violet-700 dark:text-violet-300">{error}</p>}
     </div>
   );
 }
@@ -729,9 +755,11 @@ function EditEventContent() {
       dressImages: dressImages.length > 0 ? dressImages : undefined,
       practicalSectionTitle: undefined,
       practicalInfo: practicalInfo.length > 0 ? practicalInfo : undefined,
-      ambiance: musicEnabled
-        ? { enabled: true, musicUrl, volume: musicVolume / 100 }
-        : { enabled: false, musicUrl: '', volume: 0.35 },
+      ambiance: {
+        enabled: musicEnabled,
+        musicUrl,
+        volume: musicVolume / 100,
+      },
       links: {
         map: mapLink || undefined,
         supportEmail: supportEmail || undefined,
@@ -1235,23 +1263,29 @@ function EditEventContent() {
               </div>
 
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      Musique de fond à l&apos;ouverture
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                      Un bouton discret permet à l&apos;invité de couper ou relancer la musique
-                    </p>
-                  </div>
+                <label className="flex items-center justify-between gap-3 min-h-11">
+                  <span>
+                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Musique de fond sur l&apos;invitation
+                    </span>
+                    <span className="block text-[10px] text-gray-400">
+                      L&apos;invité la lance avec le bouton musique en haut de l&apos;invitation.
+                    </span>
+                  </span>
                   <input
                     type="checkbox"
                     checked={musicEnabled}
                     onChange={(e) => setMusicEnabled(e.target.checked)}
-                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                    className="w-5 h-5 accent-violet-600 rounded cursor-pointer"
                   />
-                </div>
-                {musicEnabled && <AudioUploader value={musicUrl} onChange={setMusicUrl} />}
+                </label>
+                <AudioUploader
+                  value={musicUrl}
+                  onChange={(url) => {
+                    setMusicUrl(url);
+                    if (url) setMusicEnabled(true);
+                  }}
+                />
               </div>
             </div>
           </Section>

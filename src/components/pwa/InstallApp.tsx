@@ -57,13 +57,13 @@ export default function InstallApp() {
       >
         ×
       </button>
-      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Installer l’application</p>
+      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Mettre Eventia sur le téléphone</p>
       <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-        Eventia s’ouvre ensuite depuis l’écran d’accueil, avec votre compte déjà ouvert.
+        Elle s’ouvre ensuite depuis l’écran d’accueil, avec votre compte déjà prêt.
       </p>
       {ios && <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">{iosInstallHint()}</p>}
       <button type="button" onClick={() => void install()} className="mt-3 min-h-11 w-full rounded-xl bg-violet-600 text-sm font-bold text-white">
-        Installer l’application
+        Installer
       </button>
     </div>
   );

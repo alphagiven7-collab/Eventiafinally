@@ -39,10 +39,10 @@ function CreateContent() {
       <main className="max-w-lg mx-auto px-5 py-10">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-2">
-            Creez votre invitation
+            Créez votre invitation
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Un seul template. Une seule identite. La votre.
+            Un seul modèle. Le vôtre.
           </p>
         </div>
 
@@ -64,7 +64,7 @@ function CreateContent() {
                 <span className="text-xs font-medium text-rose-300 uppercase tracking-wider">Eventia</span>
               </div>
               <h2 className="text-xl font-bold text-white">Mariage</h2>
-              <p className="text-xs text-white/80 mt-0.5">L'invitation qui donne envie d'etre present</p>
+              <p className="text-xs text-white/80 mt-0.5">L’invitation qui donne envie de venir</p>
             </div>
           </div>
           <div className="mt-4 flex items-center justify-center">

@@ -210,10 +210,10 @@ function CreateEventContent() {
             <span>Étape 1 sur 2</span>
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-1">
-            Commençons par l&apos;essentiel
+            D’abord, l’essentiel
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Indiquez qui, quand et où. Vous ajouterez vos photos, couleurs et détails juste après avec l&apos;aperçu en direct.
+            Qui, quand, où. Les photos, les couleurs et le texte viennent juste après.
           </p>
         </div>
 
@@ -282,7 +282,7 @@ function CreateEventContent() {
             disabled={loading}
             className="w-full mt-2 py-4 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30 hover:shadow-xl transition-all active:scale-[0.99] disabled:opacity-50"
           >
-            {loading ? 'Création en cours...' : 'Continuer vers la personnalisation ›'}
+            {loading ? 'On prépare la page...' : 'Continuer ›'}
           </button>
         </form>
       </main>

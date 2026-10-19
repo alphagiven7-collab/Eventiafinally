@@ -26,7 +26,7 @@
     "lng": "15.3128",
     "mapImage": "https://images.unsplash.com/photo-1524661135-423995f22d0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
   },
-  "programSectionTitle": "Programme de la journée",
+  "programSectionTitle": "Au programme",
   "program": [
     { "time": "19h30 - 20h00", "title": "Arrivée des invités", "color": "blue" },
     { "time": "20h00 - 20h30", "title": "Emplacements", "color": "green" },

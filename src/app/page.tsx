@@ -54,12 +54,12 @@ export default function HomePage() {
         <InstallApp />
         <section className="grid md:grid-cols-2 gap-6 items-center py-8 md:py-12">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Invitations en ligne</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Mariage ou fête</p>
             <h1 className="text-3xl md:text-4xl font-extrabold leading-tight mb-3">
-              Créez l’invitation, envoyez le lien, suivez les réponses.
+              Une invitation que les gens ont envie d’ouvrir.
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-              Eventia sert à préparer un mariage ou une fête : texte, photos, date, lieu, liste d’invités et confirmation de présence. Vous commencez gratuitement avec {TRIAL_INVITATIONS} invitations d’essai.
+              Écrivez le texte, ajoutez les photos, le jour et le lieu. Chaque invité reçoit son lien, dit s’il vient, et garde sa carte pour le jour de la fête. Vous commencez avec {TRIAL_INVITATIONS} invitations d’essai.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href={user ? '/dashboard' : '/create'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
@@ -74,12 +74,12 @@ export default function HomePage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4">Comment ça se passe</h2>
+          <h2 className="text-lg font-bold mb-4">Trois étapes</h2>
           <div className="grid sm:grid-cols-3 gap-3">
             {[
-              { art: 'photos' as const, title: 'Ajoutez vos photos', text: 'Depuis le téléphone ou l’ordinateur. Vous pouvez les remplacer ou les retirer.' },
-              { art: 'customize' as const, title: 'Personnalisez', text: 'Noms, date, lieu, texte et modèle. Enregistrez le brouillon avant de publier.' },
-              { art: 'share' as const, title: 'Envoyez le lien', text: 'Chaque invité reçoit son lien. Il confirme, laisse un message, et obtient sa carte d’entrée.' },
+              { art: 'photos' as const, title: 'Mettez vos photos', text: 'Depuis votre téléphone ou votre ordinateur. Vous pouvez les changer.' },
+              { art: 'customize' as const, title: 'Écrivez l’invitation', text: 'Les prénoms, le jour, le lieu, et le mot que vous voulez dire.' },
+              { art: 'share' as const, title: 'Envoyez le lien', text: 'Chacun répond. S’il vient, sa carte d’entrée apparaît.' },
             ].map((step) => (
               <article key={step.title} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
                 <StoryArt name={step.art} alt="" className="w-full h-36 object-contain mb-3" />
@@ -91,23 +91,23 @@ export default function HomePage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-2">Les offres</h2>
+          <h2 className="text-lg font-bold mb-2">Les prix</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            Le prix est {formatUsd(PRICE_PER_GUEST_USD)} par invité. Les {TRIAL_INVITATIONS} invitations d’essai s’ajoutent au forfait, elles ne sont pas déduites.
+            {formatUsd(PRICE_PER_GUEST_USD)} par invité. Les {TRIAL_INVITATIONS} invitations d’essai sont en plus : on ne les retire pas du forfait.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {packs.map((count) => (
               <article key={count} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
                 <p className="text-sm font-bold">{count} invités</p>
                 <p className="text-2xl font-extrabold text-rose-500 my-1">{formatUsd(packTotalUsd(count))}</p>
-                <p className="text-xs text-gray-500">Plus {TRIAL_INVITATIONS} invitations d’essai</p>
+                <p className="text-xs text-gray-500">Et {TRIAL_INVITATIONS} invitations d’essai en plus</p>
               </article>
             ))}
           </div>
           <p className="text-xs text-gray-500 mt-3">
-            Au-delà de 200 invités, le total est {formatUsd(PRICE_PER_GUEST_USD)} multiplié par le nombre choisi. Il s’affiche avant validation.
+            Plus de 200 invités ? Le prix s’affiche avant de payer : {formatUsd(PRICE_PER_GUEST_USD)} fois le nombre choisi.
           </p>
-          <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir le détail des offres</Link>
+          <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir les prix</Link>
         </section>
 
         <footer className="pt-4 border-t border-gray-200 dark:border-gray-800">

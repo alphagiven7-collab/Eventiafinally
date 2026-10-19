@@ -377,7 +377,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   if (programContainer) {
     if (event.program && event.program.length > 0) {
       if (programTitleEl) {
-        programTitleEl.textContent = event.programSectionTitle || 'Programme de la journée';
+        programTitleEl.textContent = event.programSectionTitle || 'Au programme';
         programTitleEl.style.display = 'block';
       }
       programContainer.style.display = 'flex';
@@ -2025,13 +2025,13 @@ function getOriginalHTML(): string {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
           </div>
           <div class="invitation-card-inner">
-            <p class="invite-card-overline">Vous êtes cordialement invité(e)</p>
+            <p class="invite-card-overline">On vous invite</p>
             <div id="couple-row-container" class="invite-couple-row">
               <span id="couple-name-left" class="invite-couple-name invite-couple-name--left">Prénom</span>
               <span id="couple-join-badge" class="invite-couple-join">&amp;</span>
               <span id="couple-name-right" class="invite-couple-name invite-couple-name--right">Prénom</span>
             </div>
-            <p class="invite-greeting font-serif">Cher/Chère <span id="display-guest-name" class="invite-guest-name">Invité(e)</span>,</p>
+            <p class="invite-greeting font-serif">Bonjour <span id="display-guest-name" class="invite-guest-name"></span></p>
             <p id="guest-table-line" class="guest-table-line"></p>
             <p id="invite-intro-paragraph" class="invite-body-text invite-calligraphy"></p>
             <p id="invite-secondary-text" class="invite-body-text" style="display:none;"></p>
@@ -2042,12 +2042,12 @@ function getOriginalHTML(): string {
 
       <section id="section-when-where" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
-          <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Date et lieu</p>
+          <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Le jour et le lieu</p>
           <p id="summary-date" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:28px;line-height:1.15;margin-bottom:4px;"></p>
           <p id="summary-time" class="inv-text-muted" style="font-size:13px;margin-bottom:14px;"></p>
           <h3 id="summary-venue" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px;"></h3>
           <p id="summary-address" class="inv-text-muted" style="font-size:13px;line-height:1.5;margin-bottom:16px;"></p>
-          <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Programme de la journée</p>
+          <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Au programme</p>
           <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;text-align:left;margin-bottom:16px;"></div>
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(124,58,237,0.35);min-height:3.25rem;">
             <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Oui, je viens</span>
@@ -2063,7 +2063,7 @@ function getOriginalHTML(): string {
             <div style="color:white;">
               <h3 id="about-card-title" class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;color:white !important;">Notre histoire</h3>
               <p id="about-toggle-label" style="font-size:11px;color:#e5e7eb;font-weight:400;display:inline-flex;align-items:center;background:rgba(0,0,0,0.35);padding:4px 10px;border-radius:999px;backdrop-filter:blur(4px);">
-                Découvrir notre histoire ›
+                Lire notre histoire ›
               </p>
             </div>
           </div>
@@ -2077,13 +2077,13 @@ function getOriginalHTML(): string {
       <!-- 4. Galerie Photos -->
       <section id="section-gallery" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="best-photos-shell" style="padding:18px 16px;color:white;">
-          <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Moments d'exception</p>
-          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white !important;">Les plus belles photos</h3>
+          <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Ensemble</p>
+          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white !important;">Nos photos</h3>
           <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;"></div>
           <div class="premium-marquee">
             <div class="premium-marquee-track"></div>
           </div>
-          <p id="gallery-open-text" style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:10px;cursor:pointer;">Faire défiler les souvenirs ›</p>
+          <p id="gallery-open-text" style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:10px;cursor:pointer;">Voir les photos ›</p>
         </div>
       </section>
 
@@ -2094,7 +2094,7 @@ function getOriginalHTML(): string {
             <svg style="width:20px;height:20px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
           </div>
           <h3 id="dress-code-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
-          <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">Code vestimentaire</p>
+          <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">La tenue</p>
           <div class="dress-marquee-wrapper" style="display:none;">
             <div class="dress-marquee-track"></div>
           </div>
@@ -2104,8 +2104,8 @@ function getOriginalHTML(): string {
       <!-- Calendrier et lieu, discrets, en bas de page -->
       <section id="section-date-place" style="padding:0 16px;margin-top:24px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button id="open-date-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Calendrier</button>
-          <button id="open-place-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Plan du lieu</button>
+          <button id="open-date-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Le jour</button>
+          <button id="open-place-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Le lieu</button>
         </div>
       </section>
 
@@ -2243,8 +2243,8 @@ function getOriginalHTML(): string {
             <div class="inv-icon-badge" style="width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--icon-color, #2563eb);">
               <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>
             </div>
-            <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Préférences de boissons</h3>
-            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Touchez vos préférences pour le jour J (optionnel).</p>
+            <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Que boire ?</h3>
+            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Choisissez ce que vous aimez. Ce n'est pas obligatoire.</p>
           </div>
           <div id="drink-menu-grid" class="drink-menu-grid" style="padding:0 16px 16px;"></div>
         </div>
@@ -2254,7 +2254,7 @@ function getOriginalHTML(): string {
       <section id="section-practical-info" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;">
           <h3 class="inv-text-primary" style="font-weight:700;font-size:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.08em;">
-            <span id="practical-info-title">Informations pratiques</span>
+            <span id="practical-info-title">À savoir</span>
             <span id="practical-info-count" style="color:#9ca3af;font-size:10px;font-weight:500;"></span>
           </h3>
           <div id="practical-info-list" style="display:flex;flex-direction:column;gap:14px;"></div>
@@ -2264,12 +2264,12 @@ function getOriginalHTML(): string {
       <!-- 12. Cadeau / Cagnotte / Contact -->
       <section id="section-gift-contact" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;text-align:center;">
-          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Une attention ou une question ?</h3>
-          <p class="inv-text-muted" style="font-size:11px;margin-bottom:14px;">Retrouvez nos liens directs ci-dessous</p>
+          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Un cadeau ou une question ?</h3>
+          <p class="inv-text-muted" style="font-size:11px;margin-bottom:14px;">Les liens sont juste en dessous.</p>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <a id="gift-donation-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:var(--rsvp-color, #7c3aed);color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
-              <span>Accéder à la cagnotte / Liste de cadeaux</span>
+              <span>Voir la liste de cadeaux</span>
             </a>
             <a id="gift-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:#10b981;color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>

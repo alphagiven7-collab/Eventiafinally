@@ -224,7 +224,7 @@ function AudioUploader({
             {value ? (
               <audio src={value} controls className="w-full max-w-full h-8 mt-1" />
             ) : (
-              <p className="text-[10px] text-gray-400 mt-1">Elle démarre sur l&apos;invitation, sans alourdir cette page.</p>
+              <p className="text-[10px] text-gray-400 mt-1">Elle démarre quand on ouvre l&apos;invitation.</p>
             )}
           </div>
           <button
@@ -320,7 +320,7 @@ function SingleImageUploader({
         </label>
         {sizeInfo && (
           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-            Optimisée ({sizeInfo})
+            Prête ({sizeInfo})
           </span>
         )}
       </div>
@@ -377,10 +377,10 @@ function SingleImageUploader({
             )}
           </div>
           <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
-            {uploading ? 'Réduction et conversion en cours...' : 'Touchez pour ajouter une photo'}
+            {uploading ? 'On prépare la photo...' : 'Touchez pour ajouter une photo'}
           </p>
           <p className="text-[10px] text-gray-400 dark:text-gray-500">
-            Convertie automatiquement pour s&apos;afficher rapidement
+            Elle s&apos;affiche plus vite une fois prête
           </p>
         </button>
       )}
@@ -424,7 +424,7 @@ function ProgramEditor({
             type="text"
             value={item.title}
             onChange={(e) => updateItem(i, 'title', e.target.value)}
-            placeholder="Cérémonie, Cocktail, Dîner..."
+            placeholder="Cérémonie, cocktail, dîner"
             className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
           <select
@@ -451,7 +451,7 @@ function ProgramEditor({
         onClick={addItem}
         className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500 transition"
       >
-        + Ajouter une étape au programme
+        + Ajouter un moment
       </button>
     </div>
   );
@@ -496,7 +496,7 @@ function PracticalInfoEditor({
               type="text"
               value={item.title}
               onChange={(e) => updateItem(i, 'title', e.target.value)}
-              placeholder="Titre (ex: Parking gratuit)"
+              placeholder="Parking gratuit"
               className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
             <button
@@ -510,7 +510,7 @@ function PracticalInfoEditor({
           <textarea
             value={item.text}
             onChange={(e) => updateItem(i, 'text', e.target.value)}
-            placeholder="Détails pour vos invités..."
+            placeholder="Où se garer, où dormir, ce qu'il faut savoir"
             rows={2}
             className="w-full px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
           />
@@ -521,7 +521,7 @@ function PracticalInfoEditor({
         onClick={addItem}
         className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500 transition"
       >
-        + Ajouter une info pratique
+        + Ajouter une info
       </button>
     </div>
   );
@@ -1030,7 +1030,7 @@ function EditEventContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-6">
         <div className="text-center max-w-sm">
-          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Cette invitation appartient à un autre organisateur.</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Cette invitation n&apos;est pas la vôtre.</p>
           <button type="button" onClick={() => router.push('/dashboard')} className="mt-4 text-violet-700 dark:text-violet-300 hover:underline">
             Retour à mes événements
           </button>
@@ -1043,13 +1043,13 @@ function EditEventContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <p className="text-xl text-gray-500 dark:text-gray-400">Événement introuvable</p>
+          <p className="text-xl text-gray-500 dark:text-gray-400">On ne trouve pas cette invitation</p>
           <button
             type="button"
             onClick={() => router.push(user ? '/dashboard' : '/create')}
             className="mt-4 text-violet-700 dark:text-violet-300 hover:underline"
           >
-            {user ? 'Retour aux événements' : 'Commencer une invitation'}
+            {user ? 'Retour aux événements' : 'Créer une invitation'}
           </button>
         </div>
       </div>
@@ -1081,8 +1081,8 @@ function EditEventContent() {
           </div>
           <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
             {user
-              ? 'Publier rend le lien visible sur les autres téléphones. Tant que le statut indique Brouillon, un autre navigateur affiche « Invitation introuvable ».'
-              : 'Vous pouvez remplir la carte et voir l’aperçu sans compte. L’inscription est demandée pour enregistrer ou publier. Le brouillon reste sur cet appareil.'}
+              ? 'Tant que c’est un brouillon, le lien ne s’ouvre que sur cet appareil. Publiez pour que les autres puissent le voir.'
+              : 'Vous pouvez préparer la carte sans compte. Pour l’enregistrer ou la publier, créez un compte. Le brouillon reste ici.'}
           </p>
           <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
@@ -1117,7 +1117,7 @@ function EditEventContent() {
               className="lg:hidden px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               {showMobilePreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              <span>{showMobilePreview ? 'Éditer' : 'Aperçu'}</span>
+              <span>{showMobilePreview ? 'Modifier' : 'Aperçu'}</span>
             </button>
             <a
               href={`/e/${event.slug}`}
@@ -1126,7 +1126,7 @@ function EditEventContent() {
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Voir la page</span>
+              <span>Voir l’invitation</span>
             </a>
             <button
               type="button"
@@ -1134,7 +1134,7 @@ function EditEventContent() {
               className="px-3 py-2 border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-emerald-100 transition"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{copiedLink ? 'Copié' : 'Partager'}</span>
+              <span className="hidden sm:inline">{copiedLink ? 'Lien copié' : 'Partager'}</span>
             </button>
           </div>
           </div>
@@ -1150,8 +1150,8 @@ function EditEventContent() {
         >
           {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
           <Section
-            title="1. L'essentiel : Qui, Quand et Où"
-            subtitle="Les prénoms, la date et le lieu de réception"
+            title="1. Qui, quand, où"
+            subtitle="Les prénoms, le jour et le lieu. C’est ce que tout le monde cherche en premier."
             icon={<Heart className="w-4 h-4" />}
             defaultOpen
           >
@@ -1162,70 +1162,70 @@ function EditEventContent() {
                   value={coupleLeft}
                   onChange={setCoupleLeft}
                   required
-                  placeholder="Ex: Marie"
+                  placeholder="Marie"
                 />
                 <Field
-                  label="Second prénom"
+                  label="Deuxième prénom"
                   value={coupleRight}
                   onChange={setCoupleRight}
-                  placeholder="Ex: Pierre"
+                  placeholder="Pierre"
                 />
               </div>
               <Field
-                label="Phrase d'accroche sous le titre (optionnel)"
+                label="Une phrase sous les prénoms"
                 value={subtitle}
                 onChange={setSubtitle}
-                placeholder="Ex: Célébrons notre union"
+                placeholder="On vous attend"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Date de l'événement"
+                  label="Le jour"
                   value={eventDate}
                   onChange={setEventDate}
                   type="date"
                   required
                 />
                 <Field
-                  label="Heure (ex: 16h00)"
+                  label="L'heure"
                   value={eventTime}
                   onChange={setEventTime}
-                  placeholder="Ex: 16h00"
+                  placeholder="16h00"
                 />
               </div>
               <Field
-                label="Date limite de réponse (optionnel)"
+                label="Jusqu'à quand répondre"
                 value={rsvpDeadline}
                 onChange={setRsvpDeadline}
                 type="date"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Nom du lieu ou de la salle"
+                  label="Le lieu"
                   value={location}
                   onChange={setLocation}
                   required
-                  placeholder="Ex: Domaine des Roses, Paris"
+                  placeholder="Salle des fêtes, Yaoundé"
                 />
                 <Field
-                  label="Adresse complète"
+                  label="L'adresse"
                   value={address}
                   onChange={setAddress}
-                  placeholder="Ex: 12 Avenue des Champs, Paris"
+                  placeholder="12 avenue des Palmiers"
                 />
               </div>
             </div>
           </Section>
 
           <Section
-            title="Modèle d'invitation"
-            subtitle="Le même contenu, deux présentations"
+            title="Le style"
+            subtitle="Le même contenu. Deux façons de le montrer."
             icon={<Sparkles className="w-4 h-4" />}
             defaultOpen
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
               {([
-                ['elegance', 'Élégance contemporaine', 'Noms lisibles, détails sobres. La photo du couple reste facultative.'],
-                ['motifs', 'Motifs des familles', 'Présentation un peu plus décorée, avec les deux tissus.'],
+                ['elegance', 'Élégance', 'Clair et sobre. La photo du couple n’est pas obligatoire.'],
+                ['motifs', 'Motifs des familles', 'Plus décoré, avec les deux tissus.'],
               ] as const).map(([value, label, text]) => (
                 <button
                   key={value}
@@ -1245,14 +1245,14 @@ function EditEventContent() {
             {invitationTemplate === 'motifs' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <SingleImageUploader
-                  label="Motif de la famille du marié"
-                  help="Tissu jaune. Vous pouvez le remplacer ou le retirer."
+                  label="Famille du marié"
+                  help="Le tissu. Vous pouvez le changer ou l’enlever."
                   value={groomMotifImage}
                   onChange={setGroomMotifImage}
                 />
                 <SingleImageUploader
-                  label="Motif de la famille de la mariée"
-                  help="Tissu bleu ou turquoise. Vous pouvez le remplacer ou le retirer."
+                  label="Famille de la mariée"
+                  help="Le tissu. Vous pouvez le changer ou l’enlever."
                   value={brideMotifImage}
                   onChange={setBrideMotifImage}
                 />
@@ -1262,14 +1262,14 @@ function EditEventContent() {
 
           {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
           <Section
-            title="2. Texte de la carte & Couleurs"
-            subtitle="Le mot d'invitation et l'harmonie de couleurs"
+            title="2. Le mot et les couleurs"
+            subtitle="Ce texte apparaît sur la carte. Écrivez comme vous parlez."
             icon={<Mail className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Choisissez l&apos;harmonie de couleurs
+                  Les couleurs
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {COLOR_PRESETS.map((preset) => {
@@ -1303,32 +1303,32 @@ function EditEventContent() {
               </div>
 
               <Field
-                label="Message d'invitation sur la carte"
-                help="Astuce : écrivez {couple} pour insérer automatiquement vos deux prénoms."
+                label="Le message sur la carte"
+                help="Écrivez {couple} pour mettre les deux prénoms."
                 value={inviteIntro}
                 onChange={setInviteIntro}
                 rows={3}
-                placeholder="Ex: C'est avec une immense joie que nous vous convions au mariage de {couple}..."
+                placeholder="On a une grande nouvelle. {couple} se marient, et vous êtes invités."
               />
               <Field
-                label="Date limite de réponse (optionnel)"
+                label="La phrase pour la date limite"
                 value={rsvpDeadlineText}
                 onChange={setRsvpDeadlineText}
-                placeholder="Ex: Merci de confirmer avant le 15 mai"
+                placeholder="Répondez avant le 15 mai"
               />
             </div>
           </Section>
 
           {/* ═══════ 3. PHOTOS & MUSIQUE ═══════ */}
           <Section
-            title="3. Vos photos & Musique d'ambiance"
-            subtitle="Toutes les photos sont réduites et converties automatiquement"
+            title="3. Photos et musique"
+            subtitle="Les photos se réduisent toutes seules."
             icon={<Camera className="w-4 h-4" />}
           >
             <div className="space-y-5 pt-4">
               <SingleImageUploader
-                label="Photo de couverture (tout en haut de l'invitation)"
-                help="Si vous n'en mettez pas, la première photo de votre galerie sera utilisée."
+                label="Photo du haut"
+                help="Sans photo ici, on prend la première de la galerie."
                 value={heroImage}
                 onChange={setHeroImage}
               />
@@ -1336,7 +1336,7 @@ function EditEventContent() {
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Afficher la galerie de photos sur l&apos;invitation
+                    Montrer les photos
                   </span>
                   <input
                     type="checkbox"
@@ -1350,7 +1350,7 @@ function EditEventContent() {
                     onPhotosChange={setCoverPhotos}
                     existingPhotos={coverPhotos}
                     maxPhotos={6}
-                    label="Galerie de photos du couple"
+                    label="Photos du couple"
                   />
                 )}
               </div>
@@ -1359,10 +1359,10 @@ function EditEventContent() {
                 <label className="flex items-center justify-between gap-3 min-h-11">
                   <span>
                     <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                      Musique de fond sur l&apos;invitation
+                      Une musique à l&apos;ouverture
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      La musique démarre à l&apos;ouverture. Un petit bouton Musique permet de la couper.
+                      Elle démarre quand on ouvre l&apos;invitation. Un bouton permet de la couper.
                     </span>
                   </span>
                   <input
@@ -1390,14 +1390,14 @@ function EditEventContent() {
 
           {/* ═══════ 4. PROGRAMME, TENUE & INFOS ═══════ */}
           <Section
-            title="4. Programme, Tenue & Infos pratiques"
-            subtitle="Déroulé de la journée, dress code et conseils invités"
+            title="4. La journée"
+            subtitle="Le programme, la tenue, et ce qu’il faut savoir."
             icon={<Calendar className="w-4 h-4" />}
           >
             <div className="space-y-5 pt-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Afficher le compte à rebours
+                  Montrer le compte à rebours
                 </span>
                 <input
                   type="checkbox"
@@ -1409,16 +1409,16 @@ function EditEventContent() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Déroulé de la journée (heures et étapes)
+                  Le programme
                 </label>
                 <ProgramEditor items={program} onChange={setProgram} />
               </div>
 
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Boissons proposées
+                  Les boissons
                 </label>
-                <p className="text-[10px] text-gray-400">Si vous n’en ajoutez aucune, le menu ne s’affiche pas.</p>
+                <p className="text-[10px] text-gray-400">Si vous n’en mettez pas, cette partie reste cachée.</p>
                 {drinks.map((drink, index) => (
                   <div key={drink.id} className="flex gap-2">
                     <input
@@ -1438,7 +1438,7 @@ function EditEventContent() {
                         next[index] = { ...drink, desc: e.target.value };
                         setDrinks(next);
                       }}
-                      placeholder="Fines bulles"
+                      placeholder="Un mot court"
                       className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <button type="button" onClick={() => setDrinks(drinks.filter((_, i) => i !== index))} className="px-2 text-red-400">✕</button>
@@ -1456,7 +1456,7 @@ function EditEventContent() {
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Afficher la section Tenue vestimentaire (Dress code)
+                    Montrer la tenue
                   </span>
                   <input
                     type="checkbox"
@@ -1468,16 +1468,16 @@ function EditEventContent() {
                 {secDressCode && (
                   <div className="space-y-3">
                     <Field
-                      label="Indication de tenue"
+                      label="Quelle tenue ?"
                       value={dressCodeTitle}
                       onChange={setDressCodeTitle}
-                      placeholder="Ex: Tenue de soirée chic, Blanc & Doré..."
+                      placeholder="Tenue de fête. Blanc et doré."
                     />
                     <PhotoUploader
                       onPhotosChange={setDressImages}
                       existingPhotos={dressImages}
                       maxPhotos={6}
-                      label="Photos d'inspiration tenue (optionnel)"
+                      label="Photos d'idées de tenue"
                     />
                   </div>
                 )}
@@ -1485,7 +1485,7 @@ function EditEventContent() {
 
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Informations pratiques (parking, hôtel, enfants...)
+                  Ce qu’il faut savoir
                 </label>
                 <PracticalInfoEditor items={practicalInfo} onChange={setPracticalInfo} />
               </div>
@@ -1494,44 +1494,44 @@ function EditEventContent() {
 
           {/* ═══════ 5. NOTRE HISTOIRE & CONTACT (OPTIONNEL) ═══════ */}
           <Section
-            title="5. Notre histoire, Cadeau & Contact (optionnel)"
-            subtitle="Ces blocs s'affichent uniquement si vous les remplissez"
+            title="5. Histoire, cadeau, contact"
+            subtitle="Ces parties n’apparaissent que si vous les remplissez."
             icon={<Sparkles className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
               <Field
-                label="Racontez votre histoire"
+                label="Votre histoire"
                 value={aboutStory1}
                 onChange={setAboutStory1}
                 rows={4}
-                placeholder="Ex: Tout a commencé un soir d'été... Et aujourd'hui nous écrivons ce nouveau chapitre avec vous."
+                placeholder="On s’est rencontrés un soir d’été. Aujourd’hui, on veut vous avoir avec nous."
               />
               <SingleImageUploader
-                label="Photo pour illustrer votre histoire (optionnel)"
+                label="Une photo pour cette histoire"
                 value={aboutImage}
                 onChange={setAboutImage}
               />
 
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-4">
                 <Field
-                  label="Lien vers votre cagnotte ou liste de mariage"
+                  label="Lien de la cagnotte ou de la liste"
                   value={donationLink}
                   onChange={setDonationLink}
                   placeholder="https://..."
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
-                    label="Numéro WhatsApp (pour vous écrire)"
+                    label="WhatsApp"
                     value={whatsappDonation}
                     onChange={setWhatsappDonation}
-                    placeholder="Ex: +33612345678"
+                    placeholder="+237 6 00 00 00 00"
                   />
                   <Field
-                    label="Votre e-mail de contact"
+                    label="E-mail"
                     value={supportEmail}
                     onChange={setSupportEmail}
                     type="email"
-                    placeholder="Ex: couple@email.com"
+                    placeholder="vous@email.com"
                   />
                 </div>
               </div>
@@ -1546,7 +1546,7 @@ function EditEventContent() {
               disabled={saving}
               className="py-3.5 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-2xl font-semibold text-sm disabled:opacity-50"
             >
-              {saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}
+              {saving ? 'Enregistrement...' : 'Enregistrer le brouillon'}
             </button>
             <button
               type="button"
@@ -1580,7 +1580,7 @@ function EditEventContent() {
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span className="ml-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                  Aperçu en direct
+                  Aperçu
                 </span>
               </div>
               <a
@@ -1589,7 +1589,7 @@ function EditEventContent() {
                 rel="noopener noreferrer"
                 className="text-[11px] text-violet-700 dark:text-violet-300 font-medium hover:underline"
               >
-                Plein écran ↗
+                Ouvrir ↗
               </a>
             </div>
             <div className="max-h-[78vh] overflow-y-auto">
@@ -1601,8 +1601,8 @@ function EditEventContent() {
       {leaveAsk && (
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setLeaveAsk(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Revenir aux événements ?</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Enregistrez le brouillon avant de quitter cette page.</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Quitter cette page ?</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Enregistrez d’abord, sinon les derniers changements seront perdus.</p>
             <div className="flex flex-col gap-2 mt-4">
               <button
                 type="button"
@@ -1625,17 +1625,17 @@ function EditEventContent() {
                 }}
                 className="py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
               >
-                {saving ? 'Enregistrement...' : 'Enregistrer et revenir'}
+                {saving ? 'Enregistrement...' : 'Enregistrer et quitter'}
               </button>
               <button
                 type="button"
                 onClick={() => router.push(user ? '/dashboard' : '/create')}
                 className="py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm"
               >
-                Revenir sans enregistrer
+                Quitter sans enregistrer
               </button>
               <button type="button" onClick={() => setLeaveAsk(false)} className="py-3 text-sm text-gray-500">
-                Rester sur la page
+                Rester
               </button>
             </div>
           </div>
@@ -1644,16 +1644,16 @@ function EditEventContent() {
       {confirmPublish && (
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmPublish(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier cette invitation ?</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier maintenant ?</h2>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
               {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
               Modèle : {invitationTemplate === 'motifs' ? 'Motifs des familles' : 'Élégance contemporaine'}.
             </p>
-            <p className="text-xs text-gray-500 mt-2">La publication rend le lien disponible avec le statut Publiée. Vous pouvez encore le modifier ensuite.</p>
+            <p className="text-xs text-gray-500 mt-2">Le lien devient visible. Vous pourrez encore le modifier après.</p>
             <div className="flex gap-2 mt-4">
               <button type="button" onClick={() => setConfirmPublish(false)} className="flex-1 py-3 border rounded-xl text-sm">Annuler</button>
               <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
-                {saving ? 'Publication...' : 'Confirmer la publication'}
+                {saving ? 'Publication...' : 'Publier'}
               </button>
             </div>
           </div>

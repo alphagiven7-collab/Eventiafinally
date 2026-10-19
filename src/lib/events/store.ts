@@ -43,6 +43,7 @@ export type EventRow = {
   admin_code?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  guest_limit?: number | null;
   event_settings?: SettingsRow | SettingsRow[] | null;
 };
 
@@ -115,6 +116,7 @@ export function fromDatabase(row: EventRow): EventWithSettings {
     links: settings?.links ?? payload.links,
     created_at: row.created_at || payload.created_at || new Date().toISOString(),
     updated_at: row.updated_at || payload.updated_at || new Date().toISOString(),
+    guestLimit: row.guest_limit != null ? row.guest_limit : (payload.guestLimit ?? 3),
   };
 }
 

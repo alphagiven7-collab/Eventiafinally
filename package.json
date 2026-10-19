@@ -9,10 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
     "@hookform/resolvers": "^5.4.0",
+    "@refinedev/antd": "^6.0.3",
+    "@refinedev/core": "^5.0.12",
+    "@refinedev/nextjs-router": "^7.0.5",
+    "@refinedev/supabase": "^6.0.2",
     "@supabase/gotrue-js": "^2.108.2",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.109.0",
+    "antd": "^5.29.3",
     "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

@@ -43,7 +43,25 @@ CREATE POLICY "Super admin reads all guests" ON public.guests
 
 DROP POLICY IF EXISTS "Super admin reads all rsvps" ON public.rsvps;
 CREATE POLICY "Super admin reads all rsvps" ON public.rsvps
-  FOR SELECT USING (public.is_super_admin());`;
+  FOR SELECT USING (public.is_super_admin());
+
+DROP POLICY IF EXISTS "Super admin updates events" ON public.events;
+CREATE POLICY "Super admin updates events" ON public.events
+  FOR UPDATE
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS guest_limit integer;
+
+UPDATE public.events
+SET guest_limit = 3
+WHERE guest_limit IS NULL;
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS payment_note text;
+
+NOTIFY pgrst, 'reload schema';`;
 }
 
 export default function AdminAccess({

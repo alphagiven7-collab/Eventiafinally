@@ -13,12 +13,14 @@ export default function InvitationExperience({
   guestToken,
   guestStatus,
   guestTable,
+  rememberAnswer = true,
 }: {
   event: EventWithSettings;
   guestName?: string;
   guestToken?: string;
   guestStatus?: GuestStatus;
   guestTable?: string;
+  rememberAnswer?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +51,7 @@ export default function InvitationExperience({
     const detachGallery = initGalleryScroll(root);
     initDrinkMenu(root, event);
     const detachMusic = initMusic(root, event);
-    const detachRsvp = initRsvp(root, event, guestToken, guestStatus);
+    const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer);
     const printBtn = root.querySelector('#print-invitation-btn');
     const onPrint = () => window.print();
     printBtn?.addEventListener('click', onPrint);
@@ -68,7 +70,7 @@ export default function InvitationExperience({
       detachGuestbook();
       shadow.replaceChildren();
     };
-  }, [event, guestName, guestToken, guestStatus, guestTable]);
+  }, [event, guestName, guestToken, guestStatus, guestTable, rememberAnswer]);
 
   return <div ref={containerRef} className="invitation-experience-host" />;
 }
@@ -646,7 +648,8 @@ function initRsvp(
   root: HTMLElement,
   event: EventWithSettings,
   guestToken?: string,
-  guestStatus?: GuestStatus
+  guestStatus?: GuestStatus,
+  rememberAnswer = true
 ) {
   const slug = event.slug;
   const responsesClosed = dayHasPassed(event.rsvpDeadline) || dayHasPassed(event.event_date);
@@ -716,7 +719,7 @@ function initRsvp(
   if (guestStatus === 'confirmed' || guestStatus === 'declined') {
     alreadyAnswered = true;
     applyVisualState(guestStatus);
-  } else {
+  } else if (rememberAnswer) {
     try {
       const savedLocal = localStorage.getItem(localKey);
       if (savedLocal === 'confirmed' || savedLocal === 'declined') {
@@ -750,15 +753,21 @@ function initRsvp(
       button.disabled = false;
     }
 
-    try {
-      localStorage.setItem(localKey, status);
-    } catch {}
+    if (rememberAnswer) {
+      try {
+        localStorage.setItem(localKey, status);
+      } catch {}
+    }
     applyVisualState(status);
     if (!token) {
       setNote(
         status === 'confirmed'
-          ? 'Présence confirmée sur ce téléphone. Le lien personnel l’enregistre chez les mariés.'
-          : 'Réponse notée sur ce téléphone. Le lien personnel l’enregistre chez les mariés.',
+          ? rememberAnswer
+            ? 'Présence confirmée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
+            : 'Aperçu seulement : cette confirmation n’est pas envoyée aux mariés.'
+          : rememberAnswer
+            ? 'Réponse notée sur ce téléphone seulement. Les mariés la voient quand l’invité utilise son lien personnel.'
+            : 'Aperçu seulement : cette réponse n’est pas envoyée aux mariés.',
         status === 'confirmed'
       );
     } else {

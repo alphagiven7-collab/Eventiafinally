@@ -942,14 +942,27 @@ function EditEventContent() {
       {/* Header sticky */}
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setLeaveAsk(true)}
-            className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700"
-          >
-            <ArrowLeft className="w-4 h-4 shrink-0" />
-            Retour aux événements
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => setLeaveAsk(true)}
+              className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl border border-violet-300 bg-white text-violet-700 text-sm font-semibold hover:bg-violet-50 dark:bg-gray-900 dark:text-violet-200 dark:border-violet-700"
+            >
+              <ArrowLeft className="w-4 h-4 shrink-0" />
+              Retour aux événements
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmPublish(true)}
+              disabled={saving}
+              className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 disabled:opacity-50"
+            >
+              Publier l'invitation
+            </button>
+          </div>
+          <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+            Publier rend le lien visible sur les autres téléphones. Tant que le statut indique Brouillon, un autre navigateur affiche « Invitation introuvable ».
+          </p>
           <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
@@ -1448,7 +1461,7 @@ function EditEventContent() {
               </a>
             </div>
             <div className="max-h-[78vh] overflow-y-auto">
-              <InvitationExperience event={liveEvent} guestName="Invité(e)" />
+              <InvitationExperience event={liveEvent} guestName="Invité(e)" rememberAnswer={false} />
             </div>
           </div>
         </aside>

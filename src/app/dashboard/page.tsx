@@ -10,7 +10,24 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { deleteInvitation, listInvitations, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, ExternalLink, Users, Crown, Share2, Mail, Heart } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, Share2, Heart } from 'lucide-react';
+import { EventSectionNav } from '@/components/nav/EventSectionNav';
+import { StoryArt } from '@/components/brand/StoryArt';
+import { formatUsd, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
+
+function eventStatus(event: EventWithSettings) {
+  if (!event.is_published) {
+    return { label: 'Brouillon', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
+  }
+  const date = event.event_date ? new Date(event.event_date) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+    if (Date.now() > end.getTime()) {
+      return { label: 'Terminée', className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' };
+    }
+  }
+  return { label: 'Publiée', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -24,6 +41,7 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; pending: number }>>({});
 
   // Charger les événements
   const loadEvents = useCallback(async () => {
@@ -38,6 +56,24 @@ export default function DashboardPage() {
     try {
       const rows = await listInvitations(createClient(), user.id);
       setEvents(rows);
+      const ids = rows.map((row) => row.id);
+      if (ids.length > 0) {
+        const { data } = await createClient()
+          .from('guests')
+          .select('event_id, status')
+          .in('event_id', ids);
+        const next: Record<string, { total: number; confirmed: number; pending: number }> = {};
+        for (const row of data || []) {
+          const bucket = next[row.event_id] || { total: 0, confirmed: 0, pending: 0 };
+          bucket.total += 1;
+          if (row.status === 'confirmed') bucket.confirmed += 1;
+          else if (row.status !== 'declined') bucket.pending += 1;
+          next[row.event_id] = bucket;
+        }
+        setGuestCounts(next);
+      } else {
+        setGuestCounts({});
+      }
     } catch (err) {
       console.error('Erreur chargement Supabase:', err);
       setEvents([]);
@@ -81,7 +117,9 @@ export default function DashboardPage() {
         type: 'wedding',
         event_date: new Date().toISOString(),
         location: '',
-        is_published: true,
+        is_published: false,
+        guestLimit: 3,
+        invitationTemplate: 'elegance',
         view_count: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -135,20 +173,16 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div className="space-y-6">
-          {/* Bannière Premium */}
-          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-2xl p-4 border border-amber-200 dark:border-amber-800/30 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Gratuit : 5 invités, lien réel</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">Au-delà, 0,30 $ par invité supplémentaire</p>
-              </div>
-            </div>
-            <a href="/pricing" className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition shadow-sm">
-              Découvrir
+        <div id="evenements" className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-rose-100 dark:border-gray-700">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              {TRIAL_INVITATIONS} invitations d&apos;essai, puis 0,30 $ par invité
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {GUEST_PACKS.map((pack) => `${pack} invités · ${formatUsd(packTotalUsd(pack))}`).join(' · ')}. L&apos;essai s&apos;ajoute au forfait.
+            </p>
+            <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-rose-500 text-white rounded-xl text-xs font-bold">
+              Voir les forfaits
             </a>
           </div>
 
@@ -210,12 +244,10 @@ export default function DashboardPage() {
               <div className="inline-block w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : events.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-7 h-7" />
-              </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center shadow-sm border border-gray-100 dark:border-gray-700">
+              <StoryArt name="welcome" alt="Illustration d'accueil" className="w-40 h-auto mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Vous n'avez pas encore d'événement. Créez votre première invitation.
+                Aucune invitation pour le moment. Le premier enregistrement reste un brouillon.
               </p>
               <button
                 onClick={() => setShowCreateInput(true)}
@@ -227,7 +259,10 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {events.map((event) => (
+              {events.map((event) => {
+                const status = eventStatus(event);
+                const counts = guestCounts[event.id];
+                return (
                 <div
                   key={event.id}
                   className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all"
@@ -254,21 +289,25 @@ export default function DashboardPage() {
                             {event.location}
                           </span>
                         )}
+                        {counts && (
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {counts.total} invités · {counts.confirmed} confirmés · {counts.pending} en attente
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Statut */}
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${
-                      event.is_published
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    }`}>
-                      {event.is_published ? 'Publié' : 'Brouillon'}
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${status.className}`}>
+                      {status.label}
                     </span>
+                  </div>
+                  <div className="mt-3">
+                    <EventSectionNav slug={event.slug} eventId={event.id} active="overview" />
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <a
                       href={`/e/${event.slug}`}
                       target="_blank"
@@ -285,21 +324,24 @@ export default function DashboardPage() {
                       Modifier
                     </a>
                     <a
-                      href={`/dashboard/invites`}
+                      href={`/dashboard/invites?event=${event.id}`}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition"
                     >
                       <Users className="w-3.5 h-3.5" />
                       Invités
                     </a>
-                    <a
-                      href={`https://wa.me/?text=${encodeURIComponent(`Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : https://eventiafinally.vercel.app/e/${event.slug}`)}`}
-                      target="_blank"
-                      rel="noopener"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = `${window.location.origin}/e/${event.slug}`;
+                        const text = `Tu es invité(e) à "${event.title}" ! Découvre ton invitation ici : ${url}`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+                      }}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition"
                     >
                       <Share2 className="w-3.5 h-3.5" />
                       WhatsApp
-                    </a>
+                    </button>
                     <button
                       onClick={() => setDeleteTarget(event)}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition ml-auto"
@@ -309,7 +351,8 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

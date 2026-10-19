@@ -105,7 +105,11 @@ export function useAuthActions() {
       },
     });
     if (error) return { error: translateAuthError(error.message), needsConfirmation: false };
-    return { error: null, needsConfirmation: !data.session };
+    if (!data.session) {
+      const signedIn = await supabase.auth.signInWithPassword({ email, password });
+      if (signedIn.error) return { error: translateAuthError(signedIn.error.message), needsConfirmation: false };
+    }
+    return { error: null, needsConfirmation: false };
   };
 
   const logout = async () => {

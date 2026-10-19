@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
@@ -10,8 +9,10 @@ import { listInvitations, publishInvitation } from '@/lib/events/store';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { FREE_GUEST_LIMIT } from '@/constants/pricing';
+import { formatUsd, GUEST_PACKS, guestCapacity, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
+import AdminLayout from '@/components/admin/AdminLayout';
+import { EventSectionNav } from '@/components/nav/EventSectionNav';
 import {
   BarChart3,
   Users,
@@ -30,7 +31,6 @@ import {
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 
 function GuestManagementContent() {
-  const router = useRouter();
   const { user } = useAuth();
   const { addToast } = useToast();
 
@@ -52,6 +52,14 @@ function GuestManagementContent() {
   const [newTable, setNewTable] = useState('');
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
+  const [packChoice, setPackChoice] = useState<number>(50);
+  const [customPack, setCustomPack] = useState('250');
+  const [confirmPack, setConfirmPack] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<null | {
+    ready: { name: string; phone?: string; email?: string; group?: string }[];
+    bad: { line: number; text: string; reason: string }[];
+    duplicates: string[];
+  }>(null);
 
   // WhatsApp template
   const [waTemplate, setWaTemplate] = useState('Bonjour {nom}, voici votre invitation personnelle : {lien}');
@@ -68,7 +76,12 @@ function GuestManagementContent() {
         }
         const evts = await listInvitations(createClient(), user.id);
         setEvents(evts);
-        if (evts.length > 0) setSelectedEventId(evts[0].id);
+        const params = new URLSearchParams(window.location.search);
+        const requested = params.get('event');
+        const match = evts.find((event) => event.id === requested);
+        if (match) setSelectedEventId(match.id);
+        else if (evts.length > 0) setSelectedEventId(evts[0].id);
+        if (params.get('tab') === 'rsvps') setActiveTab('rsvps');
       } catch {}
       setLoading(false);
     }
@@ -104,6 +117,7 @@ function GuestManagementContent() {
   };
 
   // Filtrage
+  const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
   const filteredGuests = guests.filter(g => {
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
@@ -111,7 +125,7 @@ function GuestManagementContent() {
       return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q);
     }
     return true;
-  });
+  }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
 
   const personalLink = (guest: Guest) => {
     const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
@@ -131,7 +145,7 @@ function GuestManagementContent() {
       ...selectedEvent,
       tables: next,
       user_id: user.id,
-      is_published: true,
+      is_published: selectedEvent.is_published,
     });
     if (result.error) {
       addToast('error', result.error);
@@ -149,7 +163,7 @@ function GuestManagementContent() {
       email: newEmail,
       group: newGroup,
       tableNumber: newTable,
-    });
+    }, capacity);
     if (result.error || !result.guest) {
       addToast('error', result.error || 'Invité non enregistré');
       return;
@@ -189,46 +203,57 @@ function GuestManagementContent() {
     addToast('success', 'Invité enregistré');
   };
 
-  // Import CSV
-  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const capacity = selectedEvent
+    ? (selectedEvent.guestLimit ?? guestCapacity(selectedEvent.guestPack))
+    : guestCapacity();
+  const chosenPackSize = packChoice === 0 ? Math.max(1, Number(customPack) || 0) : packChoice;
+  const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
+
+  const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     const text = await file.text();
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+    if (lines.length === 0) return;
     const header = lines[0].toLowerCase();
     const hasHeader = header.includes('nom') || header.includes('name');
     const dataLines = hasHeader ? lines.slice(1) : lines;
-
-    const newGuests: Guest[] = dataLines.map(line => {
-      const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      return {
-        id: 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        event_id: selectedEventId,
-        name: parts[0] || 'Sans nom',
+    const known = new Set(guests.map((guest) => guest.name.trim().toLowerCase()));
+    const seen = new Set<string>();
+    const ready: { name: string; phone?: string; email?: string; group?: string }[] = [];
+    const bad: { line: number; text: string; reason: string }[] = [];
+    const duplicates: string[] = [];
+    dataLines.forEach((line, index) => {
+      const parts = line.split(',').map((part) => part.trim().replace(/^"|"$/g, ''));
+      const name = parts[0] || '';
+      const lineNo = index + (hasHeader ? 2 : 1);
+      if (!name || name.toLowerCase() === 'sans nom') {
+        bad.push({ line: lineNo, text: line, reason: 'Nom manquant' });
+        return;
+      }
+      const key = name.toLowerCase();
+      if (known.has(key) || seen.has(key)) {
+        duplicates.push(`${name} (ligne ${lineNo})`);
+        return;
+      }
+      seen.add(key);
+      ready.push({
+        name,
         phone: parts[1] || undefined,
         group: parts[2] || undefined,
         email: parts[3] || undefined,
-        status: 'pending' as GuestStatus,
-        adults: 1,
-        children: 0,
-        token: Math.random().toString(36).slice(2, 10),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    }).filter(g => g.name !== 'Sans nom' || g.phone);
+      });
+    });
+    setCsvPreview({ ready, bad, duplicates });
+  };
 
-    if (!isSupabaseReady()) {
+  const confirmCsvImport = async () => {
+    if (!csvPreview || !isSupabaseReady()) {
       addToast('error', SUPABASE_REQUIRED);
-      e.target.value = '';
       return;
     }
-
-    const result = await addGuests(createClient(), selectedEventId, newGuests.map((guest) => ({
-      name: guest.name,
-      phone: guest.phone,
-      email: guest.email,
-      group: guest.group,
-    })));
+    const result = await addGuests(createClient(), selectedEventId, csvPreview.ready, capacity);
     if (result.guests.length > 0) {
       setGuests((current) => [...result.guests, ...current]);
     }
@@ -239,7 +264,27 @@ function GuestManagementContent() {
     } else {
       addToast('success', `${result.guests.length} invités enregistrés.`);
     }
-    e.target.value = '';
+    setCsvPreview(null);
+  };
+
+  const applyPack = async () => {
+    if (!selectedEvent || !user?.id) return;
+    const result = await publishInvitation(createClient(), {
+      ...selectedEvent,
+      user_id: user.id,
+      is_published: selectedEvent.is_published,
+      guestPack: chosenPackSize,
+      guestLimit: guestCapacity(chosenPackSize),
+    });
+    if (result.error) {
+      addToast('error', result.error);
+      return;
+    }
+    setEvents((current) => current.map((event) => event.id === selectedEvent.id
+      ? { ...event, guestPack: chosenPackSize, guestLimit: guestCapacity(chosenPackSize) }
+      : event));
+    setConfirmPack(false);
+    addToast('success', `Forfait validé : ${chosenPackSize} invités, plus ${TRIAL_INVITATIONS} d'essai. Total ${formatUsd(packTotalUsd(chosenPackSize))}.`);
   };
 
   // Export CSV
@@ -291,36 +336,34 @@ function GuestManagementContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans transition-colors">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-b border-rose-100 dark:border-gray-700">
-        <div className="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-rose-500 font-medium uppercase tracking-wider">Administration</p>
-            <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100">Gestion des invités</h1>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => router.push('/dashboard')} className="px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-              ← Dashboard
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-5 py-6 space-y-4">
-        {/* Sélecteur événement */}
-        {events.length > 1 && (
+    <AdminLayout>
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Invités</h1>
+        {selectedEvent && (
+          <EventSectionNav
+            slug={selectedEvent.slug}
+            eventId={selectedEvent.id}
+            title={selectedEvent.title}
+            active={activeTab === 'rsvps' ? 'results' : 'guests'}
+          />
+        )}
+        {events.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Événement</label>
-            <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Événement en cours</label>
+            <select value={selectedEventId} onChange={(e) => {
+              setSelectedEventId(e.target.value);
+              const url = new URL(window.location.href);
+              url.searchParams.set('event', e.target.value);
+              window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+            }}
+              className="w-full px-3 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               {events.map(evt => <option key={evt.id} value={evt.id}>{evt.title}</option>)}
             </select>
           </div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-2xl p-1 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="flex gap-1 overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl p-1 shadow-sm border border-gray-100 dark:border-gray-700">
           {[
             { id: 'overview' as Tab, icon: <BarChart3 className="w-3.5 h-3.5" />, label: 'Vue d\'ensemble' },
             { id: 'guests' as Tab, icon: <Users className="w-3.5 h-3.5" />, label: 'Invités' },
@@ -328,7 +371,7 @@ function GuestManagementContent() {
             { id: 'exports' as Tab, icon: <Download className="w-3.5 h-3.5" />, label: 'Exports' },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5 transition ${activeTab === tab.id ? 'bg-rose-500 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+              className={`shrink-0 min-h-11 px-3 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5 transition ${activeTab === tab.id ? 'bg-rose-500 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
               {tab.icon} <span>{tab.label}</span>
             </button>
           ))}
@@ -344,7 +387,7 @@ function GuestManagementContent() {
               { label: 'En attente', value: stats.pending, color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' },
               { label: 'Adultes', value: stats.adults, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' },
               { label: 'Enfants', value: stats.children, color: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' },
-              { label: 'Offre gratuite', value: `${Math.min(stats.total, FREE_GUEST_LIMIT)}/${FREE_GUEST_LIMIT}`, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
+              { label: 'Places', value: `${stats.total}/${capacity}`, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
             ].map(s => (
               <div key={s.label} className={`rounded-2xl p-4 ${s.color}`}>
                 <p className="text-2xl font-bold">{s.value}</p>
@@ -367,12 +410,71 @@ function GuestManagementContent() {
               <div className="flex flex-wrap gap-2">
                 <label className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-rose-600 transition">
                   Choisir un fichier CSV
-                  <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+                  <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
                 </label>
                 <button onClick={() => setShowAddForm(!showAddForm)} className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                   + Ajouter manuellement
                 </button>
               </div>
+              {csvPreview && (
+                <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100">{csvPreview.ready.length} ligne(s) prête(s) à importer</p>
+                  {csvPreview.duplicates.length > 0 && (
+                    <p className="text-amber-700 dark:text-amber-300">Doublons écartés : {csvPreview.duplicates.join(', ')}</p>
+                  )}
+                  {csvPreview.bad.length > 0 && (
+                    <ul className="text-red-600 space-y-1">
+                      {csvPreview.bad.map((row) => (
+                        <li key={`${row.line}-${row.text}`}>Ligne {row.line} : {row.reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-rose-500 text-white rounded-lg font-semibold">Importer ces lignes</button>
+                    <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 space-y-3">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Capacité</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {guests.length}/{capacity} places. Les {TRIAL_INVITATIONS} invitations d&apos;essai sont en plus du forfait.
+                {guests.length >= capacity ? ' La capacité est atteinte. Choisissez un forfait pour continuer.' : ''}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {GUEST_PACKS.map((pack) => (
+                  <button key={pack} type="button" onClick={() => { setPackChoice(pack); setConfirmPack(false); }}
+                    className={`rounded-xl border p-3 text-left ${packChoice === pack ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
+                    <span className="block text-xs font-semibold">{pack}</span>
+                    <span className="block text-sm font-bold">{formatUsd(packTotalUsd(pack))}</span>
+                  </button>
+                ))}
+                <button type="button" onClick={() => setPackChoice(0)}
+                  className={`rounded-xl border p-3 text-left ${packChoice === 0 ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30' : 'border-gray-200 dark:border-gray-600'}`}>
+                  <span className="block text-xs font-semibold">Autre</span>
+                  <span className="block text-[11px]">0,30 $ × nombre</span>
+                </button>
+              </div>
+              {packChoice === 0 && (
+                <input type="number" min={1} value={customPack} onChange={(e) => setCustomPack(e.target.value)}
+                  className="w-full px-3 py-2.5 border rounded-lg text-sm bg-gray-50 dark:bg-gray-700" />
+              )}
+              <p className="text-sm font-bold">Total affiché : {formatUsd(packTotalUsd(chosenPackSize))}</p>
+              {!confirmPack ? (
+                <button type="button" onClick={() => setConfirmPack(true)} className="px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-xl text-xs font-bold">
+                  Voir la validation
+                </button>
+              ) : (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
+                  <p className="text-xs">Valider {chosenPackSize} invités pour {formatUsd(packTotalUsd(chosenPackSize))} ? Les {TRIAL_INVITATIONS} invitations d&apos;essai restent en plus. La publication de l&apos;invitation ne change pas.</p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => void applyPack()} className="px-3 py-2 bg-rose-500 text-white rounded-lg text-xs font-bold">Valider ce forfait</button>
+                    <button type="button" onClick={() => setConfirmPack(false)} className="px-3 py-2 border rounded-lg text-xs">Annuler</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tables */}
@@ -408,13 +510,20 @@ function GuestManagementContent() {
                       <div key={table.name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{table.name}</p>
-                          <p className="text-[11px] text-blue-600 dark:text-blue-300">{used}/{table.seats} places</p>
+                          <p className={`text-[11px] ${used > table.seats ? 'text-red-600 font-semibold' : 'text-blue-600 dark:text-blue-300'}`}>
+                            {used}/{table.seats} places{used > table.seats ? ' · cette table dépasse le nombre de places' : ''}
+                          </p>
                         </div>
                         <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500">Retirer</button>
                       </div>
                     );
                   })}
                 </div>
+              )}
+              {withoutTable.length > 0 && (
+                <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                  Sans table : {withoutTable.map((guest) => guest.name).join(', ')}
+                </p>
               )}
             </div>
 
@@ -423,7 +532,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">Ajouter un invité</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Offre gratuite : {guests.length}/{FREE_GUEST_LIMIT} invités enregistrés. Chaque lien personnel s&apos;ouvre sur un autre téléphone.
+                  {guests.length}/{capacity} places utilisées, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -503,39 +612,20 @@ function GuestManagementContent() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité. Importez un CSV ou ajoutez manuellement.</p>
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-700">
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Invité</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Contact</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Groupe</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Statut</th>
-                        <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+              <div className="space-y-3">
                       {filteredGuests.map(g => (
-                        <tr key={g.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                          <td className="px-4 py-3">
+                        <article key={g.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                            <div>
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[10px] text-gray-400">{g.adults || 1} ad. {g.children > 0 ? `· ${g.children} enf.` : ''}{g.table_number ? ` · ${g.table_number}` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{g.phone || '—'}</p>
-                            <p className="text-[10px] text-gray-400">{g.email || ''}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{g.group || '—'}</span>
-                          </td>
-                          <td className="px-4 py-3">
+                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.email ? ` · ${g.email}` : ''}{g.group ? ` · ${g.group}` : ''}</p>
+                            <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''} · {g.table_number ? g.table_number : 'Sans table'}{g.checked_in_at ? ' · En salle' : ''}</p>
+                            </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex gap-1 justify-end">
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-3">
                               {g.status !== 'confirmed' && (
                                 <button onClick={() => handleStatusChange(g.id, 'confirmed')} title="Confirmer"
                                   className="p-1.5 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition text-xs"><Check className="w-3.5 h-3.5" /></button>
@@ -567,12 +657,8 @@ function GuestManagementContent() {
                               <button onClick={() => handleDelete(g.id)} title="Supprimer"
                                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition text-xs"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
-                          </td>
-                        </tr>
+                        </article>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             )}
           </div>
@@ -628,7 +714,7 @@ function GuestManagementContent() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* ═══════ MODAL ÉDITION ═══════ */}
       {editingGuest && (
@@ -699,7 +785,7 @@ function GuestManagementContent() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 

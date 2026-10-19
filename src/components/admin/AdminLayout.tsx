@@ -4,7 +4,8 @@ import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth, useAuthActions } from '@/providers/auth-provider';
-import { LogOut, User, Settings, Sun, Moon } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { LogOut, User, Settings, Sun, Moon, LayoutDashboard, CalendarDays, Users, CircleUser } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 interface AdminLayoutProps {
@@ -45,17 +46,37 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     await logout();
   };
 
+  const pathname = usePathname();
+  const [hash, setHash] = useState('');
+  const nav = [
+    { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { href: '/dashboard#evenements', label: 'Événements', icon: CalendarDays },
+    { href: '/dashboard/invites', label: 'Invités', icon: Users },
+    { href: '/profile', label: 'Profil', icon: CircleUser },
+  ];
+
+  useEffect(() => {
+    const read = () => setHash(window.location.hash);
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, [pathname]);
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard#evenements') return pathname === '/dashboard' && hash === '#evenements';
+    if (href === '/dashboard') return pathname === '/dashboard' && hash !== '#evenements';
+    if (href === '/dashboard/invites') return pathname.startsWith('/dashboard/invites');
+    return pathname.startsWith(href);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition">
-              ← Accueil
-            </Link>
-            <Link href="/dashboard" className="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition">
-              Dashboard
+            <Link href="/dashboard" className="font-bold text-gray-900 dark:text-white text-sm">
+              Invitia
             </Link>
             {isAdmin && (
               <Link href="/admin" className="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 px-3 py-1 rounded-lg text-xs font-bold transition">
@@ -134,10 +155,46 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      {/* Contenu principal */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+      <div className="lg:grid lg:grid-cols-[220px_1fr]">
+        <aside className="hidden lg:block border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 min-h-[calc(100vh-57px)] p-4">
+          <nav className="space-y-1">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium ${
+                  isActive(item.href)
+                    ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+        <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-8">
+          {children}
+        </main>
+      </div>
+
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-4">
+          {nav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-semibold ${
+                isActive(item.href) ? 'text-rose-600' : 'text-gray-500'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

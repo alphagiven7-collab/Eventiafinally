@@ -199,6 +199,11 @@ export interface EventWithSettings extends Event {
     coupleLeft?: string;
     coupleRight?: string;
     tables?: { name: string; seats: number }[];
+    guestPack?: number | null;
+    guestLimit?: number;
+    invitationTemplate?: 'elegance' | 'motifs';
+    groomMotifImage?: string;
+    brideMotifImage?: string;
   }
 
 export interface EventSettings {

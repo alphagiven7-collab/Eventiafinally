@@ -49,7 +49,10 @@ export default function InvitationExperience({
     const detachGallery = initGalleryScroll(root);
     initDrinkMenu(root, event);
     const detachMusic = initMusic(root, event);
-    const detachRsvp = initRsvp(root, event.slug, guestToken, guestStatus);
+    const detachRsvp = initRsvp(root, event, guestToken, guestStatus);
+    const printBtn = root.querySelector('#print-invitation-btn');
+    const onPrint = () => window.print();
+    printBtn?.addEventListener('click', onPrint);
     const detachModals = initModals(root);
     const detachGuestbook = initGuestbook(root, event.slug);
 
@@ -60,6 +63,7 @@ export default function InvitationExperience({
       detachGallery();
       detachMusic();
       detachRsvp();
+      printBtn?.removeEventListener('click', onPrint);
       detachModals();
       detachGuestbook();
       shadow.replaceChildren();
@@ -91,6 +95,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.style.setProperty('--primary-color', primaryColor);
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
+  root.dataset.template = event.invitationTemplate === 'motifs' ? 'motifs' : 'elegance';
 
   // Hero & Couverture
   const heroImg =
@@ -467,8 +472,27 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     giftSection.style.display = hasAnyContactAction ? 'block' : 'none';
   }
 
+  const motifSection = $('#section-family-motifs');
+  const showMotif = (boxSel: string, imgSel: string, src?: string) => {
+    const box = $(boxSel);
+    const img = root.querySelector(imgSel) as HTMLImageElement | null;
+    if (!box) return false;
+    if (event.invitationTemplate === 'motifs' && src) {
+      if (img) img.src = src;
+      box.style.display = 'block';
+      return true;
+    }
+    box.style.display = 'none';
+    return false;
+  };
+  const hasMotif =
+    showMotif('#groom-motif', '#groom-motif-img', event.groomMotifImage) ||
+    showMotif('#bride-motif', '#bride-motif-img', event.brideMotifImage);
+  if (motifSection) motifSection.style.display = hasMotif ? 'block' : 'none';
+
   const main = root.querySelector('#main-view');
   [
+    'section-family-motifs',
     'section-when-where',
     'section-dress-code',
     'section-gallery',
@@ -587,12 +611,22 @@ function initGalleryScroll(root: HTMLElement) {
   return () => trigger.removeEventListener('click', onClick);
 }
 
+function dayHasPassed(value?: string) {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+  return Date.now() > end.getTime();
+}
+
 function initRsvp(
   root: HTMLElement,
-  slug: string,
+  event: EventWithSettings,
   guestToken?: string,
   guestStatus?: GuestStatus
 ) {
+  const slug = event.slug;
+  const responsesClosed = dayHasPassed(event.rsvpDeadline) || dayHasPassed(event.event_date);
   const note = root.querySelector('#rsvp-status-note') as HTMLElement | null;
   const confirmBtn = root.querySelector('#confirm-presence-btn') as HTMLButtonElement | null;
   const reserveBtn = root.querySelector('#reserve-deadline-btn') as HTMLButtonElement | null;
@@ -622,8 +656,13 @@ function initRsvp(
     const tableEl = root.querySelector('#guest-table-line') as HTMLElement | null;
     const tableLabel = tableEl && tableEl.style.display !== 'none' ? tableEl.textContent?.trim() || '' : '';
     img.src = await checkinQrDataUrl(token, 180);
-    img.alt = 'Code d’entrée';
+    img.alt = 'Carte d’entrée';
     if (caption) caption.textContent = [name, tableLabel].filter(Boolean).join(' · ');
+    const download = root.querySelector('#download-checkin-qr') as HTMLAnchorElement | null;
+    if (download) {
+      download.href = img.src;
+      download.download = 'carte-entree.png';
+    }
     box.style.display = 'block';
   };
 
@@ -650,19 +689,29 @@ function initRsvp(
     }
   };
 
+  let alreadyAnswered = false;
   if (guestStatus === 'confirmed' || guestStatus === 'declined') {
+    alreadyAnswered = true;
     applyVisualState(guestStatus);
   } else {
     try {
       const savedLocal = localStorage.getItem(localKey);
       if (savedLocal === 'confirmed' || savedLocal === 'declined') {
+        alreadyAnswered = true;
         applyVisualState(savedLocal);
       }
     } catch {}
   }
 
   const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
+    if (responsesClosed) {
+      setNote('La date est passée. Les réponses sont closes.', false);
+      return;
+    }
     if (button) button.disabled = true;
+    const label = button?.querySelector('#confirm-presence-label, #reserve-deadline-text') as HTMLElement | null;
+    const previousLabel = label?.textContent || '';
+    if (label) label.textContent = 'Enregistrement…';
     const messageField = root.querySelector('#guest-message') as HTMLTextAreaElement | null;
     const message = messageField?.value.trim() || undefined;
 
@@ -670,6 +719,7 @@ function initRsvp(
       const result = await submitGuestRsvp(createClient(), { token, status, message });
       if (button) button.disabled = false;
       if (result.error) {
+        if (label) label.textContent = previousLabel;
         setNote(result.error, false);
         return;
       }
@@ -705,6 +755,16 @@ function initRsvp(
   const onDecline = () => {
     void respond('declined', declineBtn);
   };
+
+  if (responsesClosed) {
+    [confirmBtn, reserveBtn, declineBtn].forEach((button) => {
+      if (!button) return;
+      button.disabled = true;
+      button.style.opacity = '0.55';
+      button.style.cursor = 'not-allowed';
+    });
+    if (!alreadyAnswered) setNote('La date est passée. Les réponses sont closes.', false);
+  }
 
   confirmBtn?.addEventListener('click', onConfirm);
   reserveBtn?.addEventListener('click', onReserveTopClick);
@@ -1431,6 +1491,56 @@ function getOriginalCSS(): string {
       font-weight: 600;
       color: #111827;
     }
+    .invitation-experience-root .checkin-help {
+      margin: 10px 0 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #374151;
+    }
+    .invitation-experience-root .checkin-download {
+      display: inline-flex;
+      margin-top: 10px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 12px;
+      background: #2563eb;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .invitation-experience-root[data-template="elegance"] .invitation-card-floral {
+      display: none;
+    }
+    .invitation-experience-root .family-motif img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 16px;
+      display: block;
+    }
+    .invitation-experience-root .family-motif h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      margin: 0 0 8px;
+    }
+    @media print {
+      .invitation-experience-root #app-floating-tools,
+      .invitation-experience-root .inv-modal {
+        display: none !important;
+      }
+      .invitation-experience-root #main-view {
+        box-shadow: none !important;
+        max-width: none !important;
+        overflow: visible !important;
+        min-height: auto !important;
+      }
+      .invitation-experience-root section {
+        break-inside: avoid;
+      }
+    }
     .invitation-experience-root .inv-modal {
       position: fixed;
       inset: 0;
@@ -1489,6 +1599,7 @@ function getOriginalHTML(): string {
           <span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:#1f2937;color:white;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:transform 0.3s;display:flex;align-items:center;justify-content:center;" class="theme-thumb"></span>
         </span>
       </label>
+      <button id="print-invitation-btn" type="button" style="height:32px;padding:0 10px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;font-size:11px;font-weight:700;" title="Enregistrer l'invitation en PDF">PDF</button>
       <button id="music-toggle-btn" type="button" style="width:34px;height:24px;border-radius:999px;background:#1f2937;color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);" title="Musique">
         <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       </button>
@@ -1537,6 +1648,17 @@ function getOriginalHTML(): string {
       </section>
 
       <!-- Date et lieu, puis confirmation immédiate -->
+      <section id="section-family-motifs" style="padding:0 16px;margin-top:24px;display:none;">
+        <div id="groom-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;margin-bottom:12px;">
+          <h3 class="inv-text-primary">Motif de la famille du marié</h3>
+          <img id="groom-motif-img" alt="Motif de la famille du marié">
+        </div>
+        <div id="bride-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;">
+          <h3 class="inv-text-primary">Motif de la famille de la mariée</h3>
+          <img id="bride-motif-img" alt="Motif de la famille de la mariée">
+        </div>
+      </section>
+
       <section id="section-when-where" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
           <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Date et lieu</p>
@@ -1696,6 +1818,8 @@ function getOriginalHTML(): string {
               <img id="checkin-qr" alt="Code d'entrée" width="168" height="168">
             </div>
             <p id="checkin-qr-caption" class="checkin-caption"></p>
+            <p class="checkin-help">Cette image est votre carte d'entrée. Présentez-la à l'accueil le jour J.</p>
+            <a id="download-checkin-qr" class="checkin-download" href="#">Télécharger la carte d'entrée</a>
           </div>
         </div>
       </section>

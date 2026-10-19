@@ -119,7 +119,9 @@ function CreateEventContent() {
         guestbook: false,
       },
       user_id: user.id,
-      is_published: true,
+      is_published: false,
+      guestLimit: 3,
+      invitationTemplate: 'elegance',
       view_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -132,7 +134,7 @@ function CreateEventContent() {
       return;
     }
 
-    addToast('success', 'Invitation créée ! Personnalisez maintenant votre carte en direct.');
+    addToast('success', 'Brouillon créé. Personnalisez la carte, puis publiez quand elle est prête.');
     router.push(`/create/${slug}/edit`);
   };
 

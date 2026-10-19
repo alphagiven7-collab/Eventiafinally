@@ -184,6 +184,8 @@ export async function publishInvitation(
 
   if (eventError) return { error: explainWriteError(eventError.message), id };
 
+  await supabase.from('events').update({ guest_limit: event.guestLimit ?? 3 }).eq('id', id);
+
   const { error: settingsError } = await supabase.from('event_settings').upsert({
     event_id: id,
     welcome_message: event.welcomeMessage ?? null,

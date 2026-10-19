@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ProfilePage() {
@@ -41,8 +42,8 @@ function ProfileContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 p-8">
+    <AdminLayout>
+      <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Mon Profil</h1>
         
         <div className="space-y-4">
@@ -77,6 +78,6 @@ function ProfileContent() {
           Se déconnecter
         </button>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

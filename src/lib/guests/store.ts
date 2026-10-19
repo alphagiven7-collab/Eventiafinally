@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { FREE_GUEST_LIMIT, freeGuestLimitMessage } from '@/constants/pricing';
+import { freeGuestLimitMessage, guestCapacity } from '@/constants/pricing';
 import { isUuid } from '@/lib/events/store';
 import { Guest, GuestStatus } from '@/types';
 
@@ -146,12 +146,13 @@ export async function addGuest(
   client: SupabaseClient,
   eventId: string,
   draft: GuestDraft,
+  limit = guestCapacity(),
 ): Promise<{ guest?: Guest; error?: string }> {
   if (!isUuid(eventId)) return { error: 'Enregistrez d\'abord l\'invitation pour ajouter des invités.' };
   if (!draft.name.trim()) return { error: 'Le nom est obligatoire.' };
 
   const taken = await countGuests(client, eventId);
-  if (taken >= FREE_GUEST_LIMIT) return { error: freeGuestLimitMessage() };
+  if (taken >= limit) return { error: freeGuestLimitMessage(limit) };
 
   const { data, error } = await client
     .from('guests')
@@ -167,6 +168,7 @@ export async function addGuests(
   client: SupabaseClient,
   eventId: string,
   drafts: GuestDraft[],
+  limit = guestCapacity(),
 ): Promise<{ guests: Guest[]; error?: string; truncated: boolean }> {
   if (!isUuid(eventId)) return { guests: [], error: 'Enregistrez d\'abord l\'invitation pour ajouter des invités.', truncated: false };
 
@@ -174,8 +176,8 @@ export async function addGuests(
   if (named.length === 0) return { guests: [], error: 'Aucun invité trouvé dans le fichier.', truncated: false };
 
   const taken = await countGuests(client, eventId);
-  const room = FREE_GUEST_LIMIT - taken;
-  if (room <= 0) return { guests: [], error: freeGuestLimitMessage(), truncated: true };
+  const room = limit - taken;
+  if (room <= 0) return { guests: [], error: freeGuestLimitMessage(limit), truncated: true };
 
   const accepted = named.slice(0, room);
   const { data, error } = await client
@@ -187,7 +189,7 @@ export async function addGuests(
   return {
     guests: ((data ?? []) as GuestRow[]).map(toGuest),
     truncated: accepted.length < named.length,
-    error: accepted.length < named.length ? freeGuestLimitMessage() : undefined,
+    error: accepted.length < named.length ? freeGuestLimitMessage(limit) : undefined,
   };
 }
 

@@ -19,12 +19,12 @@ const yanickKeren: EventWithSettings = {
   inviteIntro: "C'est avec une grande joie que {couple} vous invitent à célébrer leur mariage.",
   inviteSecondary: "Ils seraient honorés de vous compter parmi leurs invités pour célébrer cette union sacrée et partager le bonheur de leur engagement.",
   reserveText: 'Confirmer ma présence',
-  rsvpDeadlineText: 'Merci de confirmer avant le 25 avril 2026',
+  rsvpDeadlineText: 'Merci de confirmer avant le 25 avril 2027',
   rsvpButtonColor: '#ec4899',
   metaDescription: 'Invitation officielle au mariage de Josue et Divine.',
   aboutTitle: 'Notre Histoire',
-  mainText: 'La cérémonie, suivie d\'une réception, se tiendra le jeudi 30 avril 2026 à partir de 19h30 au Sultani River.',
-  event_date: '2026-04-30T19:30:00',
+  mainText: 'La cérémonie, suivie d\'une réception, se tiendra le vendredi 30 avril 2027 à partir de 19h30 au Sultani River.',
+  event_date: '2027-04-30T19:30:00',
   venue: 'Sultani River',
   venueDetails: {
     title: 'Sultani River',
@@ -46,7 +46,7 @@ const yanickKeren: EventWithSettings = {
     { icon: 'bed', title: 'HÉBERGEMENT', text: 'Hôtel le Pullman à 5 min — réservation recommandée.' },
     { icon: 'wine', title: 'BOÎTE À BOISSON', text: 'Merci de ne pas apporter de boisson de l\'extérieur.' }
   ],
-  rsvpDeadline: '2026-04-25',
+  rsvpDeadline: '2027-04-25',
   branding: {
     primaryColor: '#4caf50',
     accentColor: '#ec4899',

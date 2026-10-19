@@ -35,6 +35,7 @@ import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
+import { EventSectionNav } from '@/components/nav/EventSectionNav';
 
 /* ─────────────────────────────────────────────
    Section collapsible réutilisable
@@ -578,6 +579,11 @@ function EditEventContent() {
   const [donationLink, setDonationLink] = useState('');
   const [whatsappDonation, setWhatsappDonation] = useState('');
   const [whatsappDonationMessage, setWhatsappDonationMessage] = useState('');
+  const [invitationTemplate, setInvitationTemplate] = useState<'elegance' | 'motifs'>('elegance');
+  const [groomMotifImage, setGroomMotifImage] = useState('');
+  const [brideMotifImage, setBrideMotifImage] = useState('');
+  const [rsvpDeadline, setRsvpDeadline] = useState('');
+  const [confirmPublish, setConfirmPublish] = useState(false);
 
   /* ── Chargement de l'événement ── */
   useEffect(() => {
@@ -652,6 +658,10 @@ function EditEventContent() {
       setWhatsappDonation(evt.links?.whatsappDonation || evt.whatsappDonationPhone || '');
       setWhatsappDonationMessage(evt.links?.donationWhatsAppMessage || '');
 
+      setInvitationTemplate(evt.invitationTemplate === 'motifs' ? 'motifs' : 'elegance');
+      setGroomMotifImage(evt.groomMotifImage || '');
+      setBrideMotifImage(evt.brideMotifImage || '');
+      setRsvpDeadline(evt.rsvpDeadline ? evt.rsvpDeadline.slice(0, 10) : '');
       setSecGallery(evt.sections?.gallery !== false);
       setSecCountdown(evt.sections?.countdown !== false);
       setSecDressCode(evt.sections?.dressCode !== false);
@@ -738,6 +748,12 @@ function EditEventContent() {
         donation: Boolean(donationLink || whatsappDonation),
         guestbook: event.sections?.guestbook || false,
       },
+      invitationTemplate,
+      groomMotifImage: groomMotifImage || undefined,
+      brideMotifImage: brideMotifImage || undefined,
+      rsvpDeadline: rsvpDeadline || undefined,
+      guestLimit: event.guestLimit ?? 3,
+      guestPack: event.guestPack,
     };
   }, [
     event,
@@ -774,11 +790,15 @@ function EditEventContent() {
     secGallery,
     secCountdown,
     secDressCode,
+    invitationTemplate,
+    groomMotifImage,
+    brideMotifImage,
+    rsvpDeadline,
   ]);
 
   /* ── Sauvegarde sur Supabase ── */
   const handleSave = useCallback(
-    async (redirectAfterSave = false) => {
+    async (mode: 'draft' | 'preview' | 'publish' = 'draft') => {
       if (!liveEvent) return;
       if (!eventDate || !location.trim()) {
         addToast('error', 'La date et le lieu sont obligatoires.');
@@ -803,16 +823,24 @@ function EditEventContent() {
       const ogImage = liveEvent.branding?.ogShareImage?.startsWith('data:')
         ? await shrinkDataUrl(liveEvent.branding.ogShareImage, 90 * 1024)
         : liveEvent.branding?.ogShareImage;
-      const prepared = {
+      const groom = liveEvent.groomMotifImage?.startsWith('data:')
+        ? await shrinkDataUrl(liveEvent.groomMotifImage, 80 * 1024)
+        : liveEvent.groomMotifImage;
+      const bride = liveEvent.brideMotifImage?.startsWith('data:')
+        ? await shrinkDataUrl(liveEvent.brideMotifImage, 80 * 1024)
+        : liveEvent.brideMotifImage;
+      const prepared: EventWithSettings = {
         ...liveEvent,
         user_id: user.id,
-        is_published: true,
+        is_published: mode === 'publish' ? true : mode === 'draft' ? false : Boolean(liveEvent.is_published),
         updated_at: new Date().toISOString(),
         heroImage: hero,
         hero_image: hero,
         aboutImage: about,
         mapImage: map,
         cover_image: cover,
+        groomMotifImage: groom || undefined,
+        brideMotifImage: bride || undefined,
         bestPhotos: await slimImageList(liveEvent.bestPhotos),
         dressImages: await slimImageList(liveEvent.dressImages),
         branding: liveEvent.branding
@@ -835,10 +863,19 @@ function EditEventContent() {
         return;
       }
 
-      addToast('success', 'Invitation enregistrée et publiée !');
-      if (redirectAfterSave) {
+      setEvent(prepared);
+      setConfirmPublish(false);
+      if (mode === 'publish') {
+        addToast('success', 'Invitation publiée.');
         router.push(`/e/${liveEvent.slug}`);
+        return;
       }
+      if (mode === 'preview') {
+        addToast('success', 'Aperçu enregistré. La publication n’a pas changé.');
+        window.open(`/e/${liveEvent.slug}`, '_blank', 'noopener');
+        return;
+      }
+      addToast('success', 'Brouillon enregistré.');
     },
     [liveEvent, eventDate, location, user?.id, addToast, router]
   );
@@ -904,11 +941,14 @@ function EditEventContent() {
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-rose-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
+            <button type="button" onClick={() => router.push('/dashboard')} className="text-[11px] text-rose-600 dark:text-rose-300 font-semibold">
+              Tableau de bord
+            </button>
             <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
               {title || event.title}
             </h1>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Personnalisation en 5 étapes simples
+              {event.is_published ? 'Publiée' : 'Brouillon'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -954,18 +994,13 @@ function EditEventContent() {
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{copiedLink ? 'Copié' : 'Partager'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => handleSave(false)}
-              disabled={saving}
-              className="px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow-md transition disabled:opacity-50"
-            >
-              {saving ? 'Enregistrement...' : 'Sauvegarder'}
-            </button>
           </div>
         </div>
       </header>
 
+      <div className="max-w-6xl mx-auto px-4 pt-4">
+        <EventSectionNav slug={event.slug} eventId={event.id} title={event.title} active="edit" />
+      </div>
       <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Colonne de gauche : les 5 sections de personnalisation */}
         <main
@@ -1017,6 +1052,12 @@ function EditEventContent() {
                   placeholder="Ex: 16h00"
                 />
               </div>
+              <Field
+                label="Date limite de réponse (optionnel)"
+                value={rsvpDeadline}
+                onChange={setRsvpDeadline}
+                type="date"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Nom du lieu ou de la salle"
@@ -1033,6 +1074,50 @@ function EditEventContent() {
                 />
               </div>
             </div>
+          </Section>
+
+          <Section
+            title="Modèle d'invitation"
+            subtitle="Le même contenu, deux présentations"
+            icon={<Sparkles className="w-4 h-4" />}
+            defaultOpen
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+              {([
+                ['elegance', 'Élégance contemporaine', 'Noms lisibles, détails sobres. La photo du couple reste facultative.'],
+                ['motifs', 'Motifs des familles', 'Présentation un peu plus décorée, avec les deux tissus.'],
+              ] as const).map(([value, label, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setInvitationTemplate(value)}
+                  className={`text-left rounded-2xl border p-4 ${
+                    invitationTemplate === value
+                      ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/30'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{text}</p>
+                </button>
+              ))}
+            </div>
+            {invitationTemplate === 'motifs' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                <SingleImageUploader
+                  label="Motif de la famille du marié"
+                  help="Tissu jaune. Vous pouvez le remplacer ou le retirer."
+                  value={groomMotifImage}
+                  onChange={setGroomMotifImage}
+                />
+                <SingleImageUploader
+                  label="Motif de la famille de la mariée"
+                  help="Tissu bleu ou turquoise. Vous pouvez le remplacer ou le retirer."
+                  value={brideMotifImage}
+                  onChange={setBrideMotifImage}
+                />
+              </div>
+            )}
           </Section>
 
           {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
@@ -1303,22 +1388,30 @@ function EditEventContent() {
           </Section>
 
           {/* Boutons d'action en bas */}
-          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+          <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               type="button"
-              onClick={() => handleSave(false)}
+              onClick={() => handleSave('draft')}
               disabled={saving}
-              className="flex-1 py-3.5 px-5 bg-white dark:bg-gray-800 border border-rose-200 dark:border-gray-700 text-rose-600 dark:text-rose-400 rounded-2xl font-semibold text-sm hover:bg-rose-50 transition disabled:opacity-50"
+              className="py-3.5 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-2xl font-semibold text-sm disabled:opacity-50"
             >
-              {saving ? 'Enregistrement...' : 'Sauvegarder les modifications'}
+              {saving ? 'Enregistrement...' : 'Enregistrer en brouillon'}
             </button>
             <button
               type="button"
-              onClick={() => handleSave(true)}
+              onClick={() => handleSave('preview')}
               disabled={saving}
-              className="flex-1 py-3.5 px-5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-200/60 dark:shadow-rose-950/40 hover:shadow-xl transition disabled:opacity-50"
+              className="py-3.5 px-4 border border-rose-200 text-rose-600 dark:text-rose-300 rounded-2xl font-semibold text-sm disabled:opacity-50"
             >
-              {saving ? 'Publication...' : "Sauvegarder et ouvrir l'invitation ›"}
+              Aperçu
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmPublish(true)}
+              disabled={saving}
+              className="py-3.5 px-4 bg-rose-500 text-white rounded-2xl font-bold text-sm disabled:opacity-50"
+            >
+              Publier
             </button>
           </div>
         </main>
@@ -1354,6 +1447,24 @@ function EditEventContent() {
           </div>
         </aside>
       </div>
+      {confirmPublish && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmPublish(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier cette invitation ?</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+              {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
+              Modèle : {invitationTemplate === 'motifs' ? 'Motifs des familles' : 'Élégance contemporaine'}.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">La publication rend le lien disponible avec le statut Publiée. Vous pouvez encore le modifier ensuite.</p>
+            <div className="flex gap-2 mt-4">
+              <button type="button" onClick={() => setConfirmPublish(false)} className="flex-1 py-3 border rounded-xl text-sm">Annuler</button>
+              <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-rose-500 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                {saving ? 'Publication...' : 'Confirmer la publication'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

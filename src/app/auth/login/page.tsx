@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useAuthActions, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { safeNextPath } from '@/lib/auth/redirect';
 import { isSupabaseReady } from '@/config/supabase';
-import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { AuthFrame } from '@/components/auth/AuthFrame';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -43,24 +44,8 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7] dark:bg-gray-950 px-4 transition-colors">
-      {/* Decorative background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-amber-100 dark:bg-amber-900/20 rounded-full blur-3xl opacity-30" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-rose-100 dark:bg-rose-900/20 rounded-full blur-3xl opacity-20" />
-      </div>
-
-      <div className="relative z-10 max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Sparkles className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="font-serif text-3xl font-light text-gray-900 dark:text-white">Bienvenue sur Invitia</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Connectez-vous pour gérer vos invitations</p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 p-8">
+    <AuthFrame title="Connexion" text="Entrez pour retrouver vos invitations." art="login">
+        <div>
           {/* Google Sign-In */}
           <button
             type="button"
@@ -142,8 +127,7 @@ function LoginForm() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </AuthFrame>
   );
 }
 

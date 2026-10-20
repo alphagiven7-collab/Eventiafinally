@@ -13,10 +13,9 @@ import {
   X,
   Eye,
   EyeOff,
-  Share2,
   ArrowLeft,
   ExternalLink,
-  Check,
+  MessageCircle,
   Heart,
   Mail,
   Camera,
@@ -620,7 +619,6 @@ function EditEventContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     const onTheme = (themeEvent: Event) => {
@@ -657,6 +655,9 @@ function EditEventContent() {
   const [heroImage, setHeroImage] = useState('');
   const [coverPhotos, setCoverPhotos] = useState<string[]>([]);
   const [secGallery, setSecGallery] = useState(true);
+  const [galleryKicker, setGalleryKicker] = useState('Ensemble');
+  const [galleryTitle, setGalleryTitle] = useState('Nos photos');
+  const [galleryFlowText, setGalleryFlowText] = useState('La suite de nos souvenirs');
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [musicUrl, setMusicUrl] = useState('');
   const [musicHasFile, setMusicHasFile] = useState(false);
@@ -771,6 +772,9 @@ function EditEventContent() {
 
       setHeroImage(evt.heroImage || evt.hero_image || evt.branding?.heroImage || '');
       setCoverPhotos(evt.bestPhotos || (evt.cover_image ? [evt.cover_image] : []));
+      setGalleryKicker(evt.galleryKicker ?? 'Ensemble');
+      setGalleryTitle(evt.galleryTitle ?? 'Nos photos');
+      setGalleryFlowText(evt.galleryFlowText ?? 'La suite de nos souvenirs');
       setInviteIntro(evt.inviteIntro || '');
       setInviteSecondary(evt.inviteSecondary || '');
       setMainText(evt.mainText || '');
@@ -851,6 +855,9 @@ function EditEventContent() {
       hero_image: primaryCover || undefined,
       heroImage: primaryCover || undefined,
       bestPhotos: coverPhotos,
+      galleryKicker,
+      galleryTitle,
+      galleryFlowText,
       inviteIntro: inviteIntro || undefined,
       inviteSecondary: undefined,
       mainText: undefined,
@@ -935,6 +942,9 @@ function EditEventContent() {
     venueMapImage,
     heroImage,
     coverPhotos,
+    galleryKicker,
+    galleryTitle,
+    galleryFlowText,
     inviteIntro,
     rsvpDeadlineText,
     rsvpButtonColor,
@@ -1086,35 +1096,18 @@ function EditEventContent() {
     [liveEvent, eventDate, location, user?.id, addToast, router]
   );
 
-  /* ── Partage du lien public réel ── */
-  const handleShare = useCallback(async () => {
-    const origin =
-      typeof window !== 'undefined' ? window.location.origin : 'https://eventiafinally.vercel.app';
-    const publicUrl = `${origin}/e/${event?.slug || slug}`;
-    const shareText = `Tu es invité(e) à "${title || event?.title}" !`;
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: title || event?.title || 'Invitation',
-          text: shareText,
-          url: publicUrl,
-        });
-        return;
-      } catch {
-        // Repli copie / WhatsApp
-      }
+  const handleInviteGuest = useCallback(() => {
+    if (!user?.id) {
+      addToast('error', 'Enregistrez d’abord l’invitation pour ajouter un invité.');
+      router.push(`/auth/register?redirect=${encodeURIComponent(`/create/${slug}/edit`)}`);
+      return;
     }
-
-    try {
-      await navigator.clipboard.writeText(publicUrl);
-      setCopiedLink(true);
-      addToast('success', 'Lien de l’invitation copié !');
-      setTimeout(() => setCopiedLink(false), 2500);
-    } catch {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${publicUrl}`)}`, '_blank', 'noopener');
+    if (!event?.id || !isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      return;
     }
-  }, [event?.slug, event?.title, slug, title, addToast]);
+    router.push(`/dashboard/invites?event=${encodeURIComponent(event.id)}&tool=add`);
+  }, [user?.id, event?.id, slug, addToast, router]);
 
   if (loading) {
     return (
@@ -1228,11 +1221,12 @@ function EditEventContent() {
             </a>
             <button
               type="button"
-              onClick={handleShare}
+              onClick={handleInviteGuest}
+              aria-label="Inviter une personne sur WhatsApp"
               className="px-3 py-2 border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-emerald-100 transition"
             >
-              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{copiedLink ? 'Lien copié' : 'Partager'}</span>
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Inviter sur WhatsApp</span>
             </button>
           </div>
           </div>
@@ -1546,12 +1540,35 @@ function EditEventContent() {
                   />
                 </div>
                 {secGallery && (
-                  <PhotoUploader
-                    onPhotosChange={setCoverPhotos}
-                    existingPhotos={coverPhotos}
-                    maxPhotos={12}
-                    label="Photos du couple"
-                  />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field
+                        label="Petit texte de la galerie"
+                        value={galleryKicker}
+                        onChange={setGalleryKicker}
+                        placeholder="Ensemble"
+                      />
+                      <Field
+                        label="Titre de la galerie"
+                        value={galleryTitle}
+                        onChange={setGalleryTitle}
+                        placeholder="Nos photos"
+                      />
+                    </div>
+                    <Field
+                      label="Texte au-dessus des photos qui défilent"
+                      help="Laissez vide pour masquer cette ligne."
+                      value={galleryFlowText}
+                      onChange={setGalleryFlowText}
+                      placeholder="La suite de nos souvenirs"
+                    />
+                    <PhotoUploader
+                      onPhotosChange={setCoverPhotos}
+                      existingPhotos={coverPhotos}
+                      maxPhotos={12}
+                      label="Photos du couple"
+                    />
+                  </div>
                 )}
               </div>
 

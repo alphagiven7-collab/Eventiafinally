@@ -89,6 +89,10 @@ function GuestManagementContent() {
         if (match) setSelectedEventId(match.id);
         else if (evts.length > 0) setSelectedEventId(evts[0].id);
         if (params.get('tab') === 'rsvps') setActiveTab('rsvps');
+        if (params.get('tool') === 'add') {
+          setActiveTab('guests');
+          setOpenTool('add');
+        }
       } catch {}
       setLoading(false);
     }
@@ -164,8 +168,10 @@ function GuestManagementContent() {
   }, []);
 
   useEffect(() => {
-    if (openTool === 'add') nameInputRef.current?.focus();
-  }, [openTool]);
+    if (openTool !== 'add' || loading) return;
+    const frame = window.requestAnimationFrame(() => nameInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [openTool, loading]);
 
   const selectedEvent = events.find((event) => event.id === selectedEventId);
   const tables = selectedEvent?.tables || [];

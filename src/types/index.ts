@@ -209,6 +209,9 @@ export interface EventWithSettings extends Event {
     welcomeImage?: string;
     heroImage?: string;
     bestPhotos?: string[];
+    galleryKicker?: string;
+    galleryTitle?: string;
+    galleryFlowText?: string;
     whatsappDonationPhone?: string;
     supportEmail?: string;
     address?: string;

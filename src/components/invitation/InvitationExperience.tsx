@@ -512,6 +512,17 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
       gallerySection.style.display = 'none';
     } else {
       gallerySection.style.display = 'block';
+      [
+        ['.gallery-kicker', event.galleryKicker ?? 'Ensemble'],
+        ['.gallery-title', event.galleryTitle ?? 'Nos photos'],
+        ['.gallery-flow-label', event.galleryFlowText ?? 'La suite de nos souvenirs'],
+      ].forEach(([selector, value]) => {
+        const text = String(value).trim();
+        const element = gallerySection.querySelector(selector) as HTMLElement | null;
+        if (!element) return;
+        element.textContent = text;
+        element.style.display = text ? '' : 'none';
+      });
       if (uploadedPhotos.length > 0) {
         const gridContainer = $('#best-photos-grid');
         if (gridContainer) fillGallery(gridContainer, uploadedPhotos);

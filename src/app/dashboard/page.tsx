@@ -149,7 +149,7 @@ export default function DashboardPage() {
         location: '',
         is_published: false,
         guestLimit: 3,
-        invitationTemplate: 'elegance',
+        invitationTemplate: 'ecran',
         view_count: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

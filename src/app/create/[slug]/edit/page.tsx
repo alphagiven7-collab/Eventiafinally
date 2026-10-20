@@ -28,9 +28,15 @@ import {
 import { useTheme } from 'next-themes';
 import {
   EventWithSettings,
+  HeroTextColor,
+  HeroTextPosition,
+  HeroTextSize,
+  HeroTextStyle,
+  InvitationModel,
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
+import { familyMotifsVisible, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -99,6 +105,67 @@ function Section({
 /* ─────────────────────────────────────────────
    Composant champ texte réutilisable
    ───────────────────────────────────────────── */
+function ChoiceRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: readonly (readonly [T, string])[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map(([id, text]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            className={`px-3 py-2 rounded-full text-xs font-medium border transition ${
+              value === id
+                ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ColorChoice({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const safe = /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#5b21b6';
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="flex items-center gap-2">
+        <span className="text-[11px] uppercase text-gray-400">{safe}</span>
+        <input
+          type="color"
+          value={safe}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
+          aria-label={label}
+        />
+      </span>
+    </label>
+  );
+}
+
 function Field({
   label,
   help,
@@ -615,7 +682,12 @@ function EditEventContent() {
   const [donationLink, setDonationLink] = useState('');
   const [whatsappDonation, setWhatsappDonation] = useState('');
   const [whatsappDonationMessage, setWhatsappDonationMessage] = useState('');
-  const [invitationTemplate, setInvitationTemplate] = useState<'elegance' | 'motifs'>('elegance');
+  const [invitationTemplate, setInvitationTemplate] = useState<InvitationModel>('ecran');
+  const [showFamilyMotifs, setShowFamilyMotifs] = useState(false);
+  const [heroPosition, setHeroPosition] = useState<HeroTextPosition>('center');
+  const [heroSize, setHeroSize] = useState<HeroTextSize>('normal');
+  const [heroStyle, setHeroStyle] = useState<HeroTextStyle>('classic');
+  const [heroColor, setHeroColor] = useState<HeroTextColor>('white');
   const [groomMotifImage, setGroomMotifImage] = useState('');
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
@@ -730,7 +802,13 @@ function EditEventContent() {
       setWhatsappDonation(evt.links?.whatsappDonation || evt.whatsappDonationPhone || '');
       setWhatsappDonationMessage(evt.links?.donationWhatsAppMessage || '');
 
-      setInvitationTemplate(evt.invitationTemplate === 'motifs' ? 'motifs' : 'elegance');
+      setInvitationTemplate(invitationModel(evt.invitationTemplate));
+      setShowFamilyMotifs(familyMotifsVisible(evt));
+      const hero = heroTextOf(evt.heroText);
+      setHeroPosition(hero.position);
+      setHeroSize(hero.size);
+      setHeroStyle(hero.style);
+      setHeroColor(hero.color);
       setGroomMotifImage(evt.groomMotifImage || '');
       setBrideMotifImage(evt.brideMotifImage || '');
       setRsvpDeadline(evt.rsvpDeadline ? evt.rsvpDeadline.slice(0, 10) : '');
@@ -824,6 +902,13 @@ function EditEventContent() {
         guestbook: event.sections?.guestbook || false,
       },
       invitationTemplate,
+      showFamilyMotifs,
+      heroText: {
+        position: heroPosition,
+        size: heroSize,
+        style: heroStyle,
+        color: heroColor,
+      },
       groomMotifImage: groomMotifImage || undefined,
       brideMotifImage: brideMotifImage || undefined,
       rsvpDeadline: rsvpDeadline || undefined,
@@ -867,6 +952,11 @@ function EditEventContent() {
     secCountdown,
     secDressCode,
     invitationTemplate,
+    showFamilyMotifs,
+    heroPosition,
+    heroSize,
+    heroStyle,
+    heroColor,
     groomMotifImage,
     brideMotifImage,
     rsvpDeadline,
@@ -1218,40 +1308,68 @@ function EditEventContent() {
 
           <Section
             title="Le style"
-            subtitle="Le même contenu. Deux façons de le montrer."
+            subtitle="Deux pages qui ne se ressemblent pas. Les tissus se rajoutent sur les deux."
             icon={<Sparkles className="w-4 h-4" />}
             defaultOpen
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
-              {([
-                ['elegance', 'Élégance', 'Clair et sobre. La photo du couple n’est pas obligatoire.'],
-                ['motifs', 'Motifs des familles', 'Plus décoré, avec les deux tissus.'],
-              ] as const).map(([value, label, text]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setInvitationTemplate(value)}
-                  className={`text-left rounded-2xl border p-4 ${
-                    invitationTemplate === value
-                      ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                >
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{label}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{text}</p>
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setInvitationTemplate('ecran')}
+                className={`text-left rounded-2xl border p-3 ${
+                  invitationTemplate === 'ecran'
+                    ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="h-20 rounded-lg bg-[#eceff3] overflow-hidden mb-3">
+                  <div className="h-11 bg-gradient-to-b from-slate-500 to-slate-800" />
+                  <div className="-mt-3 mx-3 h-9 bg-white rounded-lg shadow-sm" />
+                </div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Écran</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Grande photo, cartes blanches. On descend la page.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInvitationTemplate('fairepart')}
+                className={`text-left rounded-2xl border p-3 ${
+                  invitationTemplate === 'fairepart'
+                    ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="h-20 rounded-sm bg-[#fbf7ef] border border-[#c9b89a] shadow-[0_0_0_3px_#fbf7ef,0_0_0_4px_#b7a484] mb-3 px-3 pt-2">
+                  <div className="h-7 bg-[#d9cbb6] mx-4" />
+                  <p className="mt-1 text-center text-[10px] text-[#6b5344]" style={{ fontFamily: 'Georgia, serif' }}>Marie & Pierre</p>
+                </div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Faire-part</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Fond ivoire, photo petite. Comme une carte imprimée.</p>
+              </button>
             </div>
-            {invitationTemplate === 'motifs' && (
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3">
+              <input
+                type="checkbox"
+                checked={showFamilyMotifs}
+                onChange={(e) => setShowFamilyMotifs(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-violet-600 rounded cursor-pointer"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Montrer les tissus des familles</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Sur Écran, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
+                </span>
+              </span>
+            </label>
+            {showFamilyMotifs && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <SingleImageUploader
-                  label="Famille du marié"
+                  label="Famille de l'homme"
                   help="Le tissu. Vous pouvez le changer ou l’enlever."
                   value={groomMotifImage}
                   onChange={setGroomMotifImage}
                 />
                 <SingleImageUploader
-                  label="Famille de la mariée"
+                  label="Famille de la femme"
                   help="Le tissu. Vous pouvez le changer ou l’enlever."
                   value={brideMotifImage}
                   onChange={setBrideMotifImage}
@@ -1269,7 +1387,7 @@ function EditEventContent() {
             <div className="space-y-4 pt-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Les couleurs
+                  Une palette pour commencer
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {COLOR_PRESETS.map((preset) => {
@@ -1300,6 +1418,14 @@ function EditEventContent() {
                     );
                   })}
                 </div>
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <ColorChoice label="Couleur des noms" value={primaryColor} onChange={setPrimaryColor} />
+                  <ColorChoice label="Couleur des boutons" value={rsvpButtonColor} onChange={setRsvpButtonColor} />
+                  <ColorChoice label="Couleur des détails" value={accentColor} onChange={setAccentColor} />
+                </div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
+                  La couleur choisie reste, y compris le rouge ou le rose.
+                </p>
               </div>
 
               <Field
@@ -1332,6 +1458,38 @@ function EditEventContent() {
                 value={heroImage}
                 onChange={setHeroImage}
               />
+              <div className="space-y-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-3">
+                <div>
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Le texte sur la photo</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                    Place, taille, style et couleur. Sur le faire-part, la photo est petite : les prénoms restent sur le papier.
+                  </p>
+                </div>
+                <ChoiceRow
+                  label="Place"
+                  value={heroPosition}
+                  onChange={setHeroPosition}
+                  options={[['top', 'Haut'], ['center', 'Milieu'], ['bottom', 'Bas']] as const}
+                />
+                <ChoiceRow
+                  label="Taille"
+                  value={heroSize}
+                  onChange={setHeroSize}
+                  options={[['small', 'Petit'], ['normal', 'Normal'], ['large', 'Grand']] as const}
+                />
+                <ChoiceRow
+                  label="Style"
+                  value={heroStyle}
+                  onChange={setHeroStyle}
+                  options={[['classic', 'Classique'], ['script', 'Écriture'], ['straight', 'Droit']] as const}
+                />
+                <ChoiceRow
+                  label="Couleur"
+                  value={heroColor}
+                  onChange={setHeroColor}
+                  options={[['white', 'Blanc'], ['black', 'Noir'], ['gold', 'Or']] as const}
+                />
+              </div>
 
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-3">
@@ -1647,7 +1805,7 @@ function EditEventContent() {
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier maintenant ?</h2>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
               {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
-              Modèle : {invitationTemplate === 'motifs' ? 'Motifs des familles' : 'Élégance contemporaine'}.
+              Modèle : {invitationTemplate === 'fairepart' ? 'Faire-part' : 'Écran'}.
             </p>
             <p className="text-xs text-gray-500 mt-2">Le lien devient visible. Vous pourrez encore le modifier après.</p>
             <div className="flex gap-2 mt-4">

@@ -9,6 +9,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
+import { cssColor, familyMotifsVisible, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -206,29 +207,6 @@ function isCurrentInvitation(href: string, slug: string): boolean {
   }
 }
 
-function mauveButton(hex: string): string {
-  const match = hex.trim().toLowerCase().match(/^#([0-9a-f]{6})$/);
-  if (!match) return '#7c3aed';
-  const value = Number.parseInt(match[1], 16);
-  const red = (value >> 16) & 255;
-  const green = (value >> 8) & 255;
-  const blue = value & 255;
-  const max = Math.max(red, green, blue);
-  const min = Math.min(red, green, blue);
-  const delta = max - min;
-  let hue = 0;
-  if (delta !== 0) {
-    if (max === red) hue = ((green - blue) / delta) % 6;
-    else if (max === green) hue = (blue - red) / delta + 2;
-    else hue = (red - green) / delta + 4;
-    hue *= 60;
-    if (hue < 0) hue += 360;
-  }
-  const saturation = max === 0 ? 0 : delta / max;
-  if (saturation > 0.28 && (hue <= 28 || hue >= 320)) return '#7c3aed';
-  return hex;
-}
-
 function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName?: string, guestTable?: string) {
   const $ = (sel: string) => root.querySelector(sel) as HTMLElement | null;
   const setText = (sel: string, text: string) => {
@@ -244,14 +222,22 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     if (el && href) el.href = href;
   };
 
-  // Couleurs personnalisées. Un bouton rouge ou rose devient mauve.
-  const primaryColor = event.branding?.primaryColor || '#5b21b6';
-  const accentColor = event.branding?.accentColor || '#2563eb';
-  const rsvpColor = mauveButton(event.rsvpButtonColor || accentColor || '#7c3aed');
+  const primaryColor = cssColor(event.branding?.primaryColor, '#5b21b6');
+  const accentColor = cssColor(event.branding?.accentColor, '#2563eb');
+  const rsvpColor = cssColor(event.rsvpButtonColor || accentColor, '#7c3aed');
+  const template = invitationModel(event.invitationTemplate);
+  const motifsOn = familyMotifsVisible(event);
+  const hero = heroTextOf(event.heroText);
   root.style.setProperty('--primary-color', primaryColor);
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
-  root.dataset.template = event.invitationTemplate === 'motifs' ? 'motifs' : 'elegance';
+  root.style.setProperty('--icon-color', accentColor);
+  root.dataset.template = template;
+  root.dataset.motifs = motifsOn ? 'on' : 'off';
+  root.dataset.heroPosition = hero.position;
+  root.dataset.heroSize = hero.size;
+  root.dataset.heroStyle = hero.style;
+  root.dataset.heroColor = hero.color;
 
   // Hero & Couverture
   const heroImg =
@@ -672,11 +658,13 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   }
 
   const motifSection = $('#section-family-motifs');
-  const showMotif = (boxSel: string, imgSel: string, src?: string) => {
+  const groomSrc = motifsOn ? event.groomMotifImage || '' : '';
+  const brideSrc = motifsOn ? event.brideMotifImage || '' : '';
+  const showMotifCard = (boxSel: string, imgSel: string, src: string) => {
     const box = $(boxSel);
     const img = root.querySelector(imgSel) as HTMLImageElement | null;
     if (!box) return false;
-    if (event.invitationTemplate === 'motifs' && src) {
+    if (template === 'ecran' && src) {
       if (img) img.src = src;
       box.style.display = 'block';
       return true;
@@ -684,10 +672,21 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     box.style.display = 'none';
     return false;
   };
-  const groomShown = showMotif('#groom-motif', '#groom-motif-img', event.groomMotifImage);
-  const brideShown = showMotif('#bride-motif', '#bride-motif-img', event.brideMotifImage);
-  const hasMotif = groomShown || brideShown;
-  if (motifSection) motifSection.style.display = hasMotif ? 'block' : 'none';
+  const groomShown = showMotifCard('#groom-motif', '#groom-motif-img', groomSrc);
+  const brideShown = showMotifCard('#bride-motif', '#bride-motif-img', brideSrc);
+  if (motifSection) motifSection.style.display = groomShown || brideShown ? 'block' : 'none';
+
+  const frameLeft = root.querySelector('#paper-motif-left') as HTMLImageElement | null;
+  const frameRight = root.querySelector('#paper-motif-right') as HTMLImageElement | null;
+  const leftFrame = groomSrc || brideSrc;
+  const rightFrame = brideSrc || groomSrc;
+  if (template === 'fairepart' && leftFrame && frameLeft && frameRight) {
+    frameLeft.src = leftFrame;
+    frameRight.src = rightFrame;
+    root.dataset.motifFrame = '1';
+  } else {
+    root.dataset.motifFrame = '0';
+  }
 
   const main = root.querySelector('#main-view');
   [
@@ -712,6 +711,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const modal = root.querySelector(`#${id}`);
     if (modal && main) main.appendChild(modal);
   });
+  const offlineBar = root.querySelector('#offline-invitation-bar');
+  if (offlineBar && main) main.appendChild(offlineBar);
 }
 
 function renderDynamicCalendar(root: HTMLElement, date: Date) {
@@ -1282,7 +1283,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   btn.style.height = '32px';
   btn.style.padding = '0 10px';
   btn.style.borderRadius = '999px';
-  btn.style.background = '#7c3aed';
+  btn.style.background = 'var(--rsvp-color, #7c3aed)';
   btn.style.color = 'white';
   btn.style.fontSize = '11px';
   btn.style.fontWeight = '700';
@@ -1510,10 +1511,56 @@ function getOriginalCSS(): string {
     .invitation-experience-root .inv-subsurface { background: #f9fafb; border: 1px solid #f3f4f6; }
     .invitation-experience-root .inv-icon-badge { background: #eff6ff; color: var(--icon-color, #2563eb); }
     .invitation-experience-root .hero-bg {
+      height: 58vh;
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #fff;
+      padding: 0 22px;
+      position: relative;
       background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), var(--hero-image-url);
       background-size: cover;
       background-position: center;
     }
+    .invitation-experience-root .hero-copy { position: relative; z-index: 1; max-width: 100%; }
+    .invitation-experience-root .hero-title {
+      font-family: "Playfair Display", serif;
+      font-size: 1.5rem;
+      line-height: 1.15;
+      letter-spacing: 0.04em;
+      margin: 0 0 0.65rem;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+    }
+    .invitation-experience-root .hero-date {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(6px);
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      margin: 0 0 14px;
+    }
+    .invitation-experience-root .hero-subtitle {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.92;
+    }
+    .invitation-experience-root .hero-heart {
+      width: 22px;
+      height: 22px;
+      margin: 4px auto 12px;
+      color: var(--accent-color, #60a5fa);
+    }
+    .invitation-experience-root .hero-heart svg { width: 100%; height: 100%; display: block; }
     .invitation-experience-root .invitation-card {
       position: relative;
       overflow: hidden;
@@ -1577,8 +1624,8 @@ function getOriginalCSS(): string {
       font-size: clamp(2.35rem, 9vw, 3.1rem);
       line-height: 1;
     }
-    .invitation-experience-root .invite-couple-name--left { color: var(--primary-color, #5b21b6); }
-    .invitation-experience-root .invite-couple-name--right { color: var(--accent-color, #2563eb); }
+    .invitation-experience-root .invite-couple-name--left,
+    .invitation-experience-root .invite-couple-name--right { color: var(--primary-color, #5b21b6); }
     .invitation-experience-root .invite-couple-join {
       font-size: clamp(0.5625rem, 2.4vw, 0.625rem);
       letter-spacing: 0.22em;
@@ -1920,7 +1967,7 @@ function getOriginalCSS(): string {
       align-items: center;
       justify-content: center;
       border-radius: 12px;
-      background: #1A1A2E;
+      background: var(--rsvp-color, #1A1A2E);
       color: white;
       font-size: 13px;
       font-weight: 700;
@@ -1983,16 +2030,17 @@ function getOriginalCSS(): string {
       justify-content: center;
       padding: 0 14px;
       border-radius: 12px;
-      background: #2563eb;
+      background: var(--rsvp-color, #2563eb);
       color: white;
       font-size: 12px;
       font-weight: 700;
       text-decoration: none;
       text-align: center;
     }
-    .invitation-experience-root[data-template="elegance"] .invitation-card-floral {
+    .invitation-experience-root .invitation-card-floral {
       display: none;
     }
+    .invitation-experience-root .paper-motif-rail { display: none; }
     .invitation-experience-root .family-motif img {
       width: 100%;
       height: 180px;
@@ -2062,6 +2110,223 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied .checkin-kicker {
       color: #93c5fd;
     }
+
+    @media (min-width: 768px) {
+      .invitation-experience-root .hero-title { font-size: 1.875rem; }
+    }
+    .invitation-experience-root[data-hero-position="top"] .hero-bg {
+      justify-content: flex-start;
+      padding-top: 72px;
+    }
+    .invitation-experience-root[data-hero-position="bottom"] .hero-bg {
+      justify-content: flex-end;
+      padding-bottom: 78px;
+    }
+    .invitation-experience-root[data-hero-size="small"] .hero-title { font-size: 1.2rem; }
+    .invitation-experience-root[data-hero-size="large"] .hero-title { font-size: 2.55rem; line-height: 1.05; }
+    .invitation-experience-root[data-hero-style="script"] .hero-title {
+      font-family: "Great Vibes", cursive;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="small"] .hero-title { font-size: 2.1rem; }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="normal"] .hero-title { font-size: 3.1rem; }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="large"] .hero-title { font-size: 4rem; }
+    .invitation-experience-root[data-hero-style="straight"] .hero-title {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 1.05rem;
+    }
+    .invitation-experience-root[data-hero-style="straight"][data-hero-size="small"] .hero-title { font-size: 0.82rem; }
+    .invitation-experience-root[data-hero-style="straight"][data-hero-size="large"] .hero-title { font-size: 1.45rem; }
+    .invitation-experience-root[data-hero-color="white"] .hero-bg {
+      color: #fff;
+      background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.42) 0%, rgba(15, 10, 20, 0.72) 100%), var(--hero-image-url);
+    }
+    .invitation-experience-root[data-hero-color="black"] .hero-bg {
+      color: #111827;
+      background-image: linear-gradient(180deg, rgba(255, 248, 240, 0.58) 0%, rgba(255, 248, 240, 0.78) 100%), var(--hero-image-url);
+    }
+    .invitation-experience-root[data-hero-color="black"] .hero-title { text-shadow: none; }
+    .invitation-experience-root[data-hero-color="black"] .hero-date {
+      background: rgba(17, 24, 39, 0.08);
+      border-color: rgba(17, 24, 39, 0.18);
+      color: #111827;
+    }
+    .invitation-experience-root[data-hero-color="gold"] .hero-bg {
+      color: #f6e2a8;
+      background-image: linear-gradient(180deg, rgba(28, 16, 6, 0.4) 0%, rgba(28, 16, 6, 0.68) 100%), var(--hero-image-url);
+    }
+    .invitation-experience-root #summary-date,
+    .invitation-experience-root #summary-venue,
+    .invitation-experience-root #dress-code-title,
+    .invitation-experience-root #venue-title {
+      color: var(--primary-color, #5b21b6);
+    }
+    .invitation-experience-root #venue-map-link,
+    .invitation-experience-root .guestbook-more,
+    .invitation-experience-root .guestbook-name,
+    .invitation-experience-root .checkin-kicker,
+    .invitation-experience-root .gps-kicker,
+    .invitation-experience-root #countdown-status {
+      color: var(--accent-color, #2563eb) !important;
+    }
+    .invitation-experience-root .guest-table-line {
+      border-color: color-mix(in srgb, var(--accent-color, #2563eb) 35%, white);
+      background: color-mix(in srgb, var(--accent-color, #2563eb) 12%, white);
+      color: var(--accent-color, #2563eb);
+    }
+
+    .invitation-experience-root[data-template="fairepart"] {
+      background: #e8dcc6;
+      color: #3f2e22;
+    }
+    .invitation-experience-root[data-template="fairepart"] #main-view {
+      background: #fbf7ef !important;
+      width: calc(100% - 24px);
+      max-width: 26.5rem !important;
+      margin: 16px auto !important;
+      min-height: calc(100vh - 32px) !important;
+      border-radius: 2px !important;
+      box-shadow:
+        0 0 0 1px #c9b89a,
+        0 0 0 7px #fbf7ef,
+        0 0 0 8px #b7a484,
+        0 22px 40px rgba(74, 48, 18, 0.18) !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .hero-bg {
+      height: 196px;
+      min-height: 168px;
+      margin: 28px 34px 0;
+      border-radius: 2px;
+      box-shadow: 0 0 0 6px #fbf7ef, 0 0 0 7px #c9b89a;
+    }
+    .invitation-experience-root[data-template="fairepart"][data-hero-position="top"] .hero-bg { padding-top: 18px; }
+    .invitation-experience-root[data-template="fairepart"][data-hero-position="bottom"] .hero-bg { padding-bottom: 18px; }
+    .invitation-experience-root[data-template="fairepart"][data-hero-size="large"] .hero-title { font-size: 1.85rem; }
+    .invitation-experience-root[data-template="fairepart"][data-hero-style="script"][data-hero-size="large"] .hero-title { font-size: 2.7rem; }
+    .invitation-experience-root[data-template="fairepart"] .hero-subtitle { font-size: 11px; }
+    .invitation-experience-root[data-template="fairepart"] .hero-heart { width: 16px; height: 16px; }
+    .invitation-experience-root[data-template="fairepart"] .invite-sheet {
+      margin-top: 8px !important;
+      padding-left: 28px !important;
+      padding-right: 28px !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .invitation-card,
+    .invitation-experience-root[data-template="fairepart"] .invitation-card--floral::before {
+      background: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .invitation-card--floral::before { display: none; }
+    .invitation-experience-root[data-template="fairepart"] .invite-card-overline {
+      letter-spacing: 0.42em;
+      color: #8a735c;
+    }
+    .invitation-experience-root[data-template="fairepart"] .invite-couple-row {
+      flex-wrap: nowrap;
+      gap: 0.35rem 0.5rem;
+    }
+    .invitation-experience-root[data-template="fairepart"] .invite-couple-name {
+      font-family: "Playfair Display", serif;
+      font-weight: 400;
+      font-size: clamp(1.35rem, 5.6vw, 1.9rem);
+    }
+    .invitation-experience-root[data-template="fairepart"] .invite-body-text.invite-calligraphy {
+      font-family: "Playfair Display", serif;
+      font-style: italic;
+      font-size: 1.05rem;
+    }
+    .invitation-experience-root[data-template="fairepart"] .surface-card,
+    .invitation-experience-root[data-template="fairepart"] .gps-card,
+    .invitation-experience-root[data-template="fairepart"] .guestbook-open,
+    .invitation-experience-root[data-template="fairepart"] .drink-menu-shell,
+    .invitation-experience-root[data-template="fairepart"] .best-photos-shell {
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      border-top: 1px solid #e4d5bc !important;
+      color: #3f2e22 !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .best-photos-shell h3,
+    .invitation-experience-root[data-template="fairepart"] .best-photos-shell p,
+    .invitation-experience-root[data-template="fairepart"] .gps-place,
+    .invitation-experience-root[data-template="fairepart"] .inv-text-primary,
+    .invitation-experience-root[data-template="fairepart"] h3 {
+      color: #3f2e22 !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] #summary-date,
+    .invitation-experience-root[data-template="fairepart"] #summary-venue,
+    .invitation-experience-root[data-template="fairepart"] .invite-couple-name {
+      color: var(--primary-color, #5b21b6) !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .inv-text-muted,
+    .invitation-experience-root[data-template="fairepart"] .invite-body-text,
+    .invitation-experience-root[data-template="fairepart"] .invite-greeting {
+      color: #6d5848 !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] .inv-subsurface,
+    .invitation-experience-root[data-template="fairepart"] .dress-marquee-wrapper {
+      background: rgba(255, 252, 246, 0.7) !important;
+      border-color: #e4d5bc !important;
+    }
+    .invitation-experience-root[data-template="fairepart"] #section-family-motifs { display: none !important; }
+    .invitation-experience-root[data-motif-frame="1"] .paper-motif-rail {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .invitation-experience-root[data-motif-frame="1"] .paper-motif-rail img {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 42px;
+      height: 100%;
+      object-fit: cover;
+    }
+    .invitation-experience-root[data-motif-frame="1"] #paper-motif-left { left: 0; }
+    .invitation-experience-root[data-motif-frame="1"] #paper-motif-right { right: 0; }
+    .invitation-experience-root[data-motif-frame="1"] #main-view {
+      padding-left: 42px;
+      padding-right: 42px;
+    }
+    .invitation-experience-root[data-template="fairepart"][data-motif-frame="1"] .hero-bg {
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"],
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] #main-view {
+      background: #fbf7ef !important;
+      color: #3f2e22 !important;
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .surface-card,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .gps-card,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .guestbook-open,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .drink-menu-shell,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .invitation-card,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .guest-message,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .guestbook-note,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .inv-modal-card {
+      background: #fffdf8 !important;
+      color: #3f2e22 !important;
+      border-color: #e4d5bc !important;
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .guestbook-text,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .guest-message,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .inv-text-primary,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] h3 {
+      color: #3f2e22 !important;
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .inv-text-muted {
+      color: #6d5848 !important;
+    }
   `;
 }
 
@@ -2089,19 +2354,25 @@ function getOriginalHTML(): string {
 
     <!-- Main View -->
     <main id="main-view" style="max-width:28rem;margin:0 auto;background:#fafafa;min-height:100vh;position:relative;box-shadow:0 25px 50px -12px rgba(0,0,0,0.22);overflow:hidden;padding-bottom:44px;display:block;opacity:1;">
+      <div id="paper-motif-rail" class="paper-motif-rail" aria-hidden="true">
+        <img id="paper-motif-left" alt="">
+        <img id="paper-motif-right" alt="">
+      </div>
 
       <!-- 1. Hero Couverture -->
-      <header class="hero-bg" style="height:58vh;min-height:360px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;padding:0 22px;position:relative;">
-        <p id="hero-date-pill" style="font-size:10px;letter-spacing:0.28em;text-transform:uppercase;background:rgba(255,255,255,0.16);backdrop-filter:blur(6px);padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);margin-bottom:14px;"></p>
-        <h1 id="hero-title" class="font-serif text-2xl md:text-3xl mb-3" style="font-family:'Playfair Display',serif;letter-spacing:0.04em;text-shadow:0 2px 14px rgba(0,0,0,0.35);">Titre</h1>
-        <div style="width:22px;height:22px;color:#60a5fa;margin:4px auto 12px;">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <header class="hero-bg">
+        <div class="hero-copy">
+          <p id="hero-date-pill" class="hero-date"></p>
+          <h1 id="hero-title" class="hero-title">Titre</h1>
+          <div class="hero-heart">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <p id="hero-subtitle" class="hero-subtitle">Couple</p>
         </div>
-        <p id="hero-subtitle" style="font-size:13px;font-weight:300;letter-spacing:0.2em;text-transform:uppercase;opacity:0.92;">Couple</p>
       </header>
 
-      <!-- 2. Carte d'invitation florale -->
-      <section style="padding:0 16px;margin-top:-52px;position:relative;z-index:10;">
+      <!-- 2. Carte d'invitation -->
+      <section class="invite-sheet" style="padding:0 16px;margin-top:-52px;position:relative;z-index:10;">
         <article class="invitation-card invitation-card--floral rounded-2xl text-center" aria-label="Carte d'invitation">
           <div class="invitation-card-floral invitation-card-floral--tl" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
@@ -2179,7 +2450,7 @@ function getOriginalHTML(): string {
       <section id="section-gallery" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="best-photos-shell" style="padding:18px 16px;color:white;">
           <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Ensemble</p>
-          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white !important;">Nos photos</h3>
+          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white;">Nos photos</h3>
           <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;"></div>
           <div class="premium-marquee">
             <div class="premium-marquee-track"></div>
@@ -2248,7 +2519,7 @@ function getOriginalHTML(): string {
           </div>
           <h3 id="venue-title" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:24px;margin-bottom:6px;">Lieu</h3>
           <p id="venue-address" class="inv-text-muted" style="font-size:14px;line-height:1.5;margin-bottom:12px;"></p>
-          <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none;">Voir sur la carte</a>
+          <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:var(--accent-color, #2563eb);font-weight:600;text-decoration:none;">Voir sur la carte</a>
         </div>
       </div>
 
@@ -2279,12 +2550,12 @@ function getOriginalHTML(): string {
 
       <section id="section-family-motifs" style="padding:0 16px;margin-top:24px;display:none;">
         <div id="groom-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;margin-bottom:12px;">
-          <h3 class="inv-text-primary">Motif de la famille du marié</h3>
-          <img id="groom-motif-img" alt="Motif de la famille du marié">
+          <h3 class="inv-text-primary">Famille de l'homme</h3>
+          <img id="groom-motif-img" alt="Tissu de la famille de l'homme">
         </div>
         <div id="bride-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;">
-          <h3 class="inv-text-primary">Motif de la famille de la mariée</h3>
-          <img id="bride-motif-img" alt="Motif de la famille de la mariée">
+          <h3 class="inv-text-primary">Famille de la femme</h3>
+          <img id="bride-motif-img" alt="Tissu de la famille de la femme">
         </div>
       </section>
 
@@ -2384,7 +2655,7 @@ function getOriginalHTML(): string {
         </div>
       </section>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
-        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:#5b21b6;color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer</button>
+        <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:var(--rsvp-color, #5b21b6);color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer</button>
       </div>
     </main>
   `;
@@ -2420,6 +2691,10 @@ export function mountInvitationForCapture(
     .invitation-experience-root.pdf-capture .hero-bg {
       height: 460px !important;
       min-height: 460px !important;
+    }
+    .invitation-experience-root.pdf-capture[data-template="fairepart"] .hero-bg {
+      height: 220px !important;
+      min-height: 180px !important;
     }
   `;
   const root = document.createElement('div');

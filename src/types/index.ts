@@ -158,6 +158,19 @@ export interface Ambiance {
   hasFile?: boolean;
 }
 
+export type InvitationModel = 'ecran' | 'fairepart';
+export type HeroTextPosition = 'top' | 'center' | 'bottom';
+export type HeroTextSize = 'small' | 'normal' | 'large';
+export type HeroTextStyle = 'classic' | 'script' | 'straight';
+export type HeroTextColor = 'white' | 'black' | 'gold';
+
+export interface HeroTextSettings {
+  position?: HeroTextPosition;
+  size?: HeroTextSize;
+  style?: HeroTextStyle;
+  color?: HeroTextColor;
+}
+
 // Complete Event with customization (from JSON files)
 export interface EventWithSettings extends Event {
     identityRevision?: number;
@@ -203,7 +216,9 @@ export interface EventWithSettings extends Event {
     tables?: { name: string; seats: number }[];
     guestPack?: number | null;
     guestLimit?: number;
-    invitationTemplate?: 'elegance' | 'motifs';
+    invitationTemplate?: InvitationModel | 'elegance' | 'motifs';
+    showFamilyMotifs?: boolean;
+    heroText?: HeroTextSettings;
     groomMotifImage?: string;
     brideMotifImage?: string;
   }

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
 import { formatUsd, GUEST_PACKS, guestCapacity, packTotalUsd } from '@/constants/pricing';
+import { emptyGuestTotals, loadGuestTotalsByEvent, type GuestTotals } from '@/lib/admin/session';
 
 type EventRecord = {
   id: string;
@@ -24,6 +25,7 @@ export default function UnlockEventPage() {
   const [note, setNote] = useState('');
   const [owner, setOwner] = useState('');
   const [used, setUsed] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<GuestTotals>(emptyGuestTotals());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,6 +38,9 @@ export default function UnlockEventPage() {
     }
     void supabase.from('guests').select('id', { count: 'exact', head: true }).eq('event_id', result.id).then(({ count: total }) => {
       setUsed(total ?? 0);
+    });
+    void loadGuestTotalsByEvent().then((rows) => {
+      setAnswers(rows[result.id] || emptyGuestTotals());
     });
     if (typeof result.guest_limit === 'number' && result.guest_limit > 3) {
       setCount(result.guest_limit - 3);
@@ -96,9 +101,17 @@ export default function UnlockEventPage() {
         <Typography.Title level={4} style={{ marginTop: 0 }}>{result?.title || 'Invitation'}</Typography.Title>
         <Typography.Paragraph>
           {owner || 'Organisateur'} · {result?.is_published ? 'Publiée' : 'Brouillon'}
-          {used != null ? ` · ${used} invité${used > 1 ? 's' : ''} déjà ajouté${used > 1 ? 's' : ''}` : ''}
+          {used != null ? ` · ${used} invitation${used > 1 ? 's' : ''} envoyée${used > 1 ? 's' : ''}` : ''}
+          {` · ${answers.confirmed} confirmée${answers.confirmed > 1 ? 's' : ''}`}
+          {` · ${answers.pending} en attente`}
+          {` · ${answers.declined} refusée${answers.declined > 1 ? 's' : ''}`}
           {typeof result?.guest_limit === 'number' ? ` · limite actuelle ${result.guest_limit}` : ''}
         </Typography.Paragraph>
+        <Space wrap style={{ marginBottom: 16 }}>
+          {result?.slug && <Link href={`/create/${result.slug}/edit?from=admin`}><Button>Modifier l’invitation</Button></Link>}
+          {result?.id && <Link href={`/dashboard/invites?event=${encodeURIComponent(result.id)}`}><Button>Gérer les invités</Button></Link>}
+          {result?.slug && <a href={`/e/${result.slug}`} target="_blank" rel="noreferrer"><Button>Ouvrir</Button></a>}
+        </Space>
         <Space wrap>
           {GUEST_PACKS.map((pack) => (
             <Button key={pack} type={count === pack ? 'primary' : 'default'} onClick={() => setCount(pack)}>

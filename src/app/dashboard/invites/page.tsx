@@ -5,7 +5,8 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
-import { fetchInvitationBySlug, listInvitations, publishInvitation } from '@/lib/events/store';
+import { fetchInvitationBySlug, fromDatabase, listInvitations, publishInvitation } from '@/lib/events/store';
+import { isCurrentSuperAdmin } from '@/lib/admin/session';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest } from '@/lib/guests/store';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -91,12 +92,18 @@ function GuestManagementContent() {
           return;
         }
         const evts = await listInvitations(createClient(), user.id);
-        setEvents(evts);
         const params = new URLSearchParams(window.location.search);
         const requested = params.get('event');
+        let available = evts;
         const match = evts.find((event) => event.id === requested);
-        if (match) setSelectedEventId(match.id);
-        else if (evts.length > 0) setSelectedEventId(evts[0].id);
+        if (requested && !match && await isCurrentSuperAdmin(user.id)) {
+          const { data } = await createClient().from('events').select('*').eq('id', requested).maybeSingle();
+          if (data) available = [fromDatabase(data), ...evts];
+        }
+        setEvents(available);
+        const chosen = available.find((event) => event.id === requested);
+        if (chosen) setSelectedEventId(chosen.id);
+        else if (available.length > 0) setSelectedEventId(available[0].id);
         if (params.get('tab') === 'rsvps') setActiveTab('rsvps');
         if (params.get('tool') === 'add') {
           setActiveTab('guests');

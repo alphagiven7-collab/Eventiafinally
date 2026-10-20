@@ -184,6 +184,23 @@ GRANT EXECUTE ON FUNCTION public.admin_unlock_event(uuid, integer, text) TO auth
 GRANT EXECUTE ON FUNCTION public.admin_set_event_blocked(uuid, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_delete_event(uuid) TO authenticated;
 
+DROP POLICY IF EXISTS "Super admin inserts events" ON public.events;
+CREATE POLICY "Super admin inserts events" ON public.events
+  FOR INSERT
+  WITH CHECK (public.is_super_admin());
+
+DROP POLICY IF EXISTS "Super admin manages guests" ON public.guests;
+CREATE POLICY "Super admin manages guests" ON public.guests
+  FOR ALL
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
+DROP POLICY IF EXISTS "Super admin manages rsvps" ON public.rsvps;
+CREATE POLICY "Super admin manages rsvps" ON public.rsvps
+  FOR ALL
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
 NOTIFY pgrst, 'reload schema';`;
 }
 

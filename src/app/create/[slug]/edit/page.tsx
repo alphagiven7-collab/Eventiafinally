@@ -40,6 +40,7 @@ import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { fetchInvitationBySlug, publishInvitation } from '@/lib/events/store';
+import { isCurrentSuperAdmin } from '@/lib/admin/session';
 import { clearCreationDraft, readCreationDraft, writeCreationDraft } from '@/lib/drafts/local-draft';
 
 /* ─────────────────────────────────────────────
@@ -699,7 +700,12 @@ function EditEventContent() {
   const [rsvpDeadline, setRsvpDeadline] = useState('');
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState(false);
+  const [fromAdmin, setFromAdmin] = useState(false);
   const [blocked, setBlocked] = useState(false);
+
+  useEffect(() => {
+    setFromAdmin(new URLSearchParams(window.location.search).get('from') === 'admin');
+  }, []);
 
   /* ── Chargement de l'événement ── */
   useEffect(() => {
@@ -714,8 +720,13 @@ function EditEventContent() {
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (cancelled) return;
           if (hosted && hosted.user_id && hosted.user_id !== user.id) {
-            setBlocked(true);
-            setLoading(false);
+            const admin = await isCurrentSuperAdmin(user.id);
+            if (!admin) {
+              setBlocked(true);
+              setLoading(false);
+              return;
+            }
+            if (!cancelled) populateFields(hosted);
             return;
           }
           if (sameDraft && (!hosted || sameDraft.savedAt >= (hosted?.updated_at || ''))) {
@@ -1200,7 +1211,7 @@ function EditEventContent() {
               className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl border border-violet-300 bg-white text-violet-700 text-sm font-semibold hover:bg-violet-50 dark:bg-gray-900 dark:text-violet-200 dark:border-violet-700"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
-              Retour aux événements
+              {fromAdmin ? 'Retour à l’administration' : 'Retour aux événements'}
             </button>
             <button
               type="button"
@@ -1912,7 +1923,7 @@ function EditEventContent() {
                   const saved = await handleSave('draft');
                   if (!saved) return;
                   setLeaveAsk(false);
-                  router.push('/dashboard');
+                  router.push(fromAdmin ? '/admin/evenements' : '/dashboard');
                 }}
                 className="py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50"
               >

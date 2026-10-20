@@ -16,6 +16,7 @@ import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIO
 import EventPermission from '@/components/account/EventPermission';
 import InstallApp from '@/components/pwa/InstallApp';
 import { useOrganizerUnlocked } from '@/hooks/useOrganizerUnlocked';
+import { isCurrentSuperAdmin } from '@/lib/admin/session';
 
 function eventStatus(event: EventWithSettings) {
   if (event.isBlocked) {
@@ -121,7 +122,8 @@ export default function DashboardPage() {
       return;
     }
     const already = await ownedEventCount(createClient(), user.id);
-    if ((already ?? events.length) >= FREE_EVENT_LIMIT) {
+    const admin = await isCurrentSuperAdmin(user.id);
+    if (!admin && (already ?? events.length) >= FREE_EVENT_LIMIT) {
       setNeedsPermission(true);
       setShowCreateInput(false);
       setCreateError(`Vous avez déjà ${FREE_EVENT_LIMIT} événements. Demandez la permission à l’admin pour en créer un autre.`);

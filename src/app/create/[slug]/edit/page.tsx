@@ -669,6 +669,7 @@ function EditEventContent() {
   const [drinks, setDrinks] = useState<{ id: string; name: string; desc: string; emoji: string }[]>([]);
   const [secDressCode, setSecDressCode] = useState(true);
   const [dressCodeTitle, setDressCodeTitle] = useState('');
+  const [dressCodeColor, setDressCodeColor] = useState('#c06c84');
   const [dressImages, setDressImages] = useState<string[]>([]);
   const [practicalSectionTitle, setPracticalSectionTitle] = useState('');
   const [practicalInfo, setPracticalInfo] = useState<PracticalInfoItem[]>([]);
@@ -789,6 +790,7 @@ function EditEventContent() {
       setProgram(evt.program || []);
       setDrinks(evt.drinks || []);
       setDressCodeTitle(evt.dressCodeTitle || '');
+      setDressCodeColor(evt.dressCodeColor || evt.branding?.accentColor || '#c06c84');
       setDressImages(evt.dressImages || []);
       setPracticalSectionTitle(evt.practicalSectionTitle || '');
       setPracticalInfo(evt.practicalInfo || []);
@@ -877,6 +879,7 @@ function EditEventContent() {
         mapImage: venueMapImage || '',
       },
       dressCodeTitle: dressCodeTitle || undefined,
+      dressCodeColor,
       dressImages: dressImages.length > 0 ? dressImages : undefined,
       practicalSectionTitle: undefined,
       practicalInfo: practicalInfo.length > 0 ? practicalInfo : undefined,
@@ -942,6 +945,7 @@ function EditEventContent() {
     program,
     drinks,
     dressCodeTitle,
+    dressCodeColor,
     dressImages,
     practicalInfo,
     musicEnabled,
@@ -1668,6 +1672,11 @@ function EditEventContent() {
                       value={dressCodeTitle}
                       onChange={setDressCodeTitle}
                       placeholder="Tenue de fête. Blanc et doré."
+                    />
+                    <ColorChoice
+                      label="Couleur du thème de la tenue"
+                      value={dressCodeColor}
+                      onChange={setDressCodeColor}
                     />
                     <PhotoUploader
                       onPhotosChange={setDressImages}

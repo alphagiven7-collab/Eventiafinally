@@ -225,6 +225,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const primaryColor = cssColor(event.branding?.primaryColor, '#5b21b6');
   const accentColor = cssColor(event.branding?.accentColor, '#2563eb');
   const rsvpColor = cssColor(event.rsvpButtonColor || accentColor, '#7c3aed');
+  const dressColor = cssColor(event.dressCodeColor || accentColor, '#c06c84');
   const template = invitationModel(event.invitationTemplate);
   const motifsOn = familyMotifsVisible(event);
   const hero = heroTextOf(event.heroText);
@@ -233,6 +234,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
   root.style.setProperty('--icon-color', accentColor);
+  root.style.setProperty('--dress-color', dressColor);
   root.dataset.template = template;
   root.dataset.motifs = motifsOn ? 'on' : 'off';
   root.dataset.heroPosition = hero.position;
@@ -659,7 +661,11 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   };
   const groomShown = showMotifCard('#groom-motif', '#groom-motif-img', groomSrc);
   const brideShown = showMotifCard('#bride-motif', '#bride-motif-img', brideSrc);
-  if (motifSection) motifSection.style.display = groomShown || brideShown ? 'block' : 'none';
+  if (motifSection) {
+    const motifCount = Number(groomShown) + Number(brideShown);
+    motifSection.dataset.count = String(motifCount);
+    motifSection.style.display = motifCount > 0 ? 'grid' : 'none';
+  }
 
   const frameLeft = root.querySelector('#paper-motif-left') as HTMLImageElement | null;
   const frameRight = root.querySelector('#paper-motif-right') as HTMLImageElement | null;
@@ -1586,6 +1592,7 @@ function getOriginalCSS(): string {
       --accent-color: #2563eb;
       --rsvp-color: #7c3aed;
       --icon-color: #2563eb;
+      --dress-color: #c06c84;
       font-family: 'Montserrat', sans-serif;
       background-color: #f4f4f6;
       color: #1f2937;
@@ -1990,23 +1997,23 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied .gallery-tile { background: #1e293b; }
     .invitation-experience-root .dress-marquee-wrapper {
       overflow: hidden;
-      border-radius: 0.75rem;
-      background: #f8fafc;
-      border: 1px solid #f1f5f9;
+      border-radius: 0.625rem;
+      background: transparent;
+      border: 0;
     }
     .invitation-experience-root .dress-marquee-track {
       display: flex;
       width: max-content;
-      gap: 0.75rem;
-      padding: 0.75rem;
+      gap: 0.55rem;
+      padding: 0.15rem 0;
       animation: dressMarquee 20s linear infinite;
     }
     .invitation-experience-root .dress-marquee-track img {
       width: 120px;
       height: 160px;
       object-fit: cover;
-      border-radius: 0.75rem;
-      border: 1px solid #e5e7eb;
+      border-radius: 0.625rem;
+      border: 0;
       flex-shrink: 0;
     }
     @keyframes dressMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -2325,17 +2332,77 @@ function getOriginalCSS(): string {
       display: none;
     }
     .invitation-experience-root .paper-motif-rail { display: none; }
+    .invitation-experience-root #section-family-motifs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: start;
+    }
+    .invitation-experience-root #section-family-motifs[data-count="1"] {
+      grid-template-columns: minmax(0, 15.5rem);
+      justify-content: center;
+    }
+    .invitation-experience-root .family-motif {
+      min-width: 0;
+      margin: 0 !important;
+      padding: 7px !important;
+      border-radius: 12px !important;
+      border-color: rgba(148, 163, 184, 0.2) !important;
+      box-shadow: 0 7px 18px rgba(17, 24, 39, 0.055);
+    }
     .invitation-experience-root .family-motif img {
       width: 100%;
-      height: 180px;
+      height: auto;
+      aspect-ratio: 3 / 4;
       object-fit: cover;
-      border-radius: 16px;
+      border-radius: 8px;
       display: block;
     }
     .invitation-experience-root .family-motif h3 {
       font-family: 'Playfair Display', serif;
-      font-size: 18px;
-      margin: 0 0 8px;
+      font-size: clamp(0.78rem, 3.5vw, 0.94rem);
+      line-height: 1.25;
+      text-align: center;
+      margin: 3px 2px 8px;
+    }
+    .invitation-experience-root .dress-code-card {
+      padding: 16px 14px !important;
+      border-radius: 14px !important;
+      border-color: color-mix(in srgb, var(--dress-color, #c06c84) 24%, transparent) !important;
+      box-shadow: 0 8px 22px rgba(17, 24, 39, 0.055) !important;
+    }
+    .invitation-experience-root .dress-code-icon {
+      width: 34px !important;
+      height: 34px !important;
+      margin-bottom: 9px !important;
+      background: color-mix(in srgb, var(--dress-color, #c06c84) 14%, white) !important;
+      color: var(--dress-color, #c06c84) !important;
+    }
+    .invitation-experience-root .dress-code-icon svg {
+      width: 17px !important;
+      height: 17px !important;
+      color: currentColor !important;
+    }
+    .invitation-experience-root #dress-code-title {
+      color: var(--dress-color, #c06c84) !important;
+    }
+    .invitation-experience-root .dress-code-label {
+      color: color-mix(in srgb, var(--dress-color, #c06c84) 66%, #6b7280) !important;
+      margin-bottom: 11px !important;
+    }
+    .invitation-experience-root.dark-mode-applied .family-motif {
+      border-color: rgba(148, 163, 184, 0.16) !important;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+    }
+    .invitation-experience-root.dark-mode-applied .dress-code-card {
+      border-color: color-mix(in srgb, var(--dress-color, #c06c84) 38%, transparent) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .dress-code-icon {
+      background: color-mix(in srgb, var(--dress-color, #c06c84) 20%, #0f172a) !important;
+      color: color-mix(in srgb, var(--dress-color, #c06c84) 72%, white) !important;
+    }
+    .invitation-experience-root.dark-mode-applied #dress-code-title,
+    .invitation-experience-root.dark-mode-applied .dress-code-label {
+      color: color-mix(in srgb, var(--dress-color, #c06c84) 72%, white) !important;
     }
     @media print {
       .invitation-experience-root #app-floating-tools,
@@ -2458,7 +2525,6 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root #summary-date,
     .invitation-experience-root #summary-venue,
-    .invitation-experience-root #dress-code-title,
     .invitation-experience-root #venue-title {
       color: var(--primary-color, #5b21b6);
     }
@@ -2818,12 +2884,12 @@ function getOriginalHTML(): string {
 
       <!-- 5. Dress Code -->
       <section id="section-dress-code" style="padding:0 16px;margin-top:24px;display:none;">
-        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
-          <div class="inv-icon-badge" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+        <div class="surface-card dress-code-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:24px;text-align:center;border:1px solid #f3f4f6;">
+          <div class="inv-icon-badge dress-code-icon" style="width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
             <svg style="width:20px;height:20px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8l-4-3-2 2h-4l-2-2-4 3v4l2 1v8h12v-8l2-1z"/></svg>
           </div>
           <h3 id="dress-code-title" class="font-serif text-lg mb-1 inv-text-primary" style="font-family:'Playfair Display',serif;">Tenue élégante</h3>
-          <p style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">La tenue</p>
+          <p class="dress-code-label" style="font-size:10px;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.2em;">La tenue</p>
           <div class="dress-marquee-wrapper" style="display:none;">
             <div class="dress-marquee-track"></div>
           </div>

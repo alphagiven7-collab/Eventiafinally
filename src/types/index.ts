@@ -198,6 +198,7 @@ export interface EventWithSettings extends Event {
     links?: EventLinks;
     dressCodeTitle?: string;
     dressImages?: string[];
+    dressCodeColor?: string;
     drinks?: DrinkItem[];
     ambiance?: Ambiance;
     venue?: string;

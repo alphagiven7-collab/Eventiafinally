@@ -28,6 +28,7 @@ export default function InvitationView({
   const [offlineGuest, setOfflineGuest] = useState<{ name?: string; table?: string; status?: GuestStatus } | null>(null);
   const [usingOffline, setUsingOffline] = useState(false);
   const [offlineNote, setOfflineNote] = useState('');
+  const [linkGuestName, setLinkGuestName] = useState('');
 
   // Charger l'événement — LOCAL FIRST pour une expérience instantanée (Mobile First)
   useEffect(() => {
@@ -53,8 +54,10 @@ export default function InvitationView({
           return;
         }
         if (!cancelled) {
-          setOfflineNote('Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.');
-          setEvent(null);
+          setOfflineNote(known
+            ? 'Connexion absente. Cette copie reste affichée.'
+            : 'Cette invitation doit encore être enregistrée pendant que vous êtes en ligne.');
+          if (!known) setEvent(null);
           setLoading(false);
           return;
         }
@@ -77,15 +80,19 @@ export default function InvitationView({
           if (cancelled) return;
           const hosted = await fetchInvitationBySlug(createClient(), slug, { includeMusic: false });
           if (hosted && !cancelled) {
-            setEvent((current) => (
-              current &&
-              current.id === hosted.id &&
-              current.updated_at === hosted.updated_at &&
-              current.is_published === hosted.is_published &&
-              current.isBlocked === hosted.isBlocked
-                ? current
-                : hosted
-            ));
+            setEvent((current) => {
+              if (initialMediaDeferred) return hosted;
+              if (
+                current &&
+                current.id === hosted.id &&
+                current.updated_at === hosted.updated_at &&
+                current.is_published === hosted.is_published &&
+                current.isBlocked === hosted.isBlocked
+              ) {
+                return current;
+              }
+              return hosted;
+            });
             const saved = await readOfflineInvitation(slug, token);
             if (saved && saved.updatedAt && hosted.updated_at && saved.updatedAt !== hosted.updated_at) {
               setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
@@ -117,6 +124,11 @@ export default function InvitationView({
 
     return () => { cancelled = true; };
   }, [slug, initialEvent, initialMediaDeferred]);
+
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get('guest')?.trim() || '';
+    if (name) setLinkGuestName(name);
+  }, [slug]);
 
   // Le lien personnel est vérifié sur le serveur, pas dans ce navigateur.
   useEffect(() => {
@@ -194,7 +206,7 @@ export default function InvitationView({
       )}
       <InvitationExperience
         event={event}
-        guestName={matchedGuest?.name || offlineGuest?.name}
+        guestName={matchedGuest?.name || offlineGuest?.name || linkGuestName || undefined}
         guestToken={matchedGuest?.token}
         guestStatus={shownStatus}
         guestTable={matchedGuest?.table_number || offlineGuest?.table}

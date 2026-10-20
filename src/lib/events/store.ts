@@ -139,6 +139,23 @@ export async function fetchInvitationStamp(
   };
 }
 
+export async function fetchInvitationShell(
+  supabase: DbClient,
+  slug: string,
+): Promise<EventWithSettings | null> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, user_id, slug, title, subtitle, event_type, event_date, event_time, location, address, description, cover_image, is_published, is_blocked, created_at, updated_at')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const event = fromDatabase(data as EventRow);
+  if (!event.heroImage && /^https:\/\//i.test(event.cover_image || '')) {
+    event.heroImage = event.cover_image;
+  }
+  return event;
+}
+
 export async function fetchInvitationBySlug(
   supabase: DbClient,
   slug: string,
@@ -187,18 +204,16 @@ export async function fetchInvitationMeta(
 ): Promise<{ title: string; description: string; coverUrl: string } | null> {
   const { data, error } = await supabase
     .from('events')
-    .select('title, description, cover_image, event_settings(meta_description, branding)')
+    .select('title, description, cover_image, event_settings(meta_description)')
     .eq('slug', slug)
     .maybeSingle();
   if (error || !data) return null;
   const settings = Array.isArray(data.event_settings) ? data.event_settings[0] : data.event_settings;
-  const branding = settings?.branding;
-  const coverUrl = [branding?.ogShareImage, data.cover_image, branding?.heroImage, branding?.welcomeImage]
-    .find((value) => typeof value === 'string' && (/^https:\/\//i.test(value) || value.startsWith('data:image/'))) || '';
+  const cover = typeof data.cover_image === 'string' ? data.cover_image : '';
   return {
     title: data.title,
     description: settings?.meta_description || data.description || '',
-    coverUrl,
+    coverUrl: /^https:\/\//i.test(cover) ? cover : '',
   };
 }
 

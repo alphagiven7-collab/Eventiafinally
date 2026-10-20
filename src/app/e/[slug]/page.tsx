@@ -1,24 +1,31 @@
 import { EventWithSettings } from '@/types';
-import { fetchInvitationBySlug } from '@/lib/events/store';
+import { fetchInvitationBySlug, fetchInvitationShell } from '@/lib/events/store';
 import { createPublicClient } from '@/lib/supabase/public';
 import InvitationView from './invitation-view';
 
 export const revalidate = 60;
 
-function firstPaintEvent(event: EventWithSettings): EventWithSettings {
-  const heroImage =
+function safeHero(value: string, slug: string): string {
+  if (/^https:\/\//i.test(value)) return value;
+  if (value.startsWith('data:image/')) return `/e/${slug}/cover`;
+  return '';
+}
+
+function firstPaintEvent(event: EventWithSettings, slug: string): EventWithSettings {
+  const rawHero =
     event.heroImage ||
     event.hero_image ||
     event.branding?.heroImage ||
     event.cover_image ||
     event.bestPhotos?.[0] ||
     '';
+  const heroImage = safeHero(rawHero, slug);
 
   return {
     ...event,
     heroImage,
     hero_image: undefined,
-    cover_image: undefined,
+    cover_image: heroImage.startsWith('http') ? heroImage : undefined,
     welcomeImage: undefined,
     welcome_image: undefined,
     bestPhotos: undefined,
@@ -33,11 +40,14 @@ function firstPaintEvent(event: EventWithSettings): EventWithSettings {
     branding: event.branding
       ? {
           ...event.branding,
-          heroImage: '',
+          heroImage: heroImage,
           welcomeImage: '',
-          ogShareImage: '',
+          ogShareImage: heroImage,
         }
       : event.branding,
+    ambiance: event.ambiance
+      ? { ...event.ambiance, musicUrl: event.ambiance.musicUrl?.startsWith('data:') ? '' : event.ambiance.musicUrl }
+      : event.ambiance,
   };
 }
 
@@ -52,11 +62,24 @@ export default async function EventInvitationPage({ params }: { params: Promise<
       if (hosted) {
         delete hosted.adminCode;
         delete hosted.user_id;
-        initialEvent = firstPaintEvent(hosted);
+        initialEvent = firstPaintEvent(hosted, slug);
         initialMediaDeferred = true;
       }
     } catch {
       initialEvent = null;
+    }
+    if (!initialEvent) {
+      try {
+        const shell = await fetchInvitationShell(supabase, slug);
+        if (shell) {
+          delete shell.adminCode;
+          delete shell.user_id;
+          initialEvent = shell;
+          initialMediaDeferred = true;
+        }
+      } catch {
+        initialEvent = null;
+      }
     }
   }
 

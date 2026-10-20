@@ -13,13 +13,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!event) {
     return {
-      title: 'Invitation introuvable | Eventia',
+      title: { absolute: 'Invitation introuvable | Eventia' },
       description: 'Cette invitation n\'existe pas ou a été supprimée.',
     };
   }
 
   const photo = publicCoverUrl(event, slug);
-  const image = photo || `/e/${slug}/share-image`;
+  const image = /^https:\/\//i.test(photo) ? photo : `/e/${slug}/cover`;
   const title = shareTitle(event);
   const description = shareDescription(event);
 

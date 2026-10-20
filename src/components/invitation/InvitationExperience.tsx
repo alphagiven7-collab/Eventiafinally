@@ -797,6 +797,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const modal = root.querySelector(`#${id}`);
     if (modal && main) main.appendChild(modal);
   });
+  const endMark = root.querySelector('.invitation-end-mark');
+  if (endMark && main) main.appendChild(endMark);
   const offlineBar = root.querySelector('#offline-invitation-bar');
   if (offlineBar && main) main.appendChild(offlineBar);
 }
@@ -2867,18 +2869,17 @@ function getOriginalCSS(): string {
       justify-content: center;
       align-items: center;
       gap: 18px;
-      padding: 28px 16px 6px;
+      padding: 36px 16px 22px;
     }
     .invitation-experience-root .invitation-end-link {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      color: #94a3b8;
-      font-size: 10px;
-      letter-spacing: 0.18em;
+      color: #64748b;
+      font-size: 11px;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       text-decoration: none;
-      opacity: 0.72;
     }
     .invitation-experience-root .invitation-end-link svg { width: 14px; height: 14px; }
     .invitation-experience-root .invitation-end-link[hidden] { display: none; }

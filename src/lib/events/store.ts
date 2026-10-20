@@ -238,13 +238,15 @@ export async function publishInvitation(
     };
   }
 
-  const { data: existing } = await supabase
-    .from('events')
-    .select('id')
-    .eq('slug', event.slug)
-    .maybeSingle();
-
-  const id = existing?.id || (isUuid(event.id) ? event.id : crypto.randomUUID());
+  let id = isUuid(event.id) ? event.id : '';
+  if (!id) {
+    const { data: existing } = await supabase
+      .from('events')
+      .select('id')
+      .eq('slug', event.slug)
+      .maybeSingle();
+    id = existing?.id || crypto.randomUUID();
+  }
   const now = new Date().toISOString();
   const stored: EventWithSettings = { ...event, id, updated_at: now };
   let ambianceToStore = event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35 };

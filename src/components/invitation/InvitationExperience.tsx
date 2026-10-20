@@ -165,7 +165,6 @@ export default function InvitationExperience({
       })();
     };
     offlineBtn?.addEventListener('click', onInstall);
-    const detachModals = initModals(root);
     const detachGuestbook = initGuestbook(root, event.slug);
 
     return () => {
@@ -177,7 +176,6 @@ export default function InvitationExperience({
       detachRsvp();
       printBtn?.removeEventListener('click', onPdf);
       offlineBtn?.removeEventListener('click', onInstall);
-      detachModals();
       detachGuestbook();
       shadow.replaceChildren();
     };
@@ -342,29 +340,20 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Date & Calendrier dynamique
+  // Date
   if (event.event_date) {
     const d = new Date(event.event_date);
     if (!isNaN(d.getTime())) {
       const dayNum = d.getDate();
       const monthYear = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-      setText('#event-day', dayNum.toString().padStart(2, '0'));
-      setText('#event-month-year', monthYear);
-      setText('#calendar-month-label', monthYear);
       setText('#summary-date', `${dayNum} ${monthYear}`);
       setText('#hero-date-pill', d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
-      renderDynamicCalendar(root, d);
     }
   }
 
   // Heure
-  const timeWrap = $('#event-time-badge');
   if (event.event_time) {
-    setText('#event-time-range', event.event_time);
     setText('#summary-time', event.event_time);
-    if (timeWrap) timeWrap.style.display = 'block';
-  } else if (timeWrap) {
-    timeWrap.style.display = 'none';
   }
 
   // Programme
@@ -698,7 +687,6 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     'section-gallery',
     'section-about',
     'drink-menu-section',
-    'section-date-place',
     'section-countdown',
     'section-family-motifs',
     'section-rsvp',
@@ -709,42 +697,12 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const section = root.querySelector(`#${id}`);
     if (section && main) main.appendChild(section);
   });
-  ['date-modal', 'place-modal', 'guestbook-modal'].forEach((id) => {
+  ['guestbook-modal'].forEach((id) => {
     const modal = root.querySelector(`#${id}`);
     if (modal && main) main.appendChild(modal);
   });
   const offlineBar = root.querySelector('#offline-invitation-bar');
   if (offlineBar && main) main.appendChild(offlineBar);
-}
-
-function renderDynamicCalendar(root: HTMLElement, date: Date) {
-  const grid = root.querySelector('#calendar-days-grid') as HTMLElement | null;
-  if (!grid) return;
-
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const targetDay = date.getDate();
-
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  const leadingEmptyDays = (firstDayOfMonth + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const cells: string[] = [];
-  for (let i = 0; i < leadingEmptyDays; i++) {
-    cells.push('<div></div>');
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    if (d === targetDay) {
-      cells.push(`
-        <div id="calendar-event-day" style="padding:5px 0;background:var(--rsvp-color, #7c3aed);color:white;border-radius:8px;font-weight:700;box-shadow:0 4px 10px rgba(124,58,237,0.3);position:relative;">
-          ${d}
-        </div>
-      `);
-    } else {
-      cells.push(`<div style="padding:5px 0;">${d}</div>`);
-    }
-  }
-  grid.innerHTML = cells.join('');
 }
 
 function initCountdown(root: HTMLElement, dateStr: string) {
@@ -1492,36 +1450,6 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char
   ));
-}
-
-function initModals(root: HTMLElement) {
-  const pairs: Array<[string, string]> = [
-    ['#open-date-modal', '#date-modal'],
-    ['#open-place-modal', '#place-modal'],
-  ];
-  const cleanups: Array<() => void> = [];
-
-  pairs.forEach(([openSel, modalSel]) => {
-    const open = root.querySelector(openSel);
-    const modal = root.querySelector(modalSel) as HTMLElement | null;
-    const close = modal?.querySelector('[data-close-modal]');
-    if (!open || !modal) return;
-    const show = () => { modal.style.display = 'flex'; };
-    const hide = () => { modal.style.display = 'none'; };
-    const onBackdrop = (event: Event) => {
-      if (event.target === modal) hide();
-    };
-    open.addEventListener('click', show);
-    close?.addEventListener('click', hide);
-    modal.addEventListener('click', onBackdrop);
-    cleanups.push(() => {
-      open.removeEventListener('click', show);
-      close?.removeEventListener('click', hide);
-      modal.removeEventListener('click', onBackdrop);
-    });
-  });
-
-  return () => cleanups.forEach((cleanup) => cleanup());
 }
 
 async function refreshGuestbookPreview(root: HTMLElement, slug: string) {
@@ -2906,56 +2834,6 @@ function getOriginalHTML(): string {
           </div>
         </div>
       </section>
-
-      <!-- Calendrier et lieu, discrets, en bas de page -->
-      <section id="section-date-place" style="padding:0 16px;margin-top:24px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button id="open-date-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Le jour</button>
-          <button id="open-place-modal" type="button" class="surface-card inv-text-primary" style="background:white;border-radius:14px;border:1px solid #f3f4f6;padding:14px 10px;font-size:12px;font-weight:700;cursor:pointer;">Le lieu</button>
-        </div>
-      </section>
-
-      <div id="date-modal" class="inv-modal">
-        <div class="inv-modal-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <p class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;">La date</p>
-            <button type="button" data-close-modal style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#64748b;">×</button>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div>
-              <p id="event-day" class="inv-text-primary" style="font-size:32px;font-weight:300;line-height:1;">30</p>
-              <p id="event-month-year" style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.12em;margin-top:4px;">Avril 2026</p>
-            </div>
-            <div id="event-time-badge" class="inv-subsurface" style="padding:8px 14px;border-radius:12px;text-align:center;">
-              <p id="event-time-range" class="inv-text-primary" style="font-size:12px;font-weight:700;">19h00</p>
-            </div>
-          </div>
-          <div class="inv-subsurface" style="border-radius:14px;padding:16px;">
-            <div style="display:flex;justify-content:center;align-items:center;margin-bottom:14px;">
-              <span id="calendar-month-label" class="inv-text-primary" style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.2em;">Avril 2026</span>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:9px;color:#9ca3af;margin-bottom:8px;font-weight:700;">
-              <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
-            </div>
-            <div id="calendar-days-grid" class="inv-text-muted" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="place-modal" class="inv-modal">
-        <div class="inv-modal-card" style="text-align:center;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <p class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;">Le lieu</p>
-            <button type="button" data-close-modal style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#64748b;">×</button>
-          </div>
-          <div id="map-frame" style="display:none;height:9rem;border-radius:12px;overflow:hidden;margin-bottom:12px;">
-            <img id="map-image" alt="" style="width:100%;height:100%;object-fit:cover;">
-          </div>
-          <h3 id="venue-title" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:24px;margin-bottom:6px;">Lieu</h3>
-          <p id="venue-address" class="inv-text-muted" style="font-size:14px;line-height:1.5;margin-bottom:12px;"></p>
-          <a id="venue-map-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:var(--accent-color, #2563eb);font-weight:600;text-decoration:none;">Voir sur la carte</a>
-        </div>
-      </div>
 
       <!-- 8. Compte à rebours -->
       <section id="section-countdown" style="padding:0 16px;margin-top:24px;">

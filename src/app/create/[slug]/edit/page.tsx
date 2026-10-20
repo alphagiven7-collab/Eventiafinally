@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
-import { compressImageFile, formatDataUrlSize, shrinkDataUrl, slimImageList } from '@/lib/utils/image-compression';
+import { compressImageFile, formatDataUrlSize, shrinkDataUrl } from '@/lib/utils/image-compression';
 import {
   Music,
   Upload,
@@ -1025,25 +1025,44 @@ function EditEventContent() {
       }
 
       setSaving(true);
-      const hero = liveEvent.heroImage ? await shrinkDataUrl(liveEvent.heroImage, 90 * 1024) : liveEvent.heroImage;
-      const about = liveEvent.aboutImage ? await shrinkDataUrl(liveEvent.aboutImage, 80 * 1024) : liveEvent.aboutImage;
       const rawMap = liveEvent.venueDetails?.mapImage || liveEvent.mapImage || '';
-      const map = rawMap ? await shrinkDataUrl(rawMap, 80 * 1024) : rawMap;
-      const cover = liveEvent.cover_image?.startsWith('data:')
-        ? await shrinkDataUrl(liveEvent.cover_image, 90 * 1024)
-        : liveEvent.cover_image;
-      const welcome = liveEvent.branding?.welcomeImage?.startsWith('data:')
-        ? await shrinkDataUrl(liveEvent.branding.welcomeImage, 90 * 1024)
-        : liveEvent.branding?.welcomeImage;
-      const ogImage = liveEvent.branding?.ogShareImage?.startsWith('data:')
-        ? await shrinkDataUrl(liveEvent.branding.ogShareImage, 90 * 1024)
-        : liveEvent.branding?.ogShareImage;
-      const groom = liveEvent.groomMotifImage?.startsWith('data:')
-        ? await shrinkDataUrl(liveEvent.groomMotifImage, 80 * 1024)
-        : liveEvent.groomMotifImage;
-      const bride = liveEvent.brideMotifImage?.startsWith('data:')
-        ? await shrinkDataUrl(liveEvent.brideMotifImage, 80 * 1024)
-        : liveEvent.brideMotifImage;
+      const shrinkCache = new Map<string, Promise<string>>();
+      const optimizedImage = (value: string | undefined, maxBytes: number): Promise<string | undefined> => {
+        if (!value || !value.startsWith('data:image')) return Promise.resolve(value);
+        const key = `${maxBytes}:${value}`;
+        const cached = shrinkCache.get(key);
+        if (cached) return cached;
+        const pending = shrinkDataUrl(value, maxBytes);
+        shrinkCache.set(key, pending);
+        return pending;
+      };
+      const optimizedList = async (images: string[] | undefined) => {
+        if (!images?.length) return images;
+        return Promise.all(images.map((image) => optimizedImage(image, 70 * 1024) as Promise<string>));
+      };
+      const [
+        hero,
+        about,
+        map,
+        cover,
+        welcome,
+        ogImage,
+        groom,
+        bride,
+        bestPhotos,
+        dressImages,
+      ] = await Promise.all([
+        optimizedImage(liveEvent.heroImage, 90 * 1024),
+        optimizedImage(liveEvent.aboutImage, 80 * 1024),
+        optimizedImage(rawMap, 80 * 1024),
+        optimizedImage(liveEvent.cover_image, 90 * 1024),
+        optimizedImage(liveEvent.branding?.welcomeImage, 90 * 1024),
+        optimizedImage(liveEvent.branding?.ogShareImage, 90 * 1024),
+        optimizedImage(liveEvent.groomMotifImage, 80 * 1024),
+        optimizedImage(liveEvent.brideMotifImage, 80 * 1024),
+        optimizedList(liveEvent.bestPhotos),
+        optimizedList(liveEvent.dressImages),
+      ] as const);
       const prepared: EventWithSettings = {
         ...liveEvent,
         user_id: liveEvent.user_id || user.id,
@@ -1056,8 +1075,8 @@ function EditEventContent() {
         cover_image: cover,
         groomMotifImage: groom || undefined,
         brideMotifImage: bride || undefined,
-        bestPhotos: await slimImageList(liveEvent.bestPhotos),
-        dressImages: await slimImageList(liveEvent.dressImages),
+        bestPhotos,
+        dressImages,
         branding: liveEvent.branding
           ? {
               ...liveEvent.branding,
@@ -1067,7 +1086,7 @@ function EditEventContent() {
             }
           : liveEvent.branding,
         venueDetails: liveEvent.venueDetails
-          ? { ...liveEvent.venueDetails, mapImage: map }
+          ? { ...liveEvent.venueDetails, mapImage: map || '' }
           : liveEvent.venueDetails,
       };
       const result = await publishInvitation(createClient(), prepared);

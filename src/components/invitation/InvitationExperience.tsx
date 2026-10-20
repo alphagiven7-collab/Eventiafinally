@@ -445,6 +445,38 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
+  const gpsSection = $('#section-gps');
+  const gpsMap = root.querySelector('#gps-map') as HTMLIFrameElement | null;
+  const gpsLive = $('#gps-live');
+  const gpsImageWrap = $('#gps-image-wrap');
+  const gpsOpen = root.querySelector('#gps-open') as HTMLAnchorElement | null;
+  const placeLine = [venueName, venueAddr].filter((value) => value && value !== 'Lieu de réception').join(' · ');
+  if (gpsSection) {
+    if (!resolvedMapUrl && !customMapImg) {
+      gpsSection.style.display = 'none';
+    } else {
+      gpsSection.style.display = 'block';
+      setText('#gps-place', placeLine);
+      if (gpsMap && gpsLive && mapQuery) {
+        gpsMap.src = `https://maps.google.com/maps?q=${mapQuery}&z=16&hl=fr&output=embed`;
+        gpsLive.style.display = 'block';
+        if (gpsImageWrap) gpsImageWrap.style.display = 'none';
+      } else if (customMapImg && gpsImageWrap) {
+        setImg('#gps-image', customMapImg);
+        gpsImageWrap.style.display = 'block';
+        if (gpsLive) gpsLive.style.display = 'none';
+      }
+      if (gpsOpen) {
+        if (resolvedMapUrl) {
+          gpsOpen.href = resolvedMapUrl;
+          gpsOpen.style.display = 'flex';
+        } else {
+          gpsOpen.style.display = 'none';
+        }
+      }
+    }
+  }
+
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Oui, je viens';
   setText('#reserve-deadline-text', btnText);
@@ -660,6 +692,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const main = root.querySelector('#main-view');
   [
     'section-when-where',
+    'section-gps',
     'section-dress-code',
     'section-gallery',
     'section-about',
@@ -1841,6 +1874,58 @@ function getOriginalCSS(): string {
       color: #64748b;
       font-size: 13px;
     }
+    .invitation-experience-root .gps-card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #f3f4f6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      overflow: hidden;
+      text-align: center;
+    }
+    .invitation-experience-root .gps-frame {
+      height: 220px;
+      background: #F8F4F0;
+    }
+    .invitation-experience-root .gps-frame iframe,
+    .invitation-experience-root .gps-frame img {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      object-fit: cover;
+    }
+    .invitation-experience-root .gps-body {
+      padding: 14px 16px 16px;
+    }
+    .invitation-experience-root .gps-kicker {
+      margin: 0;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #6B5B4F;
+      font-weight: 700;
+    }
+    .invitation-experience-root .gps-place {
+      margin: 6px 0 0;
+      font-family: "Playfair Display", serif;
+      font-size: 20px;
+      line-height: 1.3;
+      color: #1A1A2E;
+    }
+    .invitation-experience-root .gps-open {
+      display: flex;
+      width: 100%;
+      margin-top: 12px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: #1A1A2E;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
     .invitation-experience-root .checkin-pass {
       margin: 18px auto 0;
       width: 100%;
@@ -2052,6 +2137,22 @@ function getOriginalHTML(): string {
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(124,58,237,0.35);min-height:3.25rem;">
             <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Oui, je viens</span>
           </button>
+        </div>
+      </section>
+
+      <section id="section-gps" style="padding:0 16px;margin-top:16px;display:none;">
+        <div class="gps-card surface-card">
+          <div id="gps-image-wrap" class="gps-frame" style="display:none;">
+            <img id="gps-image" alt="Carte du lieu">
+          </div>
+          <div id="gps-live" class="gps-frame" style="display:none;">
+            <iframe id="gps-map" title="Carte pour aller au lieu" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
+          <div class="gps-body">
+            <p class="gps-kicker">Y aller</p>
+            <p id="gps-place" class="gps-place"></p>
+            <a id="gps-open" class="gps-open" href="#" target="_blank" rel="noopener noreferrer">Ouvrir le GPS</a>
+          </div>
         </div>
       </section>
 

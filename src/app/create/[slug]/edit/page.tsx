@@ -1545,7 +1545,7 @@ function EditEventContent() {
                   <PhotoUploader
                     onPhotosChange={setCoverPhotos}
                     existingPhotos={coverPhotos}
-                    maxPhotos={6}
+                    maxPhotos={12}
                     label="Photos du couple"
                   />
                 )}

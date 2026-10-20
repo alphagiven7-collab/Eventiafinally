@@ -787,21 +787,53 @@ function initAboutSection(root: HTMLElement) {
 
 function fillGallery(grid: HTMLElement, photos: string[]) {
   grid.replaceChildren();
-  grid.dataset.count = String(photos.length);
-  photos.forEach((src, index) => {
+  const featured = photos.slice(0, 4);
+  grid.dataset.featured = String(featured.length);
+
+  const makeTile = (src: string, index: number, className: string) => {
     const tile = document.createElement('button');
     tile.type = 'button';
-    tile.className = 'gallery-tile';
+    tile.className = className;
     tile.dataset.index = String(index);
+    tile.setAttribute('aria-label', `Ouvrir la photo ${index + 1}`);
     const img = document.createElement('img');
     img.src = src;
     img.alt = `Photo ${index + 1}`;
+    img.loading = index === 0 ? 'eager' : 'lazy';
     tile.append(img);
-    grid.append(tile);
+    return tile;
+  };
+
+  featured.forEach((src, index) => {
+    grid.append(makeTile(src, index, 'gallery-tile gallery-featured-tile'));
   });
+
+  const flow = grid.parentElement?.querySelector('.gallery-flow') as HTMLElement | null;
+  const track = flow?.querySelector('.gallery-flow-track') as HTMLElement | null;
+  const remaining = photos.slice(4);
+  if (!flow || !track) return;
+
+  track.replaceChildren();
+  if (remaining.length === 0) {
+    flow.hidden = true;
+    return;
+  }
+
+  flow.hidden = false;
+  track.style.setProperty('--gallery-flow-duration', `${Math.max(14, remaining.length * 6)}s`);
+  for (let copy = 0; copy < 2; copy += 1) {
+    const group = document.createElement('div');
+    group.className = 'gallery-flow-group';
+    group.setAttribute('aria-hidden', copy === 0 ? 'false' : 'true');
+    remaining.forEach((src, offset) => {
+      group.append(makeTile(src, offset + 4, 'gallery-tile gallery-flow-tile'));
+    });
+    track.append(group);
+  }
 }
 
 function initGallery(root: HTMLElement) {
+  const gallery = root.querySelector('#section-gallery');
   const grid = root.querySelector('#best-photos-grid');
   const lightbox = root.querySelector('#gallery-lightbox') as HTMLElement | null;
   const image = root.querySelector('.gallery-lightbox-image') as HTMLImageElement | null;
@@ -809,11 +841,17 @@ function initGallery(root: HTMLElement) {
   const closeBtn = root.querySelector('.gallery-lightbox-close');
   const prevBtn = root.querySelector('.gallery-lightbox-prev');
   const nextBtn = root.querySelector('.gallery-lightbox-next');
-  if (!grid || !lightbox || !image) return () => {};
+  if (!gallery || !grid || !lightbox || !image) return () => {};
 
-  const sources = Array.from(grid.querySelectorAll<HTMLButtonElement>('.gallery-tile'))
-    .map((tile) => tile.querySelector('img')?.getAttribute('src') || '')
-    .filter(Boolean);
+  const indexedSources = new Map<number, string>();
+  gallery.querySelectorAll<HTMLButtonElement>('.gallery-tile').forEach((tile) => {
+    const sourceIndex = Number(tile.dataset.index || '0');
+    const source = tile.querySelector('img')?.getAttribute('src') || '';
+    if (source && !indexedSources.has(sourceIndex)) indexedSources.set(sourceIndex, source);
+  });
+  const sources = [...indexedSources.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, source]) => source);
   let index = 0;
 
   const show = (next: number) => {
@@ -836,11 +874,11 @@ function initGallery(root: HTMLElement) {
     lightbox.hidden = true;
     image.removeAttribute('src');
   };
-  const onGrid = (event: Event) => {
+  const onGallery = (event: Event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
     const tile = target.closest('.gallery-tile');
-    if (!(tile instanceof HTMLButtonElement) || !grid.contains(tile)) return;
+    if (!(tile instanceof HTMLButtonElement) || !gallery.contains(tile)) return;
     const picked = Number(tile.dataset.index || '0');
     open(Number.isFinite(picked) ? picked : 0);
   };
@@ -856,14 +894,14 @@ function initGallery(root: HTMLElement) {
     if (event.key === 'ArrowRight') onNext();
   };
 
-  grid.addEventListener('click', onGrid);
+  gallery.addEventListener('click', onGallery);
   closeBtn?.addEventListener('click', close);
   prevBtn?.addEventListener('click', onPrev);
   nextBtn?.addEventListener('click', onNext);
   lightbox.addEventListener('click', onBackdrop);
   window.addEventListener('keydown', onKey);
   return () => {
-    grid.removeEventListener('click', onGrid);
+    gallery.removeEventListener('click', onGallery);
     closeBtn?.removeEventListener('click', close);
     prevBtn?.removeEventListener('click', onPrev);
     nextBtn?.removeEventListener('click', onNext);
@@ -1770,19 +1808,30 @@ function getOriginalCSS(): string {
       text-align: center;
     }
     .invitation-experience-root .gallery-title {
-      margin: 0 0 10px;
+      margin: 0 0 14px;
       font-family: "Playfair Display", serif;
-      font-size: 1.35rem;
+      font-size: 1.5rem;
+      line-height: 1.1;
       text-align: center;
       color: #111827;
     }
     .invitation-experience-root .gallery-mosaic {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
+      gap: 6px;
+      overflow: hidden;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.5);
     }
-    .invitation-experience-root .gallery-mosaic[data-count="1"] {
+    .invitation-experience-root .gallery-mosaic[data-featured="1"] {
       grid-template-columns: 1fr;
+    }
+    .invitation-experience-root .gallery-mosaic[data-featured="2"] {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .invitation-experience-root .gallery-mosaic[data-featured="3"],
+    .invitation-experience-root .gallery-mosaic[data-featured="4"] {
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      grid-auto-rows: 78px;
     }
     .invitation-experience-root .gallery-tile {
       display: block;
@@ -1790,27 +1839,95 @@ function getOriginalCSS(): string {
       margin: 0;
       padding: 0;
       border: 0;
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
       background: #e7e5e4;
       cursor: pointer;
-      aspect-ratio: 1;
+      position: relative;
     }
-    .invitation-experience-root .gallery-mosaic[data-count="1"] .gallery-tile,
-    .invitation-experience-root .gallery-mosaic[data-count="3"] .gallery-tile:first-child,
-    .invitation-experience-root .gallery-mosaic[data-count="5"] .gallery-tile:first-child {
-      grid-column: 1 / -1;
+    .invitation-experience-root .gallery-mosaic[data-featured="1"] .gallery-tile {
       aspect-ratio: 3 / 2;
+    }
+    .invitation-experience-root .gallery-mosaic[data-featured="2"] .gallery-tile {
+      aspect-ratio: 4 / 5;
+    }
+    .invitation-experience-root .gallery-mosaic[data-featured="3"] .gallery-tile:first-child {
+      grid-row: 1 / span 2;
+    }
+    .invitation-experience-root .gallery-mosaic[data-featured="4"] .gallery-tile:first-child {
+      grid-row: 1 / span 3;
     }
     .invitation-experience-root .gallery-tile img {
       display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: transform 0.45s ease;
+    }
+    .invitation-experience-root .gallery-tile:hover img {
+      transform: scale(1.035);
     }
     .invitation-experience-root .gallery-tile:focus-visible {
       outline: 2px solid var(--accent-color, #2563eb);
       outline-offset: 2px;
+    }
+    .invitation-experience-root .gallery-flow {
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 14px;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    }
+    .invitation-experience-root .gallery-flow[hidden] { display: none; }
+    .invitation-experience-root .gallery-flow-label {
+      margin: 0 0 8px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #9ca3af;
+    }
+    .invitation-experience-root .gallery-flow-track {
+      display: flex;
+      width: max-content;
+      animation: galleryFlow var(--gallery-flow-duration, 18s) linear infinite;
+      will-change: transform;
+    }
+    .invitation-experience-root .gallery-flow:hover .gallery-flow-track,
+    .invitation-experience-root .gallery-flow:focus-within .gallery-flow-track {
+      animation-play-state: paused;
+    }
+    .invitation-experience-root .gallery-flow-group {
+      display: flex;
+      gap: 8px;
+      padding-right: 8px;
+    }
+    .invitation-experience-root .gallery-flow-tile {
+      width: 132px;
+      height: 92px;
+      flex: 0 0 auto;
+      box-shadow: 0 8px 20px rgba(17, 24, 39, 0.1);
+    }
+    @keyframes galleryFlow {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .invitation-experience-root .gallery-flow {
+        overflow-x: auto;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+      .invitation-experience-root .gallery-flow-track { animation: none; }
+      .invitation-experience-root .gallery-tile img { transition: none; }
+    }
+    .invitation-experience-root.dark-mode-applied .gallery-mosaic {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .invitation-experience-root.dark-mode-applied .gallery-flow-label { color: #94a3b8; }
+    .invitation-experience-root.dark-mode-applied .gallery-flow-tile {
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
     }
     .invitation-experience-root .gallery-lightbox {
       position: fixed;
@@ -2513,9 +2630,6 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-template="photos"] .hero-bg {
       background: transparent;
     }
-    .invitation-experience-root[data-template="photos"] .hero-photo {
-      display: none;
-    }
     .invitation-experience-root[data-template="photos"] #main-view::before,
     .invitation-experience-root[data-template="photos"] #main-view::after {
       content: "";
@@ -2539,7 +2653,12 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root[data-template="photos"] .gallery-title,
     .invitation-experience-root[data-template="photos"] .gallery-kicker {
-      text-shadow: 0 1px 8px rgba(255, 255, 255, 0.85);
+      color: #fff !important;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.78);
+    }
+    .invitation-experience-root[data-template="photos"] .gallery-flow-label {
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
     }
     .invitation-experience-root[data-template="photos"] .invitation-card,
     .invitation-experience-root[data-template="photos"] #section-when-where .surface-card {
@@ -2691,6 +2810,10 @@ function getOriginalHTML(): string {
         <p class="gallery-kicker">Ensemble</p>
         <h3 class="gallery-title">Nos photos</h3>
         <div id="best-photos-grid" class="gallery-mosaic"></div>
+        <div class="gallery-flow" hidden>
+          <p class="gallery-flow-label">La suite de nos souvenirs</p>
+          <div class="gallery-flow-track"></div>
+        </div>
       </section>
 
       <!-- 5. Dress Code -->

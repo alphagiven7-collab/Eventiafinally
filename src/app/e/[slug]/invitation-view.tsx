@@ -14,9 +14,11 @@ import { Heart, Home } from 'lucide-react';
 export default function InvitationView({
   slug,
   initialEvent,
+  initialMediaDeferred = false,
 }: {
   slug: string;
   initialEvent: EventWithSettings | null;
+  initialMediaDeferred?: boolean;
 }) {
   const [event, setEvent] = useState<EventWithSettings | null>(() => initialEvent || getEventBySlug(slug));
   const [loading, setLoading] = useState(() => !(initialEvent || getEventBySlug(slug)));
@@ -59,7 +61,7 @@ export default function InvitationView({
       }
       if (isSupabaseReady()) {
         try {
-          if (known?.updated_at) {
+          if (known?.updated_at && !initialMediaDeferred) {
             const stamp = await fetchInvitationStamp(createClient(), slug);
             if (
               !cancelled &&
@@ -98,7 +100,7 @@ export default function InvitationView({
         }
       }
 
-      const demo = getEventBySlug(slug);
+      const demo = known || getEventBySlug(slug);
       if (!cancelled) {
         setEvent(demo);
         const saved = await readOfflineInvitation(slug, token);
@@ -114,7 +116,7 @@ export default function InvitationView({
     loadEvent();
 
     return () => { cancelled = true; };
-  }, [slug, initialEvent]);
+  }, [slug, initialEvent, initialMediaDeferred]);
 
   // Le lien personnel est vérifié sur le serveur, pas dans ce navigateur.
   useEffect(() => {

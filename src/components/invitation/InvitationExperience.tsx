@@ -181,7 +181,94 @@ export default function InvitationExperience({
     };
   }, [event, guestName, guestToken, guestStatus, guestTable, rememberAnswer]);
 
-  return <div ref={containerRef} className="invitation-experience-host" />;
+  const fallbackHero =
+    event.heroImage ||
+    event.hero_image ||
+    event.branding?.heroImage ||
+    event.cover_image ||
+    event.bestPhotos?.[0] ||
+    '';
+  const fallbackText = heroTextOf(event.heroText);
+  const fallbackLight = heroLightOf(event.heroBrightness);
+  const lightText = fallbackText.color !== 'black';
+  const fallbackOverlay = lightText
+    ? `linear-gradient(180deg, rgba(15,10,20,${fallbackLight.whiteTop}), rgba(15,10,20,${fallbackLight.whiteBottom}))`
+    : `linear-gradient(180deg, rgba(255,248,240,${fallbackLight.blackTop}), rgba(255,248,240,${fallbackLight.blackBottom}))`;
+
+  return (
+    <div ref={containerRef} className="invitation-experience-host">
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'relative',
+          height: '58vh',
+          minHeight: 360,
+          maxWidth: '28rem',
+          margin: '0 auto',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent:
+            fallbackText.position === 'top'
+              ? 'flex-start'
+              : fallbackText.position === 'bottom'
+                ? 'flex-end'
+                : 'center',
+          padding:
+            fallbackText.position === 'top'
+              ? '72px 22px 0'
+              : fallbackText.position === 'bottom'
+                ? '0 22px 78px'
+                : '0 22px',
+          background: '#1c1418',
+          color: fallbackText.color === 'black' ? '#111827' : fallbackText.color === 'gold' ? '#f6e2a8' : '#fff',
+          textAlign: 'center',
+        }}
+      >
+        {fallbackHero && (
+          <img
+            src={fallbackHero}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: `brightness(${fallbackLight.photo})`,
+              transform: 'scale(1.04)',
+            }}
+          />
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: fallbackOverlay }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p style={{ margin: '0 0 14px', fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase' }}>
+            {new Date(event.event_date).toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'UTC',
+            })}
+          </p>
+          <h1
+            style={{
+              margin: '0 0 10px',
+              fontFamily: fallbackText.style === 'straight' ? 'Montserrat, sans-serif' : 'Playfair Display, Georgia, serif',
+              fontSize: fallbackText.size === 'small' ? '1.2rem' : fallbackText.size === 'large' ? '2.55rem' : '1.5rem',
+              lineHeight: 1.12,
+            }}
+          >
+            {event.title}
+          </h1>
+          <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            {event.subtitle || [event.coupleLeft, event.coupleRight].filter(Boolean).join(' & ')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function isWebAddress(value: string): boolean {
@@ -540,7 +627,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
         dressTrack.innerHTML = loopDress
           .map(
             (p) =>
-              `<img src="${p}" style="width:120px;height:160px;object-fit:cover;border-radius:0.75rem;border:1px solid rgba(148,163,184,0.25);flex-shrink:0;" alt="Tenue">`
+              `<img src="${p}" loading="lazy" decoding="async" style="width:120px;height:160px;object-fit:cover;border-radius:0.75rem;border:1px solid rgba(148,163,184,0.25);flex-shrink:0;" alt="Tenue">`
           )
           .join('');
         if (dressWrapper) dressWrapper.style.display = 'block';
@@ -774,7 +861,8 @@ function fillGallery(grid: HTMLElement, photos: string[]) {
     const img = document.createElement('img');
     img.src = src;
     img.alt = `Photo ${index + 1}`;
-    img.loading = index === 0 ? 'eager' : 'lazy';
+    img.loading = 'lazy';
+    img.decoding = 'async';
     tile.append(img);
     return tile;
   };
@@ -2778,7 +2866,7 @@ function getOriginalHTML(): string {
       <section id="section-gps" style="padding:0 16px;margin-top:16px;display:none;">
         <div class="gps-card surface-card">
           <div id="gps-image-wrap" class="gps-frame" style="display:none;">
-            <img id="gps-image" alt="Carte du lieu">
+            <img id="gps-image" loading="lazy" decoding="async" alt="Carte du lieu">
           </div>
           <div id="gps-live" class="gps-frame" style="display:none;">
             <iframe id="gps-map" title="Carte pour aller au lieu" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
@@ -2794,7 +2882,7 @@ function getOriginalHTML(): string {
       <!-- 3. À propos / Notre histoire -->
       <section id="section-about" style="padding:0 16px;margin-top:24px;display:none;">
         <div id="about-section-card" style="position:relative;border-radius:16px;overflow:hidden;height:118px;box-shadow:0 4px 12px rgba(0,0,0,0.06);background:#111827;cursor:pointer;">
-          <img id="about-cover-image" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Notre histoire" style="width:100%;height:100%;object-fit:cover;opacity:0.62;">
+          <img id="about-cover-image" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Notre histoire" style="width:100%;height:100%;object-fit:cover;opacity:0.62;">
           <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 24px;">
             <div style="color:white;">
               <h3 id="about-card-title" class="font-serif text-xl mb-1" style="font-family:'Playfair Display',serif;color:white !important;">Notre histoire</h3>
@@ -2863,11 +2951,11 @@ function getOriginalHTML(): string {
       <section id="section-family-motifs" style="padding:0 16px;margin-top:24px;display:none;">
         <div id="groom-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;margin-bottom:12px;">
           <h3 class="inv-text-primary">Famille de l'homme</h3>
-          <img id="groom-motif-img" alt="Tissu de la famille de l'homme">
+          <img id="groom-motif-img" loading="lazy" decoding="async" alt="Tissu de la famille de l'homme">
         </div>
         <div id="bride-motif" class="family-motif surface-card" style="display:none;background:white;border-radius:16px;padding:16px;border:1px solid #f3f4f6;">
           <h3 class="inv-text-primary">Famille de la femme</h3>
-          <img id="bride-motif-img" alt="Tissu de la famille de la femme">
+          <img id="bride-motif-img" loading="lazy" decoding="async" alt="Tissu de la famille de la femme">
         </div>
       </section>
 

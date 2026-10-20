@@ -9,6 +9,7 @@ export interface ImageConvertOptions {
   maxWidthOrHeight?: number;
   quality?: number;
   maxBytes?: number;
+  format?: 'webp' | 'jpeg';
 }
 
 function loadImage(file: File | Blob): Promise<HTMLImageElement> {
@@ -27,11 +28,10 @@ function loadImage(file: File | Blob): Promise<HTMLImageElement> {
   });
 }
 
-function canvasToDataUrl(canvas: HTMLCanvasElement, quality: number): string {
+function canvasToDataUrl(canvas: HTMLCanvasElement, quality: number, format: 'webp' | 'jpeg' = 'webp'): string {
+  if (format === 'jpeg') return canvas.toDataURL('image/jpeg', quality);
   const webp = canvas.toDataURL('image/webp', quality);
-  if (webp.startsWith('data:image/webp')) {
-    return webp;
-  }
+  if (webp.startsWith('data:image/webp')) return webp;
   return canvas.toDataURL('image/jpeg', quality);
 }
 
@@ -42,6 +42,7 @@ export async function compressImageFile(
   const maxDim = options.maxWidthOrHeight ?? 900;
   const initialQuality = options.quality ?? 0.72;
   const maxBytes = options.maxBytes ?? 70 * 1024;
+  const format = options.format ?? 'webp';
 
   try {
     const img = await loadImage(file);
@@ -72,7 +73,7 @@ export async function compressImageFile(
 
     let quality = initialQuality;
     let current = canvas;
-    let dataUrl = canvasToDataUrl(current, quality);
+    let dataUrl = canvasToDataUrl(current, quality, format);
 
     while (dataUrl.length * 0.75 > maxBytes && (quality > 0.4 || current.width > 480)) {
       if (quality > 0.4) {
@@ -89,7 +90,7 @@ export async function compressImageFile(
         current = smaller;
         quality = 0.62;
       }
-      dataUrl = canvasToDataUrl(current, quality);
+      dataUrl = canvasToDataUrl(current, quality, format);
     }
 
     return dataUrl;
@@ -101,7 +102,7 @@ export async function compressImageFile(
         maxSizeMB: 0.18,
         maxWidthOrHeight: maxDim,
         useWebWorker: false,
-        fileType: 'image/webp',
+        fileType: format === 'jpeg' ? 'image/jpeg' : 'image/webp',
         initialQuality,
       });
       return await new Promise<string>((resolve, reject) => {
@@ -122,13 +123,35 @@ export async function compressImageFile(
 }
 
 export async function shrinkDataUrl(dataUrl: string, maxBytes = 70 * 1024): Promise<string> {
-  if (!dataUrl.startsWith('data:image') || dataUrl.length * 0.75 <= maxBytes) return dataUrl;
+  if (!dataUrl.startsWith('data:image')) return dataUrl;
+  const estimated = dataUrl.length * 0.75;
+  if (estimated <= maxBytes) return dataUrl;
+  // Une photo déjà en WebP ou JPEG et assez légère n'est pas réencodée à chaque enregistrement.
+  if (/^data:image\/(?:webp|jpeg|jpg);/i.test(dataUrl) && estimated <= Math.max(maxBytes * 2, 160 * 1024)) {
+    return dataUrl;
+  }
   const blob = await fetch(dataUrl).then((response) => response.blob());
   return compressImageFile(new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }), {
     maxWidthOrHeight: 900,
     quality: 0.68,
     maxBytes,
   });
+}
+
+/** JPEG de partage, assez léger pour la colonne cover_image et pour WhatsApp. */
+export async function shareJpegDataUrl(dataUrl: string): Promise<string> {
+  if (!dataUrl.startsWith('data:image')) return '';
+  if (dataUrl.startsWith('data:image/jpeg') && dataUrl.length <= 220_000 && dataUrl.length * 0.75 <= 140 * 1024) {
+    return dataUrl;
+  }
+  const blob = await fetch(dataUrl).then((response) => response.blob());
+  const jpeg = await compressImageFile(new File([blob], 'cover.jpg', { type: blob.type || 'image/jpeg' }), {
+    maxWidthOrHeight: 1200,
+    quality: 0.8,
+    maxBytes: 140 * 1024,
+    format: 'jpeg',
+  });
+  return jpeg.startsWith('data:image/jpeg') && jpeg.length <= 220_000 ? jpeg : '';
 }
 
 export async function slimImageList(images: string[] | undefined, maxBytes = 70 * 1024): Promise<string[] | undefined> {

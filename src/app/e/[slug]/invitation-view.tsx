@@ -21,7 +21,7 @@ export default function InvitationView({
   initialMediaDeferred?: boolean;
 }) {
   const [event, setEvent] = useState<EventWithSettings | null>(() => initialEvent || getEventBySlug(slug));
-  const [loading, setLoading] = useState(() => !(initialEvent || getEventBySlug(slug)));
+  const [loading, setLoading] = useState(() => initialMediaDeferred || !(initialEvent || getEventBySlug(slug)));
   const [resolvedGuest, setResolvedGuest] = useState<PublicGuest | null>(null);
   const [liveStatus, setLiveStatus] = useState<GuestStatus | null>(null);
   const [rsvpNotice, setRsvpNotice] = useState('');
@@ -36,10 +36,10 @@ export default function InvitationView({
 
     async function loadEvent() {
       const known = initialEvent || getEventBySlug(slug);
-      if (known) {
+      if (known && !initialMediaDeferred) {
         setEvent(known);
         setLoading(false);
-      } else {
+      } else if (!known) {
         setLoading(true);
       }
       const token = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '';

@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
-import { compressImageFile, formatDataUrlSize, shrinkDataUrl } from '@/lib/utils/image-compression';
+import { compressImageFile, formatDataUrlSize, shareJpegDataUrl, shrinkDataUrl } from '@/lib/utils/image-compression';
 import {
   Music,
   Upload,
@@ -1089,7 +1089,18 @@ function EditEventContent() {
           ? { ...liveEvent.venueDetails, mapImage: map || '' }
           : liveEvent.venueDetails,
       };
-      const result = await publishInvitation(createClient(), prepared);
+      let shareCover = '';
+      const shareSource = hero || bestPhotos?.[0] || '';
+      if (shareSource.startsWith('data:image')) {
+        try {
+          shareCover = await shareJpegDataUrl(shareSource);
+        } catch {
+          shareCover = '';
+        }
+      } else if (/^https:\/\//i.test(shareSource)) {
+        shareCover = shareSource;
+      }
+      const result = await publishInvitation(createClient(), prepared, { shareCover });
       setSaving(false);
 
       if (result.error) {

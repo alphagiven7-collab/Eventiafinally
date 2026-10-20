@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { readPublicInvitation } from '@/lib/events/read-public';
-import { publicCoverUrl, shareDescription, shareTitle } from '@/lib/events/share-image';
+import { publicCoverUrl, shareDescription, shareTitle, siteOrigin } from '@/lib/events/share-image';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,7 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const photo = publicCoverUrl(event, slug);
-  const image = /^https:\/\//i.test(photo) ? photo : `/e/${slug}/cover`;
+  const remote = /^https:\/\//i.test(photo);
+  const version = event.updated_at ? `?v=${encodeURIComponent(event.updated_at)}` : '';
+  const image = remote ? photo : `${siteOrigin()}/e/${slug}/cover${version}`;
   const title = shareTitle(event);
   const description = shareDescription(event);
 
@@ -29,7 +31,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: [{ url: image, width: 1200, height: 630, alt: event.title || 'Invitation Eventia' }],
+      images: [{
+        url: image,
+        secureUrl: image,
+        width: 1200,
+        height: 630,
+        type: remote ? undefined : 'image/jpeg',
+        alt: event.title || 'Invitation Eventia',
+      }],
       type: 'website',
       locale: 'fr_FR',
       siteName: 'Eventia',

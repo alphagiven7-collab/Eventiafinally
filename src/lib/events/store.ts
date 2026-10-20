@@ -75,6 +75,69 @@ function httpUrl(value: string | undefined | null): string | null {
   return value;
 }
 
+const MAX_STORED_COVER = 220_000;
+
+function storedCover(value: string | undefined | null): string | null {
+  if (!value) return null;
+  if (/^https:\/\//i.test(value)) return value;
+  if (value.startsWith('data:image/jpeg') && value.length <= MAX_STORED_COVER) return value;
+  return null;
+}
+
+function samePhoto(hero: string, value: string | undefined): boolean {
+  return Boolean(hero) && value === hero;
+}
+
+function slimInvitation(event: EventWithSettings): EventWithSettings {
+  const hero = event.heroImage || '';
+  const branding = event.branding
+    ? {
+        ...event.branding,
+        heroImage: samePhoto(hero, event.branding.heroImage) ? '' : event.branding.heroImage,
+        welcomeImage: samePhoto(hero, event.branding.welcomeImage) ? '' : event.branding.welcomeImage,
+        ogShareImage: samePhoto(hero, event.branding.ogShareImage) ? '' : event.branding.ogShareImage,
+      }
+    : event.branding;
+  return {
+    ...event,
+    hero_image: samePhoto(hero, event.hero_image) ? undefined : event.hero_image,
+    cover_image: samePhoto(hero, event.cover_image) ? '' : event.cover_image,
+    welcomeImage: samePhoto(hero, event.welcomeImage) ? undefined : event.welcomeImage,
+    welcome_image: samePhoto(hero, event.welcome_image) ? undefined : event.welcome_image,
+    branding,
+  };
+}
+
+function withoutInlineMusic(event: EventWithSettings): EventWithSettings {
+  const musicUrl = event.ambiance?.musicUrl || '';
+  if (!musicUrl.startsWith('data:')) return event;
+  return {
+    ...event,
+    ambiance: {
+      enabled: Boolean(event.ambiance?.enabled),
+      volume: event.ambiance?.volume ?? 0.35,
+      musicUrl: '',
+      hasFile: true,
+    },
+  };
+}
+
+function mergeAmbiance(
+  stored: EventWithSettings['ambiance'] | null | undefined,
+  local: EventWithSettings['ambiance'] | undefined,
+): EventWithSettings['ambiance'] | undefined {
+  if (!stored) return local;
+  if (!local) return stored;
+  const cleared = local.hasFile === false && !local.musicUrl;
+  const keepStoredFile = !cleared && !local.musicUrl && Boolean(local.hasFile || stored.musicUrl);
+  return {
+    enabled: local.enabled ?? stored.enabled ?? false,
+    volume: typeof local.volume === 'number' ? local.volume : stored.volume,
+    musicUrl: cleared ? '' : local.musicUrl || (keepStoredFile ? stored.musicUrl || '' : ''),
+    hasFile: cleared ? false : Boolean(local.musicUrl || keepStoredFile),
+  };
+}
+
 export function fromDatabase(row: EventRow): EventWithSettings {
   const settings = settingsOf(row);
   const payload = settings?.payload ?? {};
@@ -112,7 +175,7 @@ export function fromDatabase(row: EventRow): EventWithSettings {
     practicalSectionTitle: settings?.practical_section_title ?? payload.practicalSectionTitle,
     practicalInfo: settings?.practical_info ?? payload.practicalInfo,
     dressCodeTitle: settings?.dress_code_title ?? payload.dressCodeTitle,
-    ambiance: settings?.ambiance ?? payload.ambiance,
+    ambiance: mergeAmbiance(settings?.ambiance, payload.ambiance),
     branding: settings?.branding ?? payload.branding,
     sections: settings?.sections ?? payload.sections,
     links: settings?.links ?? payload.links,
@@ -201,10 +264,10 @@ export async function fetchGuestLimitBySlug(supabase: DbClient, slug: string): P
 export async function fetchInvitationMeta(
   supabase: DbClient,
   slug: string,
-): Promise<{ title: string; description: string; coverUrl: string } | null> {
+): Promise<{ title: string; description: string; coverUrl: string; updatedAt: string } | null> {
   const { data, error } = await supabase
     .from('events')
-    .select('title, description, cover_image, event_settings(meta_description)')
+    .select('title, description, cover_image, updated_at, event_settings(meta_description)')
     .eq('slug', slug)
     .maybeSingle();
   if (error || !data) return null;
@@ -214,7 +277,68 @@ export async function fetchInvitationMeta(
     title: data.title,
     description: settings?.meta_description || data.description || '',
     coverUrl: /^https:\/\//i.test(cover) ? cover : '',
+    updatedAt: data.updated_at || '',
   };
+}
+
+const SHARE_PHOTO_KEYS = ['hero', 'hero_snake', 'welcome_top', 'cover', 'brand_hero', 'welcome', 'photo', 'og'] as const;
+
+function firstSharePhoto(row: Record<string, unknown> | null): string {
+  if (!row) return '';
+  for (const key of SHARE_PHOTO_KEYS) {
+    const value = row[key];
+    if (typeof value === 'string' && (/^https:\/\//i.test(value) || value.startsWith('data:image/'))) return value;
+  }
+  return '';
+}
+
+async function photoFromPayload(supabase: DbClient, eventId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('event_settings')
+    .select('payload')
+    .eq('event_id', eventId)
+    .maybeSingle();
+  if (error || !data?.payload || typeof data.payload !== 'object') return '';
+  const payload = data.payload as Partial<EventWithSettings>;
+  return [
+    payload.heroImage,
+    payload.hero_image,
+    payload.welcomeImage,
+    payload.cover_image,
+    payload.branding?.heroImage,
+    payload.branding?.welcomeImage,
+    payload.bestPhotos?.[0],
+    payload.branding?.ogShareImage,
+  ].find((value) => typeof value === 'string' && (/^https:\/\//i.test(value) || value.startsWith('data:image/'))) || '';
+}
+
+/** Photo d’accueil seule, sans télécharger la galerie ni la musique. */
+export async function fetchShareImageSource(supabase: DbClient, slug: string): Promise<string> {
+  const { data: row, error } = await supabase
+    .from('events')
+    .select('id, cover_image')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error || !row) return '';
+  const column = typeof row.cover_image === 'string' ? row.cover_image.trim() : '';
+  if (/^https:\/\//i.test(column) || column.startsWith('data:image/')) return column;
+
+  const top = await supabase
+    .from('event_settings')
+    .select('hero:payload->>heroImage, hero_snake:payload->>hero_image, welcome_top:payload->>welcomeImage, cover:payload->>cover_image')
+    .eq('event_id', row.id)
+    .maybeSingle();
+  if (top.error) return photoFromPayload(supabase, row.id);
+  const direct = firstSharePhoto(top.data as Record<string, unknown> | null);
+  if (direct) return direct;
+
+  const nested = await supabase
+    .from('event_settings')
+    .select('brand_hero:payload->branding->>heroImage, welcome:payload->branding->>welcomeImage, photo:payload->bestPhotos->>0, og:payload->branding->>ogShareImage')
+    .eq('event_id', row.id)
+    .maybeSingle();
+  if (nested.error) return photoFromPayload(supabase, row.id);
+  return firstSharePhoto(nested.data as Record<string, unknown> | null);
 }
 
 export async function listInvitations(supabase: DbClient, userId: string): Promise<EventWithSettings[]> {
@@ -241,14 +365,19 @@ export async function listInvitations(supabase: DbClient, userId: string): Promi
 export async function publishInvitation(
   supabase: DbClient,
   event: EventWithSettings,
+  options?: { shareCover?: string },
 ): Promise<{ error: string | null; id: string }> {
-  const serialized = JSON.stringify(event);
-  if (serialized.length > MAX_PAYLOAD_CHARS) {
-    const heavyMusic = (event.ambiance?.musicUrl?.length || 0) > 7_000_000;
+  const musicLength = event.ambiance?.musicUrl?.length || 0;
+  if (musicLength > 7_000_000) {
     return {
-      error: heavyMusic
-        ? 'La musique est trop lourde. Importez un fichier de moins de 5 Mo.'
-        : 'Les photos sont trop lourdes pour être publiées. Réduisez la galerie, puis réessayez.',
+      error: 'La musique est trop lourde. Importez un fichier de moins de 5 Mo.',
+      id: event.id,
+    };
+  }
+  const payloadEvent = withoutInlineMusic(slimInvitation(event));
+  if (JSON.stringify(payloadEvent).length > MAX_PAYLOAD_CHARS) {
+    return {
+      error: 'Les photos sont trop lourdes pour être publiées. Réduisez la galerie, puis réessayez.',
       id: event.id,
     };
   }
@@ -263,26 +392,21 @@ export async function publishInvitation(
     id = existing?.id || crypto.randomUUID();
   }
   const now = new Date().toISOString();
-  const stored: EventWithSettings = { ...event, id, updated_at: now };
-  let ambianceToStore = event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35 };
-  if (ambianceToStore.hasFile && !ambianceToStore.musicUrl) {
-    const existingMusic = await fetchEventMusic(supabase, id);
-    if (existingMusic) ambianceToStore = { ...ambianceToStore, musicUrl: existingMusic };
-  }
-  const musicUrl = ambianceToStore.musicUrl || '';
-  const payloadEvent: EventWithSettings = musicUrl.startsWith('data:')
-    ? {
-        ...stored,
-        ambiance: {
-          enabled: Boolean(event.ambiance?.enabled),
-          volume: event.ambiance?.volume ?? 0.35,
-          musicUrl: '',
-          hasFile: true,
-        },
-      }
-    : stored;
+  const storedPayload: EventWithSettings = { ...payloadEvent, id, updated_at: now };
+  const ambianceToStore = event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35, hasFile: false };
+  const preserveMusic = Boolean(ambianceToStore.hasFile) && !ambianceToStore.musicUrl;
+  const nextCover = storedCover(options?.shareCover) || httpUrl(event.cover_image);
+  const hasPhoto = Boolean(
+    event.heroImage ||
+    event.hero_image ||
+    event.cover_image ||
+    event.branding?.heroImage ||
+    event.branding?.ogShareImage ||
+    event.branding?.welcomeImage ||
+    event.bestPhotos?.[0],
+  );
 
-  const { error: eventError } = await supabase.from('events').upsert({
+  const eventRow: Record<string, unknown> = {
     id,
     user_id: event.user_id,
     slug: event.slug,
@@ -294,21 +418,23 @@ export async function publishInvitation(
     location: event.location,
     address: event.address ?? null,
     description: event.description ?? null,
-    cover_image: httpUrl(event.cover_image),
     is_published: event.is_published,
     locale: 'fr',
     timezone: 'UTC',
     admin_code: event.adminCode ?? null,
     updated_at: now,
-  }, { onConflict: 'id' });
+  };
+  if (nextCover) eventRow.cover_image = nextCover;
+  else if (!hasPhoto) eventRow.cover_image = null;
 
-  if (eventError) return { error: explainWriteError(eventError.message), id };
+  const eventError = await updateOrInsert(supabase, 'events', eventRow, 'id');
+  if (eventError) return { error: explainWriteError(eventError), id };
 
   if (typeof event.guestLimit === 'number') {
     await supabase.from('events').update({ guest_limit: event.guestLimit }).eq('id', id);
   }
 
-  const { error: settingsError } = await supabase.from('event_settings').upsert({
+  const settingsRow: Record<string, unknown> = {
     event_id: id,
     welcome_message: event.welcomeMessage ?? null,
     gate_hint: event.gateHint ?? null,
@@ -325,16 +451,30 @@ export async function publishInvitation(
     practical_section_title: event.practicalSectionTitle ?? null,
     practical_info: event.practicalInfo ?? [],
     dress_code_title: event.dressCodeTitle ?? null,
-    ambiance: ambianceToStore,
-    branding: event.branding ?? {},
+    branding: storedPayload.branding ?? {},
     sections: event.sections ?? {},
     links: event.links ?? {},
-    payload: payloadEvent,
+    payload: storedPayload,
     updated_at: now,
-  }, { onConflict: 'event_id' });
+  };
+  if (!preserveMusic) settingsRow.ambiance = ambianceToStore;
 
-  if (settingsError) return { error: explainWriteError(settingsError.message), id };
+  const settingsError = await updateOrInsert(supabase, 'event_settings', settingsRow, 'event_id');
+  if (settingsError) return { error: explainWriteError(settingsError), id };
   return { error: null, id };
+}
+
+async function updateOrInsert(
+  supabase: DbClient,
+  table: 'events' | 'event_settings',
+  row: Record<string, unknown>,
+  key: 'id' | 'event_id',
+): Promise<string | null> {
+  const { data, error } = await supabase.from(table).update(row).eq(key, row[key]).select(key);
+  if (error) return error.message;
+  if (data && data.length > 0) return null;
+  const inserted = await supabase.from(table).insert(row);
+  return inserted.error ? inserted.error.message : null;
 }
 
 export async function ownedEventCount(supabase: DbClient, userId: string): Promise<number | null> {

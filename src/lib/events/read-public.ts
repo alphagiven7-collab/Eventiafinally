@@ -5,7 +5,7 @@ import { fetchInvitationMeta } from '@/lib/events/store';
 import { getEventBySlug } from '@/data/events';
 
 /** Métadonnées publiques de partage. Aucun nom d’invité ni numéro de table. */
-export async function readPublicInvitation(slug: string): Promise<Pick<EventWithSettings, 'title' | 'metaDescription' | 'welcomeMessage' | 'bestPhotos' | 'cover_image' | 'branding' | 'description'> | null> {
+export async function readPublicInvitation(slug: string): Promise<Pick<EventWithSettings, 'title' | 'metaDescription' | 'welcomeMessage' | 'bestPhotos' | 'cover_image' | 'branding' | 'description' | 'updated_at'> | null> {
   if (isSupabaseReady()) {
     try {
       const supabase = createPublicClient();
@@ -16,6 +16,7 @@ export async function readPublicInvitation(slug: string): Promise<Pick<EventWith
           metaDescription: hosted.description || undefined,
           description: hosted.description || undefined,
           cover_image: hosted.coverUrl || undefined,
+          updated_at: hosted.updatedAt || '',
           branding: hosted.coverUrl
             ? {
                 primaryColor: '#5b21b6',

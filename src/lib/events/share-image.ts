@@ -4,14 +4,18 @@ type ShareSource = Partial<Pick<EventWithSettings, 'title' | 'cover_image' | 'he
 
 function coverCandidates(event: ShareSource): string[] {
   return [
-    event?.branding?.ogShareImage,
-    event?.cover_image,
     event?.heroImage,
     event?.hero_image,
     event?.branding?.heroImage,
     event?.branding?.welcomeImage,
+    event?.cover_image,
     event?.bestPhotos?.[0],
+    event?.branding?.ogShareImage,
   ].filter((value): value is string => Boolean(value));
+}
+
+export function siteOrigin(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL || 'https://eventiafinally.vercel.app').replace(/\/$/, '');
 }
 
 /** Photo de couverture publique. Une photo locale est servie par /e/[slug]/cover. */

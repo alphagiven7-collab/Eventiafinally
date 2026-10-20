@@ -9,7 +9,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { cssColor, familyMotifsVisible, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { cssColor, familyMotifsVisible, heroLightOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -68,7 +68,7 @@ export default function InvitationExperience({
     const detachTheme = initThemeToggle(root);
     initGate(root, guestName);
     const detachAbout = initAboutSection(root);
-    const detachGallery = initGalleryScroll(root);
+    const detachGallery = initGallery(root);
     initDrinkMenu(root, event);
     const detachMusic = initMusic(root, event);
     const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer, onRsvpRef);
@@ -228,6 +228,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const template = invitationModel(event.invitationTemplate);
   const motifsOn = familyMotifsVisible(event);
   const hero = heroTextOf(event.heroText);
+  const light = heroLightOf(event.heroBrightness);
   root.style.setProperty('--primary-color', primaryColor);
   root.style.setProperty('--accent-color', accentColor);
   root.style.setProperty('--rsvp-color', rsvpColor);
@@ -238,6 +239,13 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.dataset.heroSize = hero.size;
   root.dataset.heroStyle = hero.style;
   root.dataset.heroColor = hero.color;
+  root.style.setProperty('--hero-photo-brightness', light.photo);
+  root.style.setProperty('--hero-veil-white-top', light.whiteTop);
+  root.style.setProperty('--hero-veil-white-bottom', light.whiteBottom);
+  root.style.setProperty('--hero-veil-black-top', light.blackTop);
+  root.style.setProperty('--hero-veil-black-bottom', light.blackBottom);
+  root.style.setProperty('--hero-veil-gold-top', light.goldTop);
+  root.style.setProperty('--hero-veil-gold-bottom', light.goldBottom);
 
   // Hero & Couverture
   const heroImg =
@@ -504,30 +512,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
       gallerySection.style.display = 'block';
       if (uploadedPhotos.length > 0) {
         const gridContainer = $('#best-photos-grid');
-        if (gridContainer) {
-          const topPhotos = uploadedPhotos.slice(0, 2);
-          gridContainer.style.gridTemplateColumns =
-            topPhotos.length === 1 ? '1fr' : 'repeat(2, 1fr)';
-          gridContainer.innerHTML = topPhotos
-            .map(
-              (src, idx) =>
-                `<img src="${src}" style="height:175px;width:100%;object-fit:cover;border-radius:12px;" alt="Photo ${idx + 1}">`
-            )
-            .join('');
-        }
-        const marqueeTrack = root.querySelector('.premium-marquee-track') as HTMLElement | null;
-        if (marqueeTrack) {
-          const loopPhotos =
-            uploadedPhotos.length >= 3
-              ? [...uploadedPhotos, ...uploadedPhotos]
-              : [...uploadedPhotos, ...uploadedPhotos, ...uploadedPhotos, ...uploadedPhotos];
-          marqueeTrack.innerHTML = loopPhotos
-            .map(
-              (p, idx) =>
-                `<img src="${p}" alt="Souvenir ${idx + 1}" style="width:120px;height:82px;border-radius:0.65rem;object-fit:cover;flex-shrink:0;">`
-            )
-            .join('');
-        }
+        if (gridContainer) fillGallery(gridContainer, uploadedPhotos);
       }
     }
   }
@@ -664,7 +649,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const box = $(boxSel);
     const img = root.querySelector(imgSel) as HTMLImageElement | null;
     if (!box) return false;
-    if (template === 'ecran' && src) {
+    if (template !== 'fairepart' && src) {
       if (img) img.src = src;
       box.style.display = 'block';
       return true;
@@ -800,16 +785,91 @@ function initAboutSection(root: HTMLElement) {
   return () => card.removeEventListener('click', toggle);
 }
 
-function initGalleryScroll(root: HTMLElement) {
-  const trigger = root.querySelector('#gallery-open-text') as HTMLElement | null;
-  const marquee = root.querySelector('.best-photos-shell .premium-marquee') as HTMLElement | null;
-  if (!trigger || !marquee) return () => {};
+function fillGallery(grid: HTMLElement, photos: string[]) {
+  grid.replaceChildren();
+  grid.dataset.count = String(photos.length);
+  photos.forEach((src, index) => {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'gallery-tile';
+    tile.dataset.index = String(index);
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = `Photo ${index + 1}`;
+    tile.append(img);
+    grid.append(tile);
+  });
+}
 
-  const onClick = () => {
-    marquee.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function initGallery(root: HTMLElement) {
+  const grid = root.querySelector('#best-photos-grid');
+  const lightbox = root.querySelector('#gallery-lightbox') as HTMLElement | null;
+  const image = root.querySelector('.gallery-lightbox-image') as HTMLImageElement | null;
+  const count = root.querySelector('.gallery-lightbox-count');
+  const closeBtn = root.querySelector('.gallery-lightbox-close');
+  const prevBtn = root.querySelector('.gallery-lightbox-prev');
+  const nextBtn = root.querySelector('.gallery-lightbox-next');
+  if (!grid || !lightbox || !image) return () => {};
+
+  const sources = Array.from(grid.querySelectorAll<HTMLButtonElement>('.gallery-tile'))
+    .map((tile) => tile.querySelector('img')?.getAttribute('src') || '')
+    .filter(Boolean);
+  let index = 0;
+
+  const show = (next: number) => {
+    if (!sources.length) return;
+    index = (next + sources.length) % sources.length;
+    image.src = sources[index];
+    image.alt = `Photo ${index + 1}`;
+    if (count) count.textContent = `${index + 1} / ${sources.length}`;
+    const single = sources.length < 2;
+    if (prevBtn instanceof HTMLElement) prevBtn.hidden = single;
+    if (nextBtn instanceof HTMLElement) nextBtn.hidden = single;
   };
-  trigger.addEventListener('click', onClick);
-  return () => trigger.removeEventListener('click', onClick);
+  const open = (next: number) => {
+    show(next);
+    lightbox.hidden = false;
+    lightbox.classList.add('is-open');
+  };
+  const close = () => {
+    lightbox.classList.remove('is-open');
+    lightbox.hidden = true;
+    image.removeAttribute('src');
+  };
+  const onGrid = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const tile = target.closest('.gallery-tile');
+    if (!(tile instanceof HTMLButtonElement) || !grid.contains(tile)) return;
+    const picked = Number(tile.dataset.index || '0');
+    open(Number.isFinite(picked) ? picked : 0);
+  };
+  const onPrev = () => show(index - 1);
+  const onNext = () => show(index + 1);
+  const onBackdrop = (event: Event) => {
+    if (event.target === lightbox) close();
+  };
+  const onKey = (event: KeyboardEvent) => {
+    if (lightbox.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') onPrev();
+    if (event.key === 'ArrowRight') onNext();
+  };
+
+  grid.addEventListener('click', onGrid);
+  closeBtn?.addEventListener('click', close);
+  prevBtn?.addEventListener('click', onPrev);
+  nextBtn?.addEventListener('click', onNext);
+  lightbox.addEventListener('click', onBackdrop);
+  window.addEventListener('keydown', onKey);
+  return () => {
+    grid.removeEventListener('click', onGrid);
+    closeBtn?.removeEventListener('click', close);
+    prevBtn?.removeEventListener('click', onPrev);
+    nextBtn?.removeEventListener('click', onNext);
+    lightbox.removeEventListener('click', onBackdrop);
+    window.removeEventListener('keydown', onKey);
+  };
 }
 
 function dayHasPassed(value?: string) {
@@ -1521,9 +1581,28 @@ function getOriginalCSS(): string {
       color: #fff;
       padding: 0 22px;
       position: relative;
-      background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), var(--hero-image-url);
+      overflow: hidden;
+      background: #1c1418;
+    }
+    .invitation-experience-root .hero-photo,
+    .invitation-experience-root .hero-veil {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .invitation-experience-root .hero-photo {
+      background-image: var(--hero-image-url);
       background-size: cover;
       background-position: center;
+      filter: brightness(var(--hero-photo-brightness, 1));
+      transform: scale(1.04);
+    }
+    .invitation-experience-root .hero-veil {
+      background: linear-gradient(
+        180deg,
+        rgba(15, 10, 20, var(--hero-veil-white-top, 0.42)) 0%,
+        rgba(15, 10, 20, var(--hero-veil-white-bottom, 0.72)) 100%
+      );
     }
     .invitation-experience-root .hero-copy { position: relative; z-index: 1; max-width: 100%; }
     .invitation-experience-root .hero-title {
@@ -1682,28 +1761,116 @@ function getOriginalCSS(): string {
       box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.35);
     }
     .invitation-experience-root .btn-rsvp:active { transform: scale(0.99); }
-    .invitation-experience-root .best-photos-shell {
-      border-radius: 1.25rem;
-      background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%);
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 22px 45px rgba(17,24,39,0.35);
+    .invitation-experience-root .gallery-kicker {
+      margin: 0 0 4px;
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #9ca3af;
+      text-align: center;
     }
-    .invitation-experience-root .premium-marquee { overflow: hidden; border-radius: .9rem; }
-    .invitation-experience-root .premium-marquee-track {
-      display: flex;
-      gap: .6rem;
-      width: max-content;
-      padding: .65rem;
-      animation: premiumMarquee 24s linear infinite;
+    .invitation-experience-root .gallery-title {
+      margin: 0 0 10px;
+      font-family: "Playfair Display", serif;
+      font-size: 1.35rem;
+      text-align: center;
+      color: #111827;
     }
-    .invitation-experience-root .premium-marquee-track img {
-      width: 120px;
-      height: 82px;
-      border-radius: .65rem;
+    .invitation-experience-root .gallery-mosaic {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .invitation-experience-root .gallery-mosaic[data-count="1"] {
+      grid-template-columns: 1fr;
+    }
+    .invitation-experience-root .gallery-tile {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #e7e5e4;
+      cursor: pointer;
+      aspect-ratio: 1;
+    }
+    .invitation-experience-root .gallery-mosaic[data-count="1"] .gallery-tile,
+    .invitation-experience-root .gallery-mosaic[data-count="3"] .gallery-tile:first-child,
+    .invitation-experience-root .gallery-mosaic[data-count="5"] .gallery-tile:first-child {
+      grid-column: 1 / -1;
+      aspect-ratio: 3 / 2;
+    }
+    .invitation-experience-root .gallery-tile img {
+      display: block;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-      flex-shrink: 0;
     }
-    @keyframes premiumMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .invitation-experience-root .gallery-tile:focus-visible {
+      outline: 2px solid var(--accent-color, #2563eb);
+      outline-offset: 2px;
+    }
+    .invitation-experience-root .gallery-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 64px 80px;
+      background: rgba(255, 252, 248, 0.96);
+    }
+    .invitation-experience-root .gallery-lightbox.is-open { display: flex; }
+    .invitation-experience-root .gallery-lightbox-image {
+      max-width: min(100%, 920px);
+      max-height: calc(100vh - 160px);
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 18px 50px rgba(17, 24, 39, 0.22);
+    }
+    .invitation-experience-root .gallery-lightbox-close,
+    .invitation-experience-root .gallery-lightbox-prev,
+    .invitation-experience-root .gallery-lightbox-next {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, 0.08);
+      color: #111827;
+      font-size: 28px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .invitation-experience-root .gallery-lightbox-close { top: 16px; right: 16px; }
+    .invitation-experience-root .gallery-lightbox-prev,
+    .invitation-experience-root .gallery-lightbox-next { top: 50%; transform: translateY(-50%); }
+    .invitation-experience-root .gallery-lightbox-prev { left: 12px; }
+    .invitation-experience-root .gallery-lightbox-next { right: 12px; }
+    .invitation-experience-root .gallery-lightbox-count {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 22px;
+      margin: 0;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      color: #374151;
+    }
+    .invitation-experience-root.dark-mode-applied .gallery-lightbox {
+      background: rgba(2, 6, 16, 0.94);
+    }
+    .invitation-experience-root.dark-mode-applied .gallery-lightbox-close,
+    .invitation-experience-root.dark-mode-applied .gallery-lightbox-prev,
+    .invitation-experience-root.dark-mode-applied .gallery-lightbox-next {
+      background: rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+    }
+    .invitation-experience-root.dark-mode-applied .gallery-lightbox-count { color: #e5e7eb; }
+    .invitation-experience-root.dark-mode-applied .gallery-tile { background: #1e293b; }
     .invitation-experience-root .dress-marquee-wrapper {
       overflow: hidden;
       border-radius: 0.75rem;
@@ -2142,13 +2309,21 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root[data-hero-style="straight"][data-hero-size="small"] .hero-title { font-size: 0.82rem; }
     .invitation-experience-root[data-hero-style="straight"][data-hero-size="large"] .hero-title { font-size: 1.45rem; }
-    .invitation-experience-root[data-hero-color="white"] .hero-bg {
-      color: #fff;
-      background-image: linear-gradient(180deg, rgba(15, 10, 20, 0.42) 0%, rgba(15, 10, 20, 0.72) 100%), var(--hero-image-url);
+    .invitation-experience-root[data-hero-color="white"] .hero-bg { color: #fff; }
+    .invitation-experience-root[data-hero-color="white"] .hero-veil {
+      background: linear-gradient(
+        180deg,
+        rgba(15, 10, 20, var(--hero-veil-white-top, 0.42)) 0%,
+        rgba(15, 10, 20, var(--hero-veil-white-bottom, 0.72)) 100%
+      );
     }
-    .invitation-experience-root[data-hero-color="black"] .hero-bg {
-      color: #111827;
-      background-image: linear-gradient(180deg, rgba(255, 248, 240, 0.58) 0%, rgba(255, 248, 240, 0.78) 100%), var(--hero-image-url);
+    .invitation-experience-root[data-hero-color="black"] .hero-bg { color: #111827; }
+    .invitation-experience-root[data-hero-color="black"] .hero-veil {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 248, 240, var(--hero-veil-black-top, 0.58)) 0%,
+        rgba(255, 248, 240, var(--hero-veil-black-bottom, 0.78)) 100%
+      );
     }
     .invitation-experience-root[data-hero-color="black"] .hero-title { text-shadow: none; }
     .invitation-experience-root[data-hero-color="black"] .hero-date {
@@ -2156,9 +2331,13 @@ function getOriginalCSS(): string {
       border-color: rgba(17, 24, 39, 0.18);
       color: #111827;
     }
-    .invitation-experience-root[data-hero-color="gold"] .hero-bg {
-      color: #f6e2a8;
-      background-image: linear-gradient(180deg, rgba(28, 16, 6, 0.4) 0%, rgba(28, 16, 6, 0.68) 100%), var(--hero-image-url);
+    .invitation-experience-root[data-hero-color="gold"] .hero-bg { color: #f6e2a8; }
+    .invitation-experience-root[data-hero-color="gold"] .hero-veil {
+      background: linear-gradient(
+        180deg,
+        rgba(28, 16, 6, var(--hero-veil-gold-top, 0.4)) 0%,
+        rgba(28, 16, 6, var(--hero-veil-gold-bottom, 0.68)) 100%
+      );
     }
     .invitation-experience-root #summary-date,
     .invitation-experience-root #summary-venue,
@@ -2245,7 +2424,7 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-template="fairepart"] .gps-card,
     .invitation-experience-root[data-template="fairepart"] .guestbook-open,
     .invitation-experience-root[data-template="fairepart"] .drink-menu-shell,
-    .invitation-experience-root[data-template="fairepart"] .best-photos-shell {
+    .invitation-experience-root[data-template="fairepart"] #section-gallery {
       background: transparent !important;
       box-shadow: none !important;
       border-radius: 0 !important;
@@ -2253,8 +2432,8 @@ function getOriginalCSS(): string {
       border-top: 1px solid #e4d5bc !important;
       color: #3f2e22 !important;
     }
-    .invitation-experience-root[data-template="fairepart"] .best-photos-shell h3,
-    .invitation-experience-root[data-template="fairepart"] .best-photos-shell p,
+    .invitation-experience-root[data-template="fairepart"] .gallery-title,
+    .invitation-experience-root[data-template="fairepart"] .gallery-kicker,
     .invitation-experience-root[data-template="fairepart"] .gps-place,
     .invitation-experience-root[data-template="fairepart"] .inv-text-primary,
     .invitation-experience-root[data-template="fairepart"] h3 {
@@ -2327,6 +2506,65 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied[data-template="fairepart"] .inv-text-muted {
       color: #6d5848 !important;
     }
+
+    .invitation-experience-root[data-template="photos"] #main-view {
+      background: transparent !important;
+    }
+    .invitation-experience-root[data-template="photos"] .hero-bg {
+      background: transparent;
+    }
+    .invitation-experience-root[data-template="photos"] .hero-photo {
+      display: none;
+    }
+    .invitation-experience-root[data-template="photos"] #main-view::before,
+    .invitation-experience-root[data-template="photos"] #main-view::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .invitation-experience-root[data-template="photos"] #main-view::before {
+      background-image: var(--hero-image-url);
+      background-size: cover;
+      background-position: center top;
+      filter: brightness(var(--hero-photo-brightness, 1));
+    }
+    .invitation-experience-root[data-template="photos"] #main-view::after {
+      background: linear-gradient(180deg, rgba(255, 252, 248, 0.08) 0%, rgba(255, 252, 248, 0.18) 46%, rgba(255, 252, 248, 0.32) 100%);
+    }
+    .invitation-experience-root[data-template="photos"] #main-view > * {
+      position: relative;
+      z-index: 1;
+    }
+    .invitation-experience-root[data-template="photos"] .gallery-title,
+    .invitation-experience-root[data-template="photos"] .gallery-kicker {
+      text-shadow: 0 1px 8px rgba(255, 255, 255, 0.85);
+    }
+    .invitation-experience-root[data-template="photos"] .invitation-card,
+    .invitation-experience-root[data-template="photos"] #section-when-where .surface-card {
+      background: rgba(255, 255, 255, 0.72) !important;
+      border-color: rgba(255, 255, 255, 0.7) !important;
+      box-shadow: 0 18px 40px rgba(17, 24, 39, 0.14) !important;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] #main-view {
+      background: transparent !important;
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] #main-view::after {
+      background: linear-gradient(180deg, rgba(2, 6, 16, 0.18) 0%, rgba(2, 6, 16, 0.28) 46%, rgba(2, 6, 16, 0.42) 100%);
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] .gallery-title,
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] .gallery-kicker {
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+    }
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] .invitation-card,
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] #section-when-where .surface-card {
+      background: rgba(15, 23, 42, 0.58) !important;
+      border-color: rgba(255, 255, 255, 0.16) !important;
+      color: #f8fafc !important;
+    }
   `;
 }
 
@@ -2361,6 +2599,8 @@ function getOriginalHTML(): string {
 
       <!-- 1. Hero Couverture -->
       <header class="hero-bg">
+        <div class="hero-photo" aria-hidden="true"></div>
+        <div class="hero-veil" aria-hidden="true"></div>
         <div class="hero-copy">
           <p id="hero-date-pill" class="hero-date"></p>
           <h1 id="hero-title" class="hero-title">Titre</h1>
@@ -2448,15 +2688,9 @@ function getOriginalHTML(): string {
 
       <!-- 4. Galerie Photos -->
       <section id="section-gallery" style="padding:0 16px;margin-top:24px;display:none;">
-        <div class="best-photos-shell" style="padding:18px 16px;color:white;">
-          <p style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#c7d2fe;text-align:center;margin-bottom:4px;">Ensemble</p>
-          <h3 class="font-serif text-xl text-center mb-3" style="font-family:'Playfair Display',serif;color:white;">Nos photos</h3>
-          <div id="best-photos-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;"></div>
-          <div class="premium-marquee">
-            <div class="premium-marquee-track"></div>
-          </div>
-          <p id="gallery-open-text" style="font-size:10px;color:#c7d2fe;text-align:center;margin-top:10px;cursor:pointer;">Voir les photos ›</p>
-        </div>
+        <p class="gallery-kicker">Ensemble</p>
+        <h3 class="gallery-title">Nos photos</h3>
+        <div id="best-photos-grid" class="gallery-mosaic"></div>
       </section>
 
       <!-- 5. Dress Code -->
@@ -2658,6 +2892,13 @@ function getOriginalHTML(): string {
         <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:var(--rsvp-color, #5b21b6);color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer</button>
       </div>
     </main>
+    <div id="gallery-lightbox" class="gallery-lightbox" hidden>
+      <button type="button" class="gallery-lightbox-close" aria-label="Fermer">×</button>
+      <button type="button" class="gallery-lightbox-prev" aria-label="Photo précédente">‹</button>
+      <img class="gallery-lightbox-image" alt="">
+      <button type="button" class="gallery-lightbox-next" aria-label="Photo suivante">›</button>
+      <p class="gallery-lightbox-count"></p>
+    </div>
   `;
 }
 
@@ -2673,7 +2914,8 @@ export function mountInvitationForCapture(
     .invitation-experience-root.pdf-capture #offline-invitation-bar,
     .invitation-experience-root.pdf-capture audio,
     .invitation-experience-root.pdf-capture .inv-modal,
-    .invitation-experience-root.pdf-capture #welcome-gate { display: none !important; }
+    .invitation-experience-root.pdf-capture #welcome-gate,
+    .invitation-experience-root.pdf-capture .gallery-lightbox { display: none !important; }
     .invitation-experience-root.pdf-capture,
     .invitation-experience-root.pdf-capture * {
       animation: none !important;

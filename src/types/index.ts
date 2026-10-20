@@ -158,7 +158,7 @@ export interface Ambiance {
   hasFile?: boolean;
 }
 
-export type InvitationModel = 'ecran' | 'fairepart';
+export type InvitationModel = 'ecran' | 'fairepart' | 'photos';
 export type HeroTextPosition = 'top' | 'center' | 'bottom';
 export type HeroTextSize = 'small' | 'normal' | 'large';
 export type HeroTextStyle = 'classic' | 'script' | 'straight';
@@ -219,6 +219,7 @@ export interface EventWithSettings extends Event {
     invitationTemplate?: InvitationModel | 'elegance' | 'motifs';
     showFamilyMotifs?: boolean;
     heroText?: HeroTextSettings;
+    heroBrightness?: number;
     groomMotifImage?: string;
     brideMotifImage?: string;
   }

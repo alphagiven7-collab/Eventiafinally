@@ -36,7 +36,7 @@ import {
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
-import { familyMotifsVisible, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -688,6 +688,7 @@ function EditEventContent() {
   const [heroSize, setHeroSize] = useState<HeroTextSize>('normal');
   const [heroStyle, setHeroStyle] = useState<HeroTextStyle>('classic');
   const [heroColor, setHeroColor] = useState<HeroTextColor>('white');
+  const [heroBrightness, setHeroBrightness] = useState(50);
   const [groomMotifImage, setGroomMotifImage] = useState('');
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
@@ -809,6 +810,7 @@ function EditEventContent() {
       setHeroSize(hero.size);
       setHeroStyle(hero.style);
       setHeroColor(hero.color);
+      setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
       setGroomMotifImage(evt.groomMotifImage || '');
       setBrideMotifImage(evt.brideMotifImage || '');
       setRsvpDeadline(evt.rsvpDeadline ? evt.rsvpDeadline.slice(0, 10) : '');
@@ -909,6 +911,7 @@ function EditEventContent() {
         style: heroStyle,
         color: heroColor,
       },
+      heroBrightness,
       groomMotifImage: groomMotifImage || undefined,
       brideMotifImage: brideMotifImage || undefined,
       rsvpDeadline: rsvpDeadline || undefined,
@@ -957,6 +960,7 @@ function EditEventContent() {
     heroSize,
     heroStyle,
     heroColor,
+    heroBrightness,
     groomMotifImage,
     brideMotifImage,
     rsvpDeadline,
@@ -1308,7 +1312,7 @@ function EditEventContent() {
 
           <Section
             title="Le style"
-            subtitle="Deux pages qui ne se ressemblent pas. Les tissus se rajoutent sur les deux."
+            subtitle="Écran ou faire-part, plus un fond photo. Les tissus se rajoutent sur les trois."
             icon={<Sparkles className="w-4 h-4" />}
             defaultOpen
           >
@@ -1345,6 +1349,22 @@ function EditEventContent() {
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Faire-part</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Fond ivoire, photo petite. Comme une carte imprimée.</p>
               </button>
+              <button
+                type="button"
+                onClick={() => setInvitationTemplate('photos')}
+                className={`text-left rounded-2xl border p-3 sm:col-span-2 ${
+                  invitationTemplate === 'photos'
+                    ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="h-20 rounded-lg overflow-hidden mb-3 relative bg-cover bg-center" style={{ backgroundImage: 'linear-gradient(180deg, rgba(255,252,248,0.2), rgba(255,252,248,0.55)), url(https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=60)' }}>
+                  <div className="absolute left-6 right-6 top-3 h-7 rounded-md bg-white/75 backdrop-blur-sm" />
+                  <div className="absolute left-10 right-10 bottom-2 h-6 rounded-md bg-white/75 backdrop-blur-sm" />
+                </div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Photos</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Même page qu’Écran. La photo passe derrière la carte et le jour. Le texte reste lisible.</p>
+              </button>
             </div>
             <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3">
               <input
@@ -1356,7 +1376,7 @@ function EditEventContent() {
               <span>
                 <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Montrer les tissus des familles</span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Sur Écran, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
+                  Sur Écran et Photos, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
                 </span>
               </span>
             </label>
@@ -1489,6 +1509,24 @@ function EditEventContent() {
                   onChange={setHeroColor}
                   options={[['white', 'Blanc'], ['black', 'Noir'], ['gold', 'Or']] as const}
                 />
+                <label className="block">
+                  <span className="flex items-center justify-between text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <span>Lumière de la photo</span>
+                    <span className="tabular-nums text-gray-500">{heroBrightness}</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={heroBrightness}
+                    onChange={(e) => setHeroBrightness(Number(e.target.value))}
+                    className="mt-2 w-full accent-violet-600"
+                  />
+                  <span className="mt-1 flex justify-between text-[10px] text-gray-400">
+                    <span>Plus sombre</span>
+                    <span>Plus claire</span>
+                  </span>
+                </label>
               </div>
 
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -1805,7 +1843,7 @@ function EditEventContent() {
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier maintenant ?</h2>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
               {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
-              Modèle : {invitationTemplate === 'fairepart' ? 'Faire-part' : 'Écran'}.
+              Modèle : {invitationTemplate === 'fairepart' ? 'Faire-part' : invitationTemplate === 'photos' ? 'Photos' : 'Écran'}.
             </p>
             <p className="text-xs text-gray-500 mt-2">Le lien devient visible. Vous pourrez encore le modifier après.</p>
             <div className="flex gap-2 mt-4">

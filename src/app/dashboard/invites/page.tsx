@@ -32,6 +32,15 @@ import {
 type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
 type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp' | 'duplicates';
 
+function drinkLabel(guest: Guest, catalog: { id: string; name: string }[]): string {
+  const names = new Map(catalog.map((drink) => [drink.id, drink.name]));
+  return (guest.drink_preferences || '')
+    .split(',')
+    .map((id) => names.get(id.trim()) || '')
+    .filter(Boolean)
+    .join(', ');
+}
+
 function GuestManagementContent() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -146,7 +155,8 @@ function GuestManagementContent() {
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q);
+      const catalog = events.find((event) => event.id === selectedEventId)?.drinks || [];
+      return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q) || drinkLabel(g, catalog).toLowerCase().includes(q);
     }
     return true;
   }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
@@ -376,9 +386,10 @@ function GuestManagementContent() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const header = 'nom,telephone,groupe,email,statut,adultes,enfants\n';
+    const header = 'nom,telephone,groupe,email,statut,adultes,enfants,boissons\n';
+    const catalog = selectedEvent?.drinks || [];
     const rows = guests.map(g =>
-      `"${g.name}","${g.phone || ''}","${g.group || ''}","${g.email || ''}","${g.status}",${g.adults || 1},${g.children || 0}`
+      `"${g.name}","${g.phone || ''}","${g.group || ''}","${g.email || ''}","${g.status}",${g.adults || 1},${g.children || 0},"${drinkLabel(g, catalog)}"`
     ).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -533,6 +544,7 @@ function GuestManagementContent() {
 
         {/* ═══════ VUE D'ENSEMBLE ═══════ */}
         {activeTab === 'overview' && (
+          <div className="space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { label: 'Total invités', value: stats.total, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' },
@@ -548,6 +560,24 @@ function GuestManagementContent() {
                 <p className="text-xs font-medium opacity-80">{s.label}</p>
               </div>
             ))}
+          </div>
+          {(selectedEvent?.drinks || []).some((drink) => guests.some((guest) => (guest.drink_preferences || '').split(',').includes(drink.id))) && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">Boissons choisies</h2>
+              <ul className="space-y-2">
+                {(selectedEvent?.drinks || []).map((drink) => {
+                  const count = guests.filter((guest) => (guest.drink_preferences || '').split(',').includes(drink.id)).length;
+                  if (!count) return null;
+                  return (
+                    <li key={drink.id} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-200">
+                      <span>{drink.name}</span>
+                      <span className="font-semibold tabular-nums">{count}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           </div>
         )}
 
@@ -816,6 +846,9 @@ function GuestManagementContent() {
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
                             <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
+                            {drinkLabel(g, selectedEvent?.drinks || []) && (
+                              <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
+                            )}
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
@@ -902,6 +935,9 @@ function GuestManagementContent() {
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
                         <p className="text-[10px] text-gray-400">{g.adults || 1} adulte(s) {g.children > 0 ? `· ${g.children} enfant(s)` : ''}</p>
+                        {drinkLabel(g, selectedEvent?.drinks || []) && (
+                          <p className="text-[10px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
+                        )}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                         {statusLabel(g.status)}

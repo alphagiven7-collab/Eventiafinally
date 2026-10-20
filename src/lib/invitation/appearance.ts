@@ -58,3 +58,11 @@ export function heroTextOf(value?: HeroTextSettings): Required<HeroTextSettings>
 export function cssColor(value: string | undefined, fallback: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(value || '') ? (value as string) : fallback;
 }
+
+export function cssColorSoft(value: string | undefined, fallback: string, alpha = 0.34): string {
+  const hex = cssColor(value, fallback).slice(1);
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}

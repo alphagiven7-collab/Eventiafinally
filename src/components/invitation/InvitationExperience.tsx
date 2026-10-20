@@ -4,12 +4,12 @@ import { useEffect, useRef } from 'react';
 import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { submitGuestRsvp, listGuestbook } from '@/lib/guests/store';
+import { listGuestbook, saveGuestDrinks, submitGuestRsvp } from '@/lib/guests/store';
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { cssColor, familyMotifsVisible, heroLightOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -69,7 +69,7 @@ export default function InvitationExperience({
     initGate(root, guestName);
     const detachAbout = initAboutSection(root);
     const detachGallery = initGallery(root);
-    initDrinkMenu(root, event);
+    const detachDrinks = initDrinkMenu(root, event, guestToken);
     const detachMusic = initMusic(root, event);
     const detachRsvp = initRsvp(root, event, guestToken, guestStatus, rememberAnswer, onRsvpRef);
     const printBtn = root.querySelector('#print-invitation-btn');
@@ -165,7 +165,8 @@ export default function InvitationExperience({
       })();
     };
     offlineBtn?.addEventListener('click', onInstall);
-    const detachGuestbook = initGuestbook(root, event.slug);
+    const detachQuiet = initQuietMark(root);
+    const detachGuestbook = initGuestbook(root, event.slug, event.sections?.guestbook === true);
 
     return () => {
       stopCountdown();
@@ -176,6 +177,8 @@ export default function InvitationExperience({
       detachRsvp();
       printBtn?.removeEventListener('click', onPdf);
       offlineBtn?.removeEventListener('click', onInstall);
+      detachDrinks();
+      detachQuiet();
       detachGuestbook();
       shadow.replaceChildren();
     };
@@ -333,6 +336,10 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.style.setProperty('--hero-veil-black-bottom', light.blackBottom);
   root.style.setProperty('--hero-veil-gold-top', light.goldTop);
   root.style.setProperty('--hero-veil-gold-bottom', light.goldBottom);
+  const reliefOn = event.textRelief !== false;
+  root.dataset.textRelief = reliefOn ? 'on' : 'off';
+  root.dataset.guestbook = event.sections?.guestbook === true ? 'on' : 'off';
+  root.style.setProperty('--text-relief', cssColorSoft(event.textReliefColor, '#1e293b', 0.34));
 
   // Hero & Couverture
   const heroImg =
@@ -730,6 +737,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   if (giftSection) {
     giftSection.style.display = hasAnyContactAction ? 'block' : 'none';
   }
+  const quietContact = $('#quiet-contact') as HTMLAnchorElement | null;
+  if (quietContact) quietContact.hidden = !hasAnyContactAction;
 
   const motifSection = $('#section-family-motifs');
   const groomSrc = motifsOn ? event.groomMotifImage || '' : '';
@@ -1094,7 +1103,14 @@ function initRsvp(
 
   const respond = async (status: 'confirmed' | 'declined', button: HTMLButtonElement | null) => {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      const pending = { token, status, message: (root.querySelector('#guest-message') as HTMLTextAreaElement | null)?.value.trim() || '', slug, at: Date.now() };
+      const pending = {
+        token,
+        status,
+        message: (root.querySelector('#guest-message') as HTMLTextAreaElement | null)?.value.trim() || '',
+        drinks: rememberedDrinks(slug),
+        slug,
+        at: Date.now(),
+      };
       try {
         localStorage.setItem('eventia-rsvp-pending', JSON.stringify(pending));
       } catch {
@@ -1137,6 +1153,7 @@ function initRsvp(
       }
 
       const recorded = Boolean(token && isSupabaseReady() && !responsesClosed);
+      if (recorded) persistGuestDrinks(slug, token);
       if (rememberAnswer && recorded) {
         try {
           localStorage.setItem(localKey, status);
@@ -1189,10 +1206,11 @@ function initRsvp(
     const raw = localStorage.getItem('eventia-rsvp-pending');
     if (!raw) return;
     try {
-      const pending = JSON.parse(raw) as { token?: string; status?: 'confirmed' | 'declined'; message?: string; slug?: string };
+      const pending = JSON.parse(raw) as { token?: string; status?: 'confirmed' | 'declined'; message?: string; drinks?: string[] | null; slug?: string };
       if (pending.slug !== slug || pending.token !== token || (pending.status !== 'confirmed' && pending.status !== 'declined')) return;
       const result = await submitGuestRsvp(createClient(), { token, status: pending.status, message: pending.message || undefined });
       if (result.error) return;
+      if (pending.drinks) void saveGuestDrinks(createClient(), { token, drinks: pending.drinks });
       localStorage.removeItem('eventia-rsvp-pending');
       if (rememberAnswer) {
         try {
@@ -1325,26 +1343,65 @@ function getDrinkIconSvg(id: string): string {
   return icons[id] || icons.champagne;
 }
 
-function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
+function drinkStorageKey(slug?: string) {
+  return `wedding_drink_pick_${slug || 'default'}`;
+}
+
+function rememberedDrinks(slug?: string): string[] | null {
+  try {
+    const saved = localStorage.getItem(drinkStorageKey(slug));
+    if (saved == null) return null;
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string').slice(0, 12)
+      : [];
+  } catch {
+    return null;
+  }
+}
+
+function persistGuestDrinks(slug: string, token: string) {
+  const drinks = rememberedDrinks(slug);
+  if (!token || !drinks || !isSupabaseReady()) return;
+  void saveGuestDrinks(createClient(), { token, drinks });
+}
+
+function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?: string) {
   const section = root.querySelector('#drink-menu-section') as HTMLElement | null;
   const grid = root.querySelector('#drink-menu-grid') as HTMLElement | null;
-  if (!section || !grid) return;
+  if (!section || !grid) return () => {};
 
   const defaultDrinks = event?.drinks || [];
-  if (!section || !grid || defaultDrinks.length === 0) {
-    if (section) section.style.display = 'none';
-    return;
+  if (defaultDrinks.length === 0) {
+    section.style.display = 'none';
+    return () => {};
   }
 
   const selected = new Set<string>();
-  const storageKey = `wedding_drink_pick_${event?.slug || 'default'}`;
+  const storageKey = drinkStorageKey(event?.slug);
+  const token =
+    guestToken ||
+    (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+  let saveTimer = 0;
 
   try {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) JSON.parse(saved).forEach((s: string) => selected.add(s));
+    const saved = rememberedDrinks(event?.slug);
+    saved?.forEach((id) => selected.add(id));
   } catch {}
 
   const checkSvg = `<svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  const remember = () => {
+    const ids = [...selected];
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(ids));
+    } catch {}
+    if (!token || !isSupabaseReady()) return;
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      void saveGuestDrinks(createClient(), { token, drinks: ids });
+    }, 350);
+  };
 
   function render() {
     if (!grid) return;
@@ -1374,9 +1431,7 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
         const id = (card as HTMLElement).dataset.drink!;
         if (selected.has(id)) selected.delete(id);
         else selected.add(id);
-        try {
-          localStorage.setItem(storageKey, JSON.stringify([...selected]));
-        } catch {}
+        remember();
         render();
       });
     });
@@ -1384,6 +1439,7 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings) {
 
   render();
   section.style.display = 'block';
+  return () => window.clearTimeout(saveTimer);
 }
 
 const pageMusic: { audio: HTMLAudioElement | null; eventId: string; source: string; trackKey: string; holders: number } = {
@@ -1543,13 +1599,14 @@ function escapeHtml(value: string): string {
 async function refreshGuestbookPreview(root: HTMLElement, slug: string) {
   const section = root.querySelector('#section-guestbook') as HTMLElement | null;
   const list = root.querySelector('#guestbook-list') as HTMLElement | null;
-  if (!section || !list || !isSupabaseReady()) return;
-  const notes = await listGuestbook(createClient(), slug, 3);
-  if (!notes.length) {
-    section.style.display = 'none';
+  if (!section || !list || root.dataset.guestbook === 'off' || !isSupabaseReady()) {
+    if (section && root.dataset.guestbook === 'off') section.style.display = 'none';
     return;
   }
-  list.innerHTML = guestbookMarkup(notes);
+  const notes = await listGuestbook(createClient(), slug, 3);
+  list.innerHTML = notes.length
+    ? guestbookMarkup(notes)
+    : '<p class="guestbook-empty">Aucun message pour le moment.</p>';
   section.style.display = 'block';
 }
 
@@ -1565,7 +1622,17 @@ function guestbookMarkup(notes: { guest_name: string; message: string }[]): stri
     .join('');
 }
 
-function initGuestbook(root: HTMLElement, slug: string) {
+function initQuietMark(root: HTMLElement) {
+  const contact = root.querySelector('#quiet-contact');
+  const onClick = (event: Event) => {
+    event.preventDefault();
+    root.querySelector('#section-gift-contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  contact?.addEventListener('click', onClick);
+  return () => contact?.removeEventListener('click', onClick);
+}
+
+function initGuestbook(root: HTMLElement, slug: string, enabled: boolean) {
   const section = root.querySelector('#section-guestbook') as HTMLElement | null;
   const list = root.querySelector('#guestbook-list') as HTMLElement | null;
   const open = root.querySelector('#open-guestbook');
@@ -1573,6 +1640,14 @@ function initGuestbook(root: HTMLElement, slug: string) {
   const full = root.querySelector('#guestbook-full') as HTMLElement | null;
   const close = modal?.querySelector('[data-close-modal]');
   if (!section || !list || !open || !modal || !full) return () => {};
+  if (!enabled) {
+    section.style.display = 'none';
+    return () => {};
+  }
+  section.style.display = 'block';
+  if (!list.textContent?.trim()) {
+    list.innerHTML = '<p class="guestbook-empty">Aucun message pour le moment.</p>';
+  }
 
   let cancelled = false;
   const show = () => { modal.style.display = 'flex'; };
@@ -2777,6 +2852,37 @@ function getOriginalCSS(): string {
       border-color: rgba(255, 255, 255, 0.16) !important;
       color: #f8fafc !important;
     }
+    .invitation-experience-root[data-text-relief="on"] .hero-title,
+    .invitation-experience-root[data-text-relief="on"] .invite-card-title,
+    .invitation-experience-root[data-text-relief="on"] .invite-couple-name,
+    .invitation-experience-root[data-text-relief="on"] #summary-date,
+    .invitation-experience-root[data-text-relief="on"] #summary-venue,
+    .invitation-experience-root[data-text-relief="on"] .gallery-title {
+      text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.5),
+        0 2px 2px var(--text-relief, rgba(30, 41, 59, 0.34)) !important;
+    }
+    .invitation-experience-root .invitation-end-mark {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 18px;
+      padding: 28px 16px 6px;
+    }
+    .invitation-experience-root .invitation-end-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #94a3b8;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      opacity: 0.72;
+    }
+    .invitation-experience-root .invitation-end-link svg { width: 14px; height: 14px; }
+    .invitation-experience-root .invitation-end-link[hidden] { display: none; }
+    .invitation-experience-root.dark-mode-applied .invitation-end-link { color: #64748b; }
   `;
 }
 
@@ -3016,7 +3122,7 @@ function getOriginalHTML(): string {
               <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>
             </div>
             <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Que boire ?</h3>
-            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Choisissez ce que vous aimez. Ce n'est pas obligatoire.</p>
+            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Choisissez ce que vous aimez. Avec votre lien personnel, les mariés voient ce choix.</p>
           </div>
           <div id="drink-menu-grid" class="drink-menu-grid" style="padding:0 16px 16px;"></div>
         </div>
@@ -3054,6 +3160,13 @@ function getOriginalHTML(): string {
           </div>
         </div>
       </section>
+      <footer class="invitation-end-mark">
+        <a id="quiet-home" class="invitation-end-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c2 3 2 5 0 8-2-3-2-5 0-8Z"/><path d="M12 11c3 1 5 3 5 6a5 5 0 0 1-10 0c0-3 2-5 5-6Z"/></svg>
+          <span>Eventia</span>
+        </a>
+        <a id="quiet-contact" class="invitation-end-link" href="#section-gift-contact" hidden>Nous écrire</a>
+      </footer>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
         <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:var(--rsvp-color, #5b21b6);color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer</button>
       </div>

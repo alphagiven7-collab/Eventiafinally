@@ -669,6 +669,7 @@ function EditEventContent() {
   const [program, setProgram] = useState<ProgramItem[]>([]);
   const [drinks, setDrinks] = useState<{ id: string; name: string; desc: string; emoji: string }[]>([]);
   const [secDressCode, setSecDressCode] = useState(true);
+  const [secGuestbook, setSecGuestbook] = useState(false);
   const [dressCodeTitle, setDressCodeTitle] = useState('');
   const [dressCodeColor, setDressCodeColor] = useState('#c06c84');
   const [dressImages, setDressImages] = useState<string[]>([]);
@@ -691,6 +692,8 @@ function EditEventContent() {
   const [heroStyle, setHeroStyle] = useState<HeroTextStyle>('classic');
   const [heroColor, setHeroColor] = useState<HeroTextColor>('white');
   const [heroBrightness, setHeroBrightness] = useState(50);
+  const [textRelief, setTextRelief] = useState(true);
+  const [textReliefColor, setTextReliefColor] = useState('#1e293b');
   const [groomMotifImage, setGroomMotifImage] = useState('');
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
@@ -817,12 +820,15 @@ function EditEventContent() {
       setHeroStyle(hero.style);
       setHeroColor(hero.color);
       setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
+      setTextRelief(evt.textRelief !== false);
+      setTextReliefColor(evt.textReliefColor || '#1e293b');
       setGroomMotifImage(evt.groomMotifImage || '');
       setBrideMotifImage(evt.brideMotifImage || '');
       setRsvpDeadline(evt.rsvpDeadline ? evt.rsvpDeadline.slice(0, 10) : '');
       setSecGallery(evt.sections?.gallery !== false);
       setSecCountdown(evt.sections?.countdown !== false);
       setSecDressCode(evt.sections?.dressCode !== false);
+      setSecGuestbook(evt.sections?.guestbook === true);
       setLoading(false);
     }
 
@@ -858,6 +864,8 @@ function EditEventContent() {
       galleryKicker,
       galleryTitle,
       galleryFlowText,
+      textRelief,
+      textReliefColor,
       inviteIntro: inviteIntro || undefined,
       inviteSecondary: undefined,
       mainText: undefined,
@@ -911,7 +919,7 @@ function EditEventContent() {
         dressCode: secDressCode,
         quiz: event.sections?.quiz || false,
         donation: Boolean(donationLink || whatsappDonation),
-        guestbook: event.sections?.guestbook || false,
+        guestbook: secGuestbook,
       },
       invitationTemplate,
       showFamilyMotifs,
@@ -968,6 +976,7 @@ function EditEventContent() {
     secGallery,
     secCountdown,
     secDressCode,
+    secGuestbook,
     invitationTemplate,
     showFamilyMotifs,
     heroPosition,
@@ -975,6 +984,8 @@ function EditEventContent() {
     heroStyle,
     heroColor,
     heroBrightness,
+    textRelief,
+    textReliefColor,
     groomMotifImage,
     brideMotifImage,
     rsvpDeadline,
@@ -1555,6 +1566,22 @@ function EditEventContent() {
                     <span>Plus claire</span>
                   </span>
                 </label>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Léger relief sur les textes importants</span>
+                  <input
+                    type="checkbox"
+                    checked={textRelief}
+                    onChange={(e) => setTextRelief(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                  />
+                </div>
+                {textRelief && (
+                  <ColorChoice
+                    label="Couleur du relief"
+                    value={textReliefColor}
+                    onChange={setTextReliefColor}
+                  />
+                )}
               </div>
 
               <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -1665,7 +1692,7 @@ function EditEventContent() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Les boissons
                 </label>
-                <p className="text-[10px] text-gray-400">Si vous n’en mettez pas, cette partie reste cachée.</p>
+                <p className="text-[10px] text-gray-400">Si vous n’en mettez pas, cette partie reste cachée. Le choix d’un invité apparaît sur la page Invités, à côté de son nom, quand il répond depuis son lien personnel.</p>
                 {drinks.map((drink, index) => (
                   <div key={drink.id} className="flex gap-2">
                     <input
@@ -1751,6 +1778,18 @@ function EditEventContent() {
             icon={<Sparkles className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Montrer le livre d’or</span>
+                  <span className="block text-[10px] text-gray-400">Les mots des invités. Décochez pour cacher toute la section.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={secGuestbook}
+                  onChange={(e) => setSecGuestbook(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                />
+              </div>
               <Field
                 label="Votre histoire"
                 value={aboutStory1}

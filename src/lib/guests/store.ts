@@ -15,6 +15,7 @@ type GuestRow = {
   status: GuestStatus;
   token: string;
   message: string | null;
+  drink_preferences?: string | null;
   table_number: string | null;
   checked_in_at?: string | null;
   created_at: string;
@@ -95,6 +96,7 @@ export function toGuest(row: GuestRow): Guest {
     children: row.children ?? 0,
     table_number: row.table_number ?? undefined,
     message: row.message ?? undefined,
+    drink_preferences: row.drink_preferences ?? undefined,
     token: row.token,
     checked_in_at: row.checked_in_at ?? undefined,
     created_at: row.created_at,
@@ -326,4 +328,17 @@ export async function submitGuestRsvp(
     return { error: 'Ça n’a pas été enregistré. Réessayez.' };
   }
   return { name: row?.guest_name, status: row?.guest_status || input.status };
+}
+
+export async function saveGuestDrinks(
+  client: SupabaseClient,
+  input: { token: string; drinks: string[] },
+): Promise<{ error?: string }> {
+  const drinks = input.drinks.filter((id) => typeof id === 'string' && id.trim()).slice(0, 12);
+  const { error } = await client.rpc('save_guest_drinks', {
+    p_token: input.token,
+    p_drinks: drinks.join(','),
+  });
+  if (error) return { error: explainGuestError(error.message) };
+  return {};
 }

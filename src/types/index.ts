@@ -68,6 +68,7 @@ export interface Guest {
   children: number;
   table_number?: string;
   message?: string;
+  drink_preferences?: string;
   token: string;
   checked_in_at?: string;
   created_at: string;
@@ -212,6 +213,8 @@ export interface EventWithSettings extends Event {
     galleryKicker?: string;
     galleryTitle?: string;
     galleryFlowText?: string;
+    textRelief?: boolean;
+    textReliefColor?: string;
     whatsappDonationPhone?: string;
     supportEmail?: string;
     address?: string;

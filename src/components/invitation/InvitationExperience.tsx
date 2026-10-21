@@ -246,15 +246,7 @@ export default function InvitationExperience({
           />
         )}
         <div style={{ position: 'absolute', inset: 0, background: fallbackOverlay }} />
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            background: event.heroBand === false ? 'transparent' : 'rgba(17, 12, 16, 0.46)',
-            borderRadius: event.heroBand === false ? 0 : 18,
-            padding: event.heroBand === false ? 0 : '16px 18px 14px',
-          }}
-        >
+        <div style={{ position: 'relative', zIndex: 1 }}>
           <p style={{ margin: '0 0 14px', fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase' }}>
             {new Date(event.event_date).toLocaleDateString('fr-FR', {
               day: 'numeric',
@@ -349,7 +341,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.dataset.cardWeight = card.weight;
   root.dataset.cardSize = card.size;
   root.dataset.cardAlign = card.align;
-  root.dataset.heroBand = event.heroBand === false ? 'off' : 'on';
+  root.dataset.heroBand = event.heroBand === true ? 'on' : 'off';
   root.style.setProperty('--wash-ink', cssColorSoft(primaryColor, '#1e293b', 0.16));
   root.style.setProperty('--wash-light', cssColorSoft(accentColor, '#d6c4a8', 0.22));
   root.style.setProperty('--ink-line', cssColorSoft(primaryColor, '#1e293b', 0.28));
@@ -488,9 +480,18 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     }
   }
 
-  // Heure
-  if (event.event_time) {
-    setText('#summary-time', event.event_time);
+  // Heure : champ dédié, sinon l'heure déjà portée par la date
+  const timeEl = $('#summary-time');
+  let timeLabel = (event.event_time || '').trim();
+  if (!timeLabel && event.event_date) {
+    const clock = new Date(event.event_date);
+    if (!isNaN(clock.getTime()) && (clock.getHours() !== 0 || clock.getMinutes() !== 0)) {
+      timeLabel = clock.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+  if (timeEl) {
+    timeEl.textContent = timeLabel;
+    timeEl.style.display = timeLabel ? '' : 'none';
   }
 
   // Programme
@@ -520,9 +521,9 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
                 <div style="width:11px;height:11px;border-radius:999px;background:${dotColor};box-shadow:0 0 0 4px rgba(124,58,237,0.1);"></div>
                 ${i < event.program!.length - 1 ? '<div class="inv-divider-line" style="width:1px;height:16px;background:#e5e7eb;margin-top:3px;"></div>' : ''}
               </div>
-              <div style="padding-bottom:2px;">
-                <p style="font-size:11px;font-weight:600;color:${dotColor};margin-bottom:2px;letter-spacing:0.05em;">${item.time}</p>
-                <p class="inv-text-primary" style="font-size:14px;font-weight:500;">${item.title}</p>
+              <div style="padding-bottom:4px;">
+                <p style="font-size:13px;font-weight:700;color:${dotColor};margin-bottom:2px;letter-spacing:0.02em;">${item.time}</p>
+                <p class="inv-text-primary" style="font-size:15px;font-weight:600;color:#111827;">${item.title}</p>
               </div>
             </div>`;
         })
@@ -543,7 +544,11 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   setText('#venue-title', venueName || 'Lieu de réception');
   setText('#venue-address', venueAddr);
   setText('#summary-venue', venueName || 'Lieu de réception');
-  setText('#summary-address', venueAddr);
+  const addressEl = $('#summary-address');
+  if (addressEl) {
+    addressEl.textContent = venueAddr;
+    addressEl.style.display = venueAddr ? '' : 'none';
+  }
 
   const customMapImg = event.venueDetails?.mapImage || event.mapImage || '';
   const mapFrame = $('#map-frame');
@@ -3156,69 +3161,80 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-message-style="signature"] .invite-body-text.invite-calligraphy { font-weight: 400; }
     .invitation-experience-root[data-card-style="script"] .invite-couple-name,
     .invitation-experience-root[data-message-style="script"] .invite-body-text.invite-calligraphy { font-weight: 600; }
-    .invitation-experience-root .day-card {
-      background:
-        linear-gradient(165deg, var(--wash-ink, rgba(30, 41, 59, 0.08)), #fff 38%, var(--wash-light, rgba(196, 165, 116, 0.18)));
-      border: 1px solid var(--primary-color, #1e293b);
+    .invitation-experience-root #section-when-where .day-card,
+    .invitation-experience-root[data-template="photos"] #section-when-where .day-card,
+    .invitation-experience-root[data-template="fairepart"] #section-when-where .day-card,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-card,
+    .invitation-experience-root.dark-mode-applied[data-template="photos"] #section-when-where .day-card,
+    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] #section-when-where .day-card {
+      background: #fffdfb !important;
+      color: #111827 !important;
+      border: 1px solid rgba(17, 24, 39, 0.1) !important;
       border-radius: 18px;
-      box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--accent-color, #c4a574);
-      padding: 14px 14px 12px;
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06) !important;
+      padding: 20px 18px 16px;
       text-align: center;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
-    .invitation-experience-root .day-kicker {
+    .invitation-experience-root #section-when-where .day-kicker,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-kicker {
       margin: 0 0 10px;
-      font-size: 10px;
-      letter-spacing: 0.22em;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: color-mix(in srgb, var(--accent-color, #c4a574) 55%, #6b7280);
+      color: #1f2937 !important;
     }
-    .invitation-experience-root .day-pair {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
+    .invitation-experience-root #section-when-where .day-rule {
+      display: block;
+      width: 42px;
+      height: 1px;
+      margin: 14px auto;
+      background: #111827;
     }
-    .invitation-experience-root .day-rule {
-      width: 1px;
-      align-self: stretch;
-      min-height: 36px;
-      background: linear-gradient(var(--primary-color, #1e293b), var(--accent-color, #c4a574));
-    }
-    .invitation-experience-root .day-col { min-width: 0; }
-    .invitation-experience-root #summary-date,
-    .invitation-experience-root #summary-venue {
+    .invitation-experience-root #section-when-where #summary-date,
+    .invitation-experience-root #section-when-where #summary-venue,
+    .invitation-experience-root[data-template="fairepart"] #section-when-where #summary-date,
+    .invitation-experience-root[data-template="fairepart"] #section-when-where #summary-venue,
+    .invitation-experience-root.dark-mode-applied #section-when-where #summary-date,
+    .invitation-experience-root.dark-mode-applied #section-when-where #summary-venue,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-card h3 {
       font-family: "Playfair Display", Georgia, serif;
       font-weight: 600;
-      line-height: 1.2;
+      line-height: 1.25;
       margin: 0;
-      color: var(--primary-color, #1e293b);
-      text-shadow: none;
+      color: #111827 !important;
+      text-shadow: none !important;
     }
-    .invitation-experience-root #summary-date { font-size: 1.12rem; }
-    .invitation-experience-root #summary-venue { font-size: 1.02rem; }
-    .invitation-experience-root #summary-time,
-    .invitation-experience-root #summary-address {
-      margin: 4px 0 0;
-      font-size: 12px;
-      line-height: 1.35;
+    .invitation-experience-root #section-when-where #summary-date { font-size: 1.7rem; }
+    .invitation-experience-root #section-when-where #summary-venue { font-size: 1.4rem; }
+    .invitation-experience-root #section-when-where .day-detail,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-detail {
+      margin: 8px 0 0;
+      font-size: 16px;
+      line-height: 1.45;
+      color: #111827 !important;
+      font-weight: 600;
     }
-    .invitation-experience-root .day-program {
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid var(--ink-line, rgba(30, 41, 59, 0.16));
+    .invitation-experience-root #section-when-where .day-program {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(17, 24, 39, 0.12);
+    }
+    .invitation-experience-root #section-when-where #program-section-title,
+    .invitation-experience-root.dark-mode-applied #section-when-where #program-section-title {
+      color: #1f2937 !important;
+      font-size: 12px !important;
+    }
+    .invitation-experience-root #section-when-where .day-card .inv-text-primary,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-card .inv-text-primary,
+    .invitation-experience-root.dark-mode-applied #section-when-where .day-card h3 {
+      color: #111827 !important;
     }
     .invitation-experience-root #program-timeline { gap: 2px; margin-bottom: 10px; }
     .invitation-experience-root .invite-body-text {
       color: color-mix(in srgb, var(--primary-color, #1e293b) 78%, #111827);
-    }
-    .invitation-experience-root[data-template="photos"] .day-card {
-      background: linear-gradient(165deg, rgba(255,255,255,0.9), rgba(255,255,255,0.72)) !important;
-      box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 0 0 5px var(--accent-color, #c4a574) !important;
-    }
-    .invitation-experience-root.dark-mode-applied .day-card {
-      background: linear-gradient(165deg, rgba(15,23,42,0.35), #1e293b 42%, rgba(196,165,116,0.14)) !important;
-      box-shadow: 0 0 0 4px #0f172a, 0 0 0 5px var(--accent-color, #c4a574) !important;
-      border-color: var(--accent-color, #c4a574) !important;
     }
     .invitation-experience-root .invitation-end-mark {
       display: flex;
@@ -3314,19 +3330,13 @@ function getOriginalHTML(): string {
       <section id="section-when-where" style="padding:0 16px;margin-top:16px;">
         <div class="surface-card day-card">
           <p class="day-kicker">Le jour et le lieu</p>
-          <div class="day-pair">
-            <div class="day-col">
-              <p id="summary-date" class="inv-text-primary"></p>
-              <p id="summary-time" class="inv-text-muted"></p>
-            </div>
-            <span class="day-rule" aria-hidden="true"></span>
-            <div class="day-col">
-              <h3 id="summary-venue" class="inv-text-primary"></h3>
-              <p id="summary-address" class="inv-text-muted"></p>
-            </div>
-          </div>
+          <p id="summary-date"></p>
+          <p id="summary-time" class="day-detail"></p>
+          <span class="day-rule" aria-hidden="true"></span>
+          <h3 id="summary-venue"></h3>
+          <p id="summary-address" class="day-detail"></p>
           <div id="day-program" class="day-program">
-            <p id="program-section-title" style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:8px;text-align:center;">Au programme</p>
+            <p id="program-section-title" style="font-size:12px;font-weight:700;color:#1f2937;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:10px;text-align:center;">Au programme</p>
             <div id="program-timeline" style="display:flex;flex-direction:column;gap:2px;text-align:left;margin-bottom:10px;"></div>
           </div>
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:12px 14px;min-height:2.75rem;">

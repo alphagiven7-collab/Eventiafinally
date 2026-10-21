@@ -661,7 +661,7 @@ function EditEventContent() {
   const [cardSize, setCardSize] = useState<HeroTextSize>('normal');
   const [cardAlign, setCardAlign] = useState<CardTextAlign>('center');
   const [cardWeight, setCardWeight] = useState<CardTextWeight>('clear');
-  const [heroBand, setHeroBand] = useState(true);
+  const [heroBand, setHeroBand] = useState(false);
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
@@ -855,7 +855,7 @@ function EditEventContent() {
       setHeroSize(hero.size);
       setHeroStyle(hero.style);
       setHeroColor(hero.color);
-      setHeroBand(evt.heroBand !== false);
+      setHeroBand(evt.heroBand === true);
       setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
       setTextRelief(evt.textRelief !== false);
       setTextReliefColor(evt.textReliefColor || '#1e293b');
@@ -1688,8 +1688,8 @@ function EditEventContent() {
                 />
                 <div className="flex items-center justify-between gap-3">
                   <span>
-                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Bandeau derrière le titre</span>
-                    <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Les lettres restent nettes sur la photo.</span>
+                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Cadre sur la photo</span>
+                    <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Décoché, la photo reste libre. Le titre se pose directement dessus.</span>
                   </span>
                   <input
                     type="checkbox"

@@ -58,26 +58,23 @@ function CreateEventContent() {
   const [loading, setLoading] = useState(false);
   const [needsPermission, setNeedsPermission] = useState(false);
 
-  const computedTitle =
-    coupleLeft.trim() && coupleRight.trim()
-      ? `Mariage de ${coupleLeft.trim()} & ${coupleRight.trim()}`
-      : coupleLeft.trim() || coupleRight.trim() || '';
+  const computedTitle = [coupleLeft.trim(), coupleRight.trim()].filter(Boolean).join(' & ');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!coupleLeft.trim() || !eventDate || !location.trim()) {
-      addToast('error', 'Veuillez indiquer au moins les prénoms, la date et le lieu.');
+    if (!eventDate || !location.trim()) {
+      addToast('error', 'La date et le lieu sont obligatoires.');
       return;
     }
 
-    const finalTitleEarly = computedTitle || 'Notre mariage';
+    const finalTitleEarly = computedTitle || 'Notre événement';
     if (!user?.id) {
       const localSlug = newDraftSlug(finalTitleEarly);
       const draftEvent: EventWithSettings = {
         id: crypto.randomUUID(),
         slug: localSlug,
         title: finalTitleEarly,
-        subtitle: coupleLeft.trim() && coupleRight.trim() ? `${coupleLeft.trim()} & ${coupleRight.trim()}` : undefined,
+        subtitle: computedTitle || undefined,
         type: 'wedding',
         event_date: new Date(eventDate + 'T' + (eventTime || '00:00')).toISOString(),
         event_time: eventTime || undefined,
@@ -124,7 +121,7 @@ function CreateEventContent() {
     }
 
 
-    const finalTitle = computedTitle || 'Notre Mariage';
+    const finalTitle = computedTitle || 'Notre événement';
     const slug =
       finalTitle
         .toLowerCase()
@@ -139,10 +136,7 @@ function CreateEventContent() {
       id: crypto.randomUUID(),
       slug,
       title: finalTitle,
-      subtitle:
-        coupleLeft.trim() && coupleRight.trim()
-          ? `${coupleLeft.trim()} & ${coupleRight.trim()}`
-          : undefined,
+      subtitle: computedTitle || undefined,
       type: 'wedding',
       event_date: new Date(eventDate + 'T' + (eventTime || '00:00')).toISOString(),
       event_time: eventTime || undefined,
@@ -230,12 +224,14 @@ function CreateEventContent() {
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-4"
         >
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Les prénoms sont facultatifs. Un seul nom, ou aucun, suffit : la carte n’en invente pas.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="Premier prénom"
               value={coupleLeft}
               onChange={setCoupleLeft}
-              required
               placeholder="Ex: Marie"
             />
             <Field

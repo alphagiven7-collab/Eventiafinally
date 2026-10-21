@@ -162,14 +162,21 @@ export interface Ambiance {
 export type InvitationModel = 'ecran' | 'fairepart' | 'photos';
 export type HeroTextPosition = 'top' | 'center' | 'bottom';
 export type HeroTextSize = 'small' | 'normal' | 'large';
-export type HeroTextStyle = 'classic' | 'script' | 'straight';
+export type HeroTextStyle = 'classic' | 'elegant' | 'modern' | 'straight' | 'script' | 'signature';
 export type HeroTextColor = 'white' | 'black' | 'gold';
+export type CardTextAlign = 'left' | 'center';
 
 export interface HeroTextSettings {
   position?: HeroTextPosition;
   size?: HeroTextSize;
   style?: HeroTextStyle;
   color?: HeroTextColor;
+}
+
+export interface CardTextSettings {
+  style?: HeroTextStyle;
+  size?: HeroTextSize;
+  align?: CardTextAlign;
 }
 
 // Complete Event with customization (from JSON files)
@@ -179,6 +186,9 @@ export interface EventWithSettings extends Event {
     gateHint?: string;
     inviteIntro?: string;
     inviteSecondary?: string;
+    cardKicker?: string;
+    cardGreeting?: string;
+    cardText?: CardTextSettings;
     reserveText?: string;
     rsvpDeadlineText?: string;
     rsvpButtonColor?: string;

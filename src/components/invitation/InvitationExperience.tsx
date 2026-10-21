@@ -9,7 +9,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { cardTextOf, cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -258,14 +258,23 @@ export default function InvitationExperience({
           <h1
             style={{
               margin: '0 0 10px',
-              fontFamily: fallbackText.style === 'straight' ? 'Montserrat, sans-serif' : 'Playfair Display, Georgia, serif',
-              fontSize: fallbackText.size === 'small' ? '1.2rem' : fallbackText.size === 'large' ? '2.55rem' : '1.5rem',
+              fontFamily: textFontFamily(fallbackText.style),
+              fontWeight: 600,
+              fontStyle: fallbackText.style === 'elegant' ? 'italic' : 'normal',
+              fontSize: heroTitleSize(fallbackText.style, fallbackText.size),
               lineHeight: 1.12,
+              letterSpacing: fallbackText.style === 'straight' ? '0.14em' : '0.02em',
+              textTransform: fallbackText.style === 'straight' ? 'uppercase' : 'none',
+              textShadow:
+                fallbackText.color === 'black' || fallbackText.style === 'script' || fallbackText.style === 'signature'
+                  ? 'none'
+                  : '0 1px 1px rgba(0,0,0,0.55)',
+              WebkitFontSmoothing: 'antialiased',
             }}
           >
             {event.title}
           </h1>
-          <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
             {event.subtitle || [event.coupleLeft, event.coupleRight].filter(Boolean).join(' & ')}
           </p>
         </div>
@@ -317,6 +326,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const template = invitationModel(event.invitationTemplate);
   const motifsOn = familyMotifsVisible(event);
   const hero = heroTextOf(event.heroText);
+  const card = cardTextOf(event.cardText);
   const light = heroLightOf(event.heroBrightness);
   root.style.setProperty('--primary-color', primaryColor);
   root.style.setProperty('--accent-color', accentColor);
@@ -329,6 +339,9 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.dataset.heroSize = hero.size;
   root.dataset.heroStyle = hero.style;
   root.dataset.heroColor = hero.color;
+  root.dataset.cardStyle = card.style;
+  root.dataset.cardSize = card.size;
+  root.dataset.cardAlign = card.align;
   root.style.setProperty('--hero-photo-brightness', light.photo);
   root.style.setProperty('--hero-veil-white-top', light.whiteTop);
   root.style.setProperty('--hero-veil-white-bottom', light.whiteBottom);
@@ -371,30 +384,48 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     : leftName || rightName || event.title;
 
   setText('#hero-title', event.title);
-  setText(
-    '#hero-subtitle',
-    event.subtitle || (hasBothNames ? `${leftName} & ${rightName}` : event.location || '')
-  );
+  const namesLine = [leftName, rightName].filter(Boolean).join(' & ');
+  const heroSubtitle = $('#hero-subtitle');
+  const subtitleText = (event.subtitle || namesLine || event.location || '').trim();
+  if (heroSubtitle) {
+    heroSubtitle.textContent = subtitleText;
+    heroSubtitle.style.display = subtitleText ? '' : 'none';
+  }
   setText('#welcome-gate-title', coupleDisplay);
 
   const coupleRow = $('#couple-row-container');
   const joinBadge = $('#couple-join-badge');
   const rightNameEl = $('#couple-name-right');
-  setText('#couple-name-left', leftName || event.title);
-  if (rightName) {
-    setText('#couple-name-right', rightName);
-    if (joinBadge) joinBadge.style.display = 'inline-block';
-    if (rightNameEl) rightNameEl.style.display = 'inline-block';
+  if (!leftName && !rightName) {
+    if (coupleRow) coupleRow.style.display = 'none';
   } else {
-    if (joinBadge) joinBadge.style.display = 'none';
-    if (rightNameEl) rightNameEl.style.display = 'none';
+    if (coupleRow) coupleRow.style.display = 'flex';
+    setText('#couple-name-left', leftName || rightName);
+    if (leftName && rightName) {
+      setText('#couple-name-right', rightName);
+      if (joinBadge) joinBadge.style.display = 'inline-block';
+      if (rightNameEl) rightNameEl.style.display = 'inline-block';
+    } else {
+      if (joinBadge) joinBadge.style.display = 'none';
+      if (rightNameEl) rightNameEl.style.display = 'none';
+    }
   }
-  if (coupleRow) coupleRow.style.display = 'flex';
 
-  // Nom de l'invité
-  if (guestName) {
-    setText('#display-guest-name', guestName);
+  const kickerEl = $('#card-kicker');
+  const kickerText = event.cardKicker === undefined ? 'On vous invite' : event.cardKicker.trim();
+  if (kickerEl) {
+    kickerEl.textContent = kickerText;
+    kickerEl.style.display = kickerText ? 'block' : 'none';
   }
+
+  const greetingText = event.cardGreeting === undefined ? 'Bonjour' : event.cardGreeting.trim();
+  const guestShown = Boolean(guestName && guestName.trim());
+  setText('#card-greeting', greetingText);
+  if (guestShown) setText('#display-guest-name', guestName || '');
+  const greetingGap = $('#card-greeting-gap');
+  if (greetingGap) greetingGap.style.display = greetingText && guestShown ? 'inline' : 'none';
+  const greetingLine = $('#card-greeting-line');
+  if (greetingLine) greetingLine.style.display = greetingText || guestShown ? 'block' : 'none';
 
   const tableLine = $('#guest-table-line');
   if (tableLine) {
@@ -407,7 +438,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   }
 
   // Textes de la carte d'invitation
-  const coupleForIntro = hasBothNames ? `${leftName} et ${rightName}` : event.title;
+  const namedCouple = [leftName, rightName].filter(Boolean);
+  const coupleForIntro = namedCouple.length === 2 ? `${namedCouple[0]} et ${namedCouple[1]}` : namedCouple[0] || 'nous';
   const introText = (
     event.inviteIntro ||
     `C'est avec une immense joie que nous vous convions à partager ce moment précieux avec nous.`
@@ -1700,6 +1732,8 @@ function getOriginalCSS(): string {
       font-family: 'Montserrat', sans-serif;
       background-color: #f4f4f6;
       color: #1f2937;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       -webkit-tap-highlight-color: transparent;
       transition: background-color 0.25s ease, color 0.25s ease;
     }
@@ -1755,12 +1789,13 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root .hero-copy { position: relative; z-index: 1; max-width: 100%; }
     .invitation-experience-root .hero-title {
-      font-family: "Playfair Display", serif;
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
       font-size: 1.5rem;
       line-height: 1.15;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
       margin: 0 0 0.65rem;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.55);
     }
     .invitation-experience-root .hero-date {
       display: inline-block;
@@ -1777,8 +1812,9 @@ function getOriginalCSS(): string {
     .invitation-experience-root .hero-subtitle {
       margin: 0;
       font-size: 13px;
-      font-weight: 300;
+      font-weight: 500;
       letter-spacing: 0.2em;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
       text-transform: uppercase;
       opacity: 0.92;
     }
@@ -1832,12 +1868,12 @@ function getOriginalCSS(): string {
       margin-bottom: 0.4rem;
     }
     .invitation-experience-root .invite-card-title {
-      font-family: "Great Vibes", cursive;
-      font-size: clamp(3.1rem, 14vw, 4.6rem);
-      line-height: 0.95;
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(2rem, 8vw, 2.8rem);
+      line-height: 1.1;
       color: #111827;
       margin: 0.2rem 0 0.7rem;
-      text-shadow: 0 1px 0 rgba(255,255,255,0.6);
     }
     .invitation-experience-root .invite-couple-row {
       display: flex;
@@ -1848,9 +1884,11 @@ function getOriginalCSS(): string {
       margin-bottom: 1.1rem;
     }
     .invitation-experience-root .invite-couple-name {
-      font-family: "Great Vibes", cursive;
-      font-size: clamp(2.35rem, 9vw, 3.1rem);
-      line-height: 1;
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(1.7rem, 7vw, 2.35rem);
+      line-height: 1.15;
+      letter-spacing: 0.01em;
     }
     .invitation-experience-root .invite-couple-name--left,
     .invitation-experience-root .invite-couple-name--right { color: var(--primary-color, #5b21b6); }
@@ -1890,8 +1928,8 @@ function getOriginalCSS(): string {
       margin-bottom: 0.9rem;
     }
     .invitation-experience-root .invite-calligraphy {
-      font-family: "Dancing Script", cursive;
-      font-size: clamp(1.35rem, 5.2vw, 1.7rem);
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(1.05rem, 4.2vw, 1.22rem);
       font-weight: 500;
       line-height: 1.55;
       color: #374151;
@@ -2579,15 +2617,44 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root[data-hero-size="small"] .hero-title { font-size: 1.2rem; }
     .invitation-experience-root[data-hero-size="large"] .hero-title { font-size: 2.55rem; line-height: 1.05; }
+    .invitation-experience-root[data-hero-style="elegant"] .hero-title {
+      font-family: "Cormorant Garamond", "Playfair Display", serif;
+      font-style: italic;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-hero-style="elegant"][data-hero-size="small"] .hero-title { font-size: 1.55rem; }
+    .invitation-experience-root[data-hero-style="elegant"][data-hero-size="normal"] .hero-title { font-size: 2.15rem; }
+    .invitation-experience-root[data-hero-style="elegant"][data-hero-size="large"] .hero-title { font-size: 3rem; }
+    .invitation-experience-root[data-hero-style="modern"] .hero-title {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-hero-style="modern"][data-hero-size="small"] .hero-title { font-size: 1.05rem; }
+    .invitation-experience-root[data-hero-style="modern"][data-hero-size="large"] .hero-title { font-size: 2rem; }
     .invitation-experience-root[data-hero-style="script"] .hero-title {
+      font-family: "Dancing Script", cursive;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+      text-shadow: none;
+    }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="small"] .hero-title { font-size: 1.9rem; }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="normal"] .hero-title { font-size: 2.6rem; }
+    .invitation-experience-root[data-hero-style="script"][data-hero-size="large"] .hero-title { font-size: 3.4rem; }
+    .invitation-experience-root[data-hero-style="signature"] .hero-title {
       font-family: "Great Vibes", cursive;
       font-weight: 400;
       letter-spacing: 0;
       text-transform: none;
+      text-shadow: none;
     }
-    .invitation-experience-root[data-hero-style="script"][data-hero-size="small"] .hero-title { font-size: 2.1rem; }
-    .invitation-experience-root[data-hero-style="script"][data-hero-size="normal"] .hero-title { font-size: 3.1rem; }
-    .invitation-experience-root[data-hero-style="script"][data-hero-size="large"] .hero-title { font-size: 4rem; }
+    .invitation-experience-root[data-hero-style="signature"][data-hero-size="small"] .hero-title { font-size: 2.1rem; }
+    .invitation-experience-root[data-hero-style="signature"][data-hero-size="normal"] .hero-title { font-size: 3.1rem; }
+    .invitation-experience-root[data-hero-style="signature"][data-hero-size="large"] .hero-title { font-size: 4rem; }
     .invitation-experience-root[data-hero-style="straight"] .hero-title {
       font-family: "Montserrat", sans-serif;
       font-weight: 600;
@@ -2613,7 +2680,8 @@ function getOriginalCSS(): string {
         rgba(255, 248, 240, var(--hero-veil-black-bottom, 0.78)) 100%
       );
     }
-    .invitation-experience-root[data-hero-color="black"] .hero-title { text-shadow: none; }
+    .invitation-experience-root[data-hero-color="black"] .hero-title,
+    .invitation-experience-root[data-hero-color="black"] .hero-subtitle { text-shadow: none; }
     .invitation-experience-root[data-hero-color="black"] .hero-date {
       background: rgba(17, 24, 39, 0.08);
       border-color: rgba(17, 24, 39, 0.18);
@@ -2673,7 +2741,8 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-template="fairepart"][data-hero-position="top"] .hero-bg { padding-top: 18px; }
     .invitation-experience-root[data-template="fairepart"][data-hero-position="bottom"] .hero-bg { padding-bottom: 18px; }
     .invitation-experience-root[data-template="fairepart"][data-hero-size="large"] .hero-title { font-size: 1.85rem; }
-    .invitation-experience-root[data-template="fairepart"][data-hero-style="script"][data-hero-size="large"] .hero-title { font-size: 2.7rem; }
+    .invitation-experience-root[data-template="fairepart"][data-hero-style="script"][data-hero-size="large"] .hero-title,
+    .invitation-experience-root[data-template="fairepart"][data-hero-style="signature"][data-hero-size="large"] .hero-title { font-size: 2.7rem; }
     .invitation-experience-root[data-template="fairepart"] .hero-subtitle { font-size: 11px; }
     .invitation-experience-root[data-template="fairepart"] .hero-heart { width: 16px; height: 16px; }
     .invitation-experience-root[data-template="fairepart"] .invite-sheet {
@@ -2824,7 +2893,7 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-template="photos"] .gallery-title,
     .invitation-experience-root[data-template="photos"] .gallery-kicker {
       color: #fff !important;
-      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.78);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
     }
     .invitation-experience-root[data-template="photos"] .gallery-flow-label {
       color: rgba(255, 255, 255, 0.9);
@@ -2855,14 +2924,155 @@ function getOriginalCSS(): string {
       color: #f8fafc !important;
     }
     .invitation-experience-root[data-text-relief="on"] .hero-title,
+    .invitation-experience-root[data-text-relief="on"] .hero-subtitle,
     .invitation-experience-root[data-text-relief="on"] .invite-card-title,
     .invitation-experience-root[data-text-relief="on"] .invite-couple-name,
+    .invitation-experience-root[data-text-relief="on"] .invite-greeting,
+    .invitation-experience-root[data-text-relief="on"] .invite-body-text,
     .invitation-experience-root[data-text-relief="on"] #summary-date,
     .invitation-experience-root[data-text-relief="on"] #summary-venue,
     .invitation-experience-root[data-text-relief="on"] .gallery-title {
-      text-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.5),
-        0 2px 2px var(--text-relief, rgba(30, 41, 59, 0.34)) !important;
+      text-shadow: 1px 1px 0 var(--text-relief, rgba(30, 41, 59, 0.34)) !important;
+    }
+    .invitation-experience-root[data-hero-style="script"] .hero-title,
+    .invitation-experience-root[data-hero-style="signature"] .hero-title,
+    .invitation-experience-root[data-card-style="script"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="script"] .invite-greeting,
+    .invitation-experience-root[data-card-style="script"] .invite-body-text,
+    .invitation-experience-root[data-card-style="signature"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="signature"] .invite-greeting,
+    .invitation-experience-root[data-card-style="signature"] .invite-body-text {
+      text-shadow: none !important;
+    }
+    .invitation-experience-root[data-card-align="left"] .invitation-card-inner { text-align: left; }
+    .invitation-experience-root[data-card-align="left"] .invite-couple-row { justify-content: flex-start; }
+    .invitation-experience-root[data-card-align="left"] .guest-table-line { margin-left: 0; margin-right: auto; }
+    .invitation-experience-root[data-card-size="small"] .invite-couple-name { font-size: clamp(1.35rem, 5.4vw, 1.75rem); }
+    .invitation-experience-root[data-card-size="large"] .invite-couple-name { font-size: clamp(2rem, 8vw, 2.7rem); }
+    .invitation-experience-root[data-card-size="small"] .invite-body-text { font-size: clamp(0.95rem, 3.6vw, 1.05rem); }
+    .invitation-experience-root[data-card-size="large"] .invite-body-text { font-size: clamp(1.12rem, 4.4vw, 1.32rem); }
+    .invitation-experience-root[data-card-size="small"] .invite-greeting { font-size: clamp(1rem, 3.8vw, 1.15rem); }
+    .invitation-experience-root[data-card-size="large"] .invite-greeting { font-size: clamp(1.3rem, 5vw, 1.55rem); }
+    .invitation-experience-root[data-card-style="classic"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="classic"] .invite-greeting,
+    .invitation-experience-root[data-card-style="classic"] .invite-body-text,
+    .invitation-experience-root[data-card-style="classic"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="classic"] .invite-card-overline {
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      font-style: normal;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-card-style="classic"] .invite-body-text { font-weight: 500; }
+    .invitation-experience-root[data-card-style="classic"] .invite-card-overline {
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root[data-card-style="elegant"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="elegant"] .invite-greeting,
+    .invitation-experience-root[data-card-style="elegant"] .invite-body-text,
+    .invitation-experience-root[data-card-style="elegant"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="elegant"] .invite-card-overline {
+      font-family: "Cormorant Garamond", "Playfair Display", serif;
+      font-weight: 600;
+      font-style: italic;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-card-style="elegant"] .invite-card-overline {
+      font-style: normal;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root[data-card-style="elegant"] .invite-couple-name { font-size: clamp(2rem, 8vw, 2.8rem); }
+    .invitation-experience-root[data-card-style="elegant"][data-card-size="small"] .invite-couple-name { font-size: clamp(1.6rem, 6.2vw, 2.1rem); }
+    .invitation-experience-root[data-card-style="elegant"][data-card-size="large"] .invite-couple-name { font-size: clamp(2.4rem, 9vw, 3.3rem); }
+    .invitation-experience-root[data-card-style="modern"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="modern"] .invite-greeting,
+    .invitation-experience-root[data-card-style="modern"] .invite-body-text,
+    .invitation-experience-root[data-card-style="modern"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="modern"] .invite-card-overline {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 600;
+      font-style: normal;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-card-style="modern"] .invite-body-text { font-weight: 500; }
+    .invitation-experience-root[data-card-style="modern"] .invite-card-overline {
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root[data-card-style="modern"] .invite-couple-name { font-size: clamp(1.35rem, 5.5vw, 1.85rem); }
+    .invitation-experience-root[data-card-style="modern"][data-card-size="small"] .invite-couple-name { font-size: clamp(1.1rem, 4.4vw, 1.45rem); }
+    .invitation-experience-root[data-card-style="modern"][data-card-size="large"] .invite-couple-name { font-size: clamp(1.6rem, 6.4vw, 2.2rem); }
+    .invitation-experience-root[data-card-style="straight"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="straight"] .invite-greeting,
+    .invitation-experience-root[data-card-style="straight"] .invite-body-text,
+    .invitation-experience-root[data-card-style="straight"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="straight"] .invite-card-overline {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 600;
+      font-style: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root[data-card-style="straight"] .invite-body-text {
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      line-height: 1.7;
+    }
+    .invitation-experience-root[data-card-style="straight"] .invite-couple-name { font-size: clamp(1.05rem, 4.2vw, 1.4rem); }
+    .invitation-experience-root[data-card-style="straight"][data-card-size="small"] .invite-couple-name { font-size: clamp(0.85rem, 3.4vw, 1.1rem); }
+    .invitation-experience-root[data-card-style="straight"][data-card-size="large"] .invite-couple-name { font-size: clamp(1.25rem, 5vw, 1.7rem); }
+    .invitation-experience-root[data-card-style="script"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="script"] .invite-greeting,
+    .invitation-experience-root[data-card-style="script"] .invite-body-text,
+    .invitation-experience-root[data-card-style="script"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="script"] .invite-card-overline {
+      font-family: "Dancing Script", cursive;
+      font-weight: 600;
+      font-style: normal;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-card-style="script"] .invite-body-text.invite-calligraphy { font-size: clamp(1.35rem, 5vw, 1.7rem); line-height: 1.45; }
+    .invitation-experience-root[data-card-style="script"][data-card-size="small"] .invite-body-text.invite-calligraphy { font-size: clamp(1.15rem, 4.2vw, 1.4rem); }
+    .invitation-experience-root[data-card-style="script"][data-card-size="large"] .invite-body-text.invite-calligraphy { font-size: clamp(1.55rem, 5.6vw, 1.95rem); }
+    .invitation-experience-root[data-card-style="script"] .invite-couple-name { font-size: clamp(2.2rem, 8vw, 2.9rem); }
+    .invitation-experience-root[data-card-style="script"][data-card-size="small"] .invite-couple-name { font-size: clamp(1.8rem, 6.5vw, 2.3rem); }
+    .invitation-experience-root[data-card-style="script"][data-card-size="large"] .invite-couple-name { font-size: clamp(2.6rem, 10vw, 3.5rem); }
+    .invitation-experience-root[data-card-style="signature"] .invite-couple-name,
+    .invitation-experience-root[data-card-style="signature"] .invite-greeting,
+    .invitation-experience-root[data-card-style="signature"] .invite-body-text,
+    .invitation-experience-root[data-card-style="signature"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="signature"] .invite-card-overline {
+      font-family: "Great Vibes", cursive;
+      font-weight: 400;
+      font-style: normal;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .invitation-experience-root[data-card-style="signature"] .invite-body-text.invite-calligraphy { font-size: clamp(1.7rem, 6vw, 2.15rem); line-height: 1.35; }
+    .invitation-experience-root[data-card-style="signature"][data-card-size="small"] .invite-body-text.invite-calligraphy { font-size: clamp(1.4rem, 5vw, 1.75rem); }
+    .invitation-experience-root[data-card-style="signature"][data-card-size="large"] .invite-body-text.invite-calligraphy { font-size: clamp(2rem, 7vw, 2.5rem); }
+    .invitation-experience-root[data-card-style="signature"] .invite-couple-name { font-size: clamp(2.6rem, 10vw, 3.5rem); }
+    .invitation-experience-root[data-card-style="signature"][data-card-size="small"] .invite-couple-name { font-size: clamp(2.1rem, 8vw, 2.7rem); }
+    .invitation-experience-root[data-card-style="signature"][data-card-size="large"] .invite-couple-name { font-size: clamp(3.1rem, 12vw, 4.2rem); }
+    .invitation-experience-root[data-card-style="classic"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="elegant"] .invite-body-text.invite-calligraphy,
+    .invitation-experience-root[data-card-style="modern"] .invite-body-text.invite-calligraphy {
+      font-weight: 500;
+    }
+    .invitation-experience-root[data-card-style="script"] .invite-card-overline,
+    .invitation-experience-root[data-card-style="signature"] .invite-card-overline {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 600;
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
     }
     .invitation-experience-root .invitation-end-mark {
       display: flex;
@@ -2940,16 +3150,16 @@ function getOriginalHTML(): string {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
           </div>
           <div class="invitation-card-inner">
-            <p class="invite-card-overline">On vous invite</p>
+            <p id="card-kicker" class="invite-card-overline">On vous invite</p>
             <div id="couple-row-container" class="invite-couple-row">
-              <span id="couple-name-left" class="invite-couple-name invite-couple-name--left">Prénom</span>
+              <span id="couple-name-left" class="invite-couple-name invite-couple-name--left"></span>
               <span id="couple-join-badge" class="invite-couple-join">&amp;</span>
-              <span id="couple-name-right" class="invite-couple-name invite-couple-name--right">Prénom</span>
+              <span id="couple-name-right" class="invite-couple-name invite-couple-name--right"></span>
             </div>
-            <p class="invite-greeting font-serif">Bonjour <span id="display-guest-name" class="invite-guest-name"></span></p>
+            <p id="card-greeting-line" class="invite-greeting"><span id="card-greeting">Bonjour</span><span id="card-greeting-gap"> </span><span id="display-guest-name" class="invite-guest-name"></span></p>
             <p id="guest-table-line" class="guest-table-line"></p>
             <p id="invite-intro-paragraph" class="invite-body-text invite-calligraphy"></p>
-            <p id="invite-secondary-text" class="invite-body-text" style="display:none;"></p>
+            <p id="invite-secondary-text" class="invite-body-text invite-calligraphy" style="display:none;"></p>
             <p id="invite-main-text" class="invite-body-text invite-calligraphy" style="display:none;"><span id="invitation-main-text"></span></p>
           </div>
         </article>

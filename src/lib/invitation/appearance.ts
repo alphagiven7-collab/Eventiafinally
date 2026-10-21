@@ -1,4 +1,6 @@
 import {
+  CardTextAlign,
+  CardTextSettings,
   HeroTextColor,
   HeroTextPosition,
   HeroTextSettings,
@@ -45,14 +47,53 @@ export function familyMotifsVisible(event: {
   return event.invitationTemplate === 'motifs';
 }
 
+const TEXT_STYLES: readonly HeroTextStyle[] = ['classic', 'elegant', 'modern', 'straight', 'script', 'signature'];
+
+export function textStyleOf(value?: string): HeroTextStyle {
+  return TEXT_STYLES.includes(value as HeroTextStyle) ? (value as HeroTextStyle) : 'classic';
+}
+
+export function textSizeOf(value?: string): HeroTextSize {
+  return value === 'small' || value === 'large' ? value : 'normal';
+}
+
 export function heroTextOf(value?: HeroTextSettings): Required<HeroTextSettings> {
   const position: HeroTextPosition =
     value?.position === 'top' || value?.position === 'bottom' ? value.position : 'center';
-  const size: HeroTextSize = value?.size === 'small' || value?.size === 'large' ? value.size : 'normal';
-  const style: HeroTextStyle =
-    value?.style === 'script' || value?.style === 'straight' ? value.style : 'classic';
+  const size = textSizeOf(value?.size);
+  const style = textStyleOf(value?.style);
   const color: HeroTextColor = value?.color === 'black' || value?.color === 'gold' ? value.color : 'white';
   return { position, size, style, color };
+}
+
+export function cardTextOf(value?: CardTextSettings): Required<CardTextSettings> {
+  const align: CardTextAlign = value?.align === 'left' ? 'left' : 'center';
+  return {
+    style: textStyleOf(value?.style),
+    size: textSizeOf(value?.size),
+    align,
+  };
+}
+
+const HERO_TITLE_SIZE: Record<HeroTextStyle, Record<HeroTextSize, string>> = {
+  classic: { small: '1.2rem', normal: '1.5rem', large: '2.55rem' },
+  elegant: { small: '1.55rem', normal: '2.15rem', large: '3rem' },
+  modern: { small: '1.05rem', normal: '1.45rem', large: '2rem' },
+  straight: { small: '0.82rem', normal: '1.05rem', large: '1.45rem' },
+  script: { small: '1.9rem', normal: '2.6rem', large: '3.4rem' },
+  signature: { small: '2.1rem', normal: '3.1rem', large: '4rem' },
+};
+
+export function heroTitleSize(style: HeroTextStyle, size: HeroTextSize): string {
+  return HERO_TITLE_SIZE[style][size];
+}
+
+export function textFontFamily(style: HeroTextStyle): string {
+  if (style === 'elegant') return '"Cormorant Garamond", "Playfair Display", serif';
+  if (style === 'modern' || style === 'straight') return '"Montserrat", sans-serif';
+  if (style === 'script') return '"Dancing Script", cursive';
+  if (style === 'signature') return '"Great Vibes", cursive';
+  return '"Playfair Display", Georgia, serif';
 }
 
 export function cssColor(value: string | undefined, fallback: string): string {

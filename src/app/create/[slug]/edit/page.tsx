@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import {
+  CardTextAlign,
   EventWithSettings,
   HeroTextColor,
   HeroTextPosition,
@@ -35,7 +36,7 @@ import {
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
-import { familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { cardTextOf, familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -105,6 +106,15 @@ function Section({
 /* ─────────────────────────────────────────────
    Composant champ texte réutilisable
    ───────────────────────────────────────────── */
+const TEXT_STYLE_OPTIONS = [
+  ['classic', 'Classique'],
+  ['elegant', 'Élégant'],
+  ['modern', 'Moderne'],
+  ['straight', 'Capitales'],
+  ['script', 'Manuscrit'],
+  ['signature', 'Signature'],
+] as const;
+
 function ChoiceRow<T extends string>({
   label,
   value,
@@ -645,6 +655,11 @@ function EditEventContent() {
   // ── 2. Texte de la carte & Couleurs ──
   const [inviteIntro, setInviteIntro] = useState('');
   const [inviteSecondary, setInviteSecondary] = useState('');
+  const [cardKicker, setCardKicker] = useState('On vous invite');
+  const [cardGreeting, setCardGreeting] = useState('Bonjour');
+  const [cardStyle, setCardStyle] = useState<HeroTextStyle>('classic');
+  const [cardSize, setCardSize] = useState<HeroTextSize>('normal');
+  const [cardAlign, setCardAlign] = useState<CardTextAlign>('center');
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
@@ -791,6 +806,12 @@ function EditEventContent() {
       setGalleryFlowText(evt.galleryFlowText ?? 'La suite de nos souvenirs');
       setInviteIntro(evt.inviteIntro || '');
       setInviteSecondary(evt.inviteSecondary || '');
+      setCardKicker(evt.cardKicker === undefined ? 'On vous invite' : evt.cardKicker);
+      setCardGreeting(evt.cardGreeting === undefined ? 'Bonjour' : evt.cardGreeting);
+      const card = cardTextOf(evt.cardText);
+      setCardStyle(card.style);
+      setCardSize(card.size);
+      setCardAlign(card.align);
       setMainText(evt.mainText || '');
       setReserveText(evt.reserveText || '');
       setRsvpDeadlineText(evt.rsvpDeadlineText || '');
@@ -853,13 +874,11 @@ function EditEventContent() {
   const liveEvent = useMemo<EventWithSettings | null>(() => {
     if (!event) return null;
     const primaryCover = heroImage || coverPhotos[0] || event.cover_image || '';
-    const autoTitle =
-      coupleLeft.trim() && coupleRight.trim()
-        ? `Mariage de ${coupleLeft.trim()} & ${coupleRight.trim()}`
-        : title.trim() || coupleLeft.trim() || coupleRight.trim() || event.title || 'Votre événement';
+    const namedTitle = [coupleLeft.trim(), coupleRight.trim()].filter(Boolean).join(' & ');
+    const photoTitle = title.trim() || namedTitle || 'Votre événement';
     return {
       ...event,
-      title: autoTitle,
+      title: photoTitle,
       subtitle: subtitle || undefined,
       coupleLeft: coupleLeft || undefined,
       coupleRight: coupleRight || undefined,
@@ -878,7 +897,14 @@ function EditEventContent() {
       textRelief,
       textReliefColor,
       inviteIntro: inviteIntro || undefined,
-      inviteSecondary: undefined,
+      inviteSecondary: inviteSecondary.trim() ? inviteSecondary : undefined,
+      cardKicker,
+      cardGreeting,
+      cardText: {
+        style: cardStyle,
+        size: cardSize,
+        align: cardAlign,
+      },
       mainText: undefined,
       reserveText: undefined,
       rsvpDeadlineText: rsvpDeadlineText || undefined,
@@ -965,6 +991,12 @@ function EditEventContent() {
     galleryTitle,
     galleryFlowText,
     inviteIntro,
+    inviteSecondary,
+    cardKicker,
+    cardGreeting,
+    cardStyle,
+    cardSize,
+    cardAlign,
     rsvpDeadlineText,
     rsvpButtonColor,
     primaryColor,
@@ -1303,20 +1335,28 @@ function EditEventContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Premier prénom"
+                  help="Facultatif. Un seul prénom, ou aucun, laisse la carte sans nom inventé."
                   value={coupleLeft}
                   onChange={setCoupleLeft}
-                  required
                   placeholder="Marie"
                 />
                 <Field
                   label="Deuxième prénom"
+                  help="Facultatif, lui aussi."
                   value={coupleRight}
                   onChange={setCoupleRight}
                   placeholder="Pierre"
                 />
               </div>
               <Field
-                label="Une phrase sous les prénoms"
+                label="Titre sur la photo"
+                help="Le grand texte sur l’image d’accueil. Il ne se remplit pas tout seul à partir des prénoms."
+                value={title}
+                onChange={setTitle}
+                placeholder="Notre journée"
+              />
+              <Field
+                label="Une phrase sous le titre"
                 value={subtitle}
                 onChange={setSubtitle}
                 placeholder="On vous attend"
@@ -1499,12 +1539,52 @@ function EditEventContent() {
               </div>
 
               <Field
+                label="Petit texte au-dessus des prénoms"
+                help="Laissez vide pour masquer cette ligne."
+                value={cardKicker}
+                onChange={setCardKicker}
+                placeholder="On vous invite"
+              />
+              <Field
+                label="La salutation"
+                help="Le prénom de l’invité s’ajoute après, quand le lien est personnel. Laissez vide pour masquer la salutation."
+                value={cardGreeting}
+                onChange={setCardGreeting}
+                placeholder="Bonjour"
+              />
+              <Field
                 label="Le message sur la carte"
-                help="Écrivez {couple} pour mettre les deux prénoms."
+                help="Écrivez {couple} pour placer les prénoms qui existent. Sans prénom, le mot devient « nous »."
                 value={inviteIntro}
                 onChange={setInviteIntro}
                 rows={3}
                 placeholder="On a une grande nouvelle. {couple} se marient, et vous êtes invités."
+              />
+              <Field
+                label="Deuxième paragraphe"
+                help="Laissez vide pour n’afficher qu’un seul message."
+                value={inviteSecondary}
+                onChange={setInviteSecondary}
+                rows={3}
+                placeholder="La fête continue après la cérémonie."
+              />
+              <ChoiceRow
+                label="Style du texte de la carte"
+                value={cardStyle}
+                onChange={setCardStyle}
+                options={TEXT_STYLE_OPTIONS}
+              />
+              <ChoiceRow
+                label="Taille du texte de la carte"
+                value={cardSize}
+                onChange={setCardSize}
+                options={[['small', 'Petit'], ['normal', 'Normal'], ['large', 'Grand']] as const}
+              />
+              <ChoiceRow
+                label="Alignement"
+                value={cardAlign}
+                onChange={setCardAlign}
+                options={[['center', 'Centré'], ['left', 'À gauche']] as const}
               />
               <Field
                 label="La phrase pour la date limite"
@@ -1532,7 +1612,7 @@ function EditEventContent() {
                 <div>
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Le texte sur la photo</p>
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                    Place, taille, style et couleur. Sur le faire-part, la photo est petite : les prénoms restent sur le papier.
+                    Classique, Élégant et Moderne restent nets. Capitales est droit. Manuscrit et Signature sont des écritures, sans ombre floue.
                   </p>
                 </div>
                 <ChoiceRow
@@ -1551,7 +1631,7 @@ function EditEventContent() {
                   label="Style"
                   value={heroStyle}
                   onChange={setHeroStyle}
-                  options={[['classic', 'Classique'], ['script', 'Écriture'], ['straight', 'Droit']] as const}
+                  options={TEXT_STYLE_OPTIONS}
                 />
                 <ChoiceRow
                   label="Couleur"

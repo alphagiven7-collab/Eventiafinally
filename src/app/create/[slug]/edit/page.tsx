@@ -27,6 +27,7 @@ import {
 import { useTheme } from 'next-themes';
 import {
   CardTextAlign,
+  CardTextWeight,
   EventWithSettings,
   HeroTextColor,
   HeroTextPosition,
@@ -36,7 +37,7 @@ import {
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
-import { cardTextOf, familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { buttonFromPair, cardTextOf, COLOR_HARMONIES, familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -607,13 +608,11 @@ function PracticalInfoEditor({
 /* ─────────────────────────────────────────────
    Palettes d'harmonies rapides
    ───────────────────────────────────────────── */
-const COLOR_PRESETS = [
-  { name: 'Mauve & Bleu', primary: '#5b21b6', accent: '#2563eb', rsvp: '#7c3aed' },
-  { name: 'Or & Champagne', primary: '#b45309', accent: '#92400e', rsvp: '#d97706' },
-  { name: 'Sauge & Émeraude', primary: '#047857', accent: '#065f46', rsvp: '#10b981' },
-  { name: 'Bleu Nuit & Royal', primary: '#1d4ed8', accent: '#1e40af', rsvp: '#2563eb' },
-  { name: 'Terracotta & Figue', primary: '#c2410c', accent: '#9a3412', rsvp: '#ea580c' },
-];
+const TEXT_WEIGHT_OPTIONS = [
+  ['fine', 'Fin'],
+  ['clear', 'Net'],
+  ['strong', 'Fort'],
+] as const;
 
 /* ═══════════════════════════════════════════════
    PAGE PRINCIPALE
@@ -658,8 +657,11 @@ function EditEventContent() {
   const [cardKicker, setCardKicker] = useState('On vous invite');
   const [cardGreeting, setCardGreeting] = useState('Bonjour');
   const [cardStyle, setCardStyle] = useState<HeroTextStyle>('classic');
+  const [cardMessageStyle, setCardMessageStyle] = useState<HeroTextStyle>('classic');
   const [cardSize, setCardSize] = useState<HeroTextSize>('normal');
   const [cardAlign, setCardAlign] = useState<CardTextAlign>('center');
+  const [cardWeight, setCardWeight] = useState<CardTextWeight>('clear');
+  const [heroBand, setHeroBand] = useState(true);
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
@@ -810,8 +812,10 @@ function EditEventContent() {
       setCardGreeting(evt.cardGreeting === undefined ? 'Bonjour' : evt.cardGreeting);
       const card = cardTextOf(evt.cardText);
       setCardStyle(card.style);
+      setCardMessageStyle(card.messageStyle);
       setCardSize(card.size);
       setCardAlign(card.align);
+      setCardWeight(card.weight);
       setMainText(evt.mainText || '');
       setReserveText(evt.reserveText || '');
       setRsvpDeadlineText(evt.rsvpDeadlineText || '');
@@ -851,6 +855,7 @@ function EditEventContent() {
       setHeroSize(hero.size);
       setHeroStyle(hero.style);
       setHeroColor(hero.color);
+      setHeroBand(evt.heroBand !== false);
       setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
       setTextRelief(evt.textRelief !== false);
       setTextReliefColor(evt.textReliefColor || '#1e293b');
@@ -902,9 +907,12 @@ function EditEventContent() {
       cardGreeting,
       cardText: {
         style: cardStyle,
+        messageStyle: cardMessageStyle,
         size: cardSize,
         align: cardAlign,
+        weight: cardWeight,
       },
+      heroBand,
       mainText: undefined,
       reserveText: undefined,
       rsvpDeadlineText: rsvpDeadlineText || undefined,
@@ -995,8 +1003,11 @@ function EditEventContent() {
     cardKicker,
     cardGreeting,
     cardStyle,
+    cardMessageStyle,
     cardSize,
     cardAlign,
+    cardWeight,
+    heroBand,
     rsvpDeadlineText,
     rsvpButtonColor,
     primaryColor,
@@ -1497,21 +1508,24 @@ function EditEventContent() {
             <div className="space-y-4 pt-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Une palette pour commencer
+                  Deux couleurs liées
                 </label>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">
+                  L’encre porte les noms, la date et le cadre. La lumière lave le fond et les filets. Le bouton mélange les deux.
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {COLOR_PRESETS.map((preset) => {
+                  {COLOR_HARMONIES.map((preset) => {
                     const isSelected =
-                      primaryColor.toLowerCase() === preset.primary.toLowerCase() &&
-                      rsvpButtonColor.toLowerCase() === preset.rsvp.toLowerCase();
+                      primaryColor.toLowerCase() === preset.ink.toLowerCase() &&
+                      accentColor.toLowerCase() === preset.light.toLowerCase();
                     return (
                       <button
                         key={preset.name}
                         type="button"
                         onClick={() => {
-                          setPrimaryColor(preset.primary);
-                          setAccentColor(preset.accent);
-                          setRsvpButtonColor(preset.rsvp);
+                          setPrimaryColor(preset.ink);
+                          setAccentColor(preset.light);
+                          setRsvpButtonColor(buttonFromPair(preset.ink, preset.light));
                         }}
                         className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium border transition ${
                           isSelected
@@ -1519,23 +1533,44 @@ function EditEventContent() {
                             : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-400'
                         }`}
                       >
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-white/50"
-                          style={{ backgroundColor: preset.rsvp }}
-                        />
+                        <span className="flex overflow-hidden rounded-full border border-white/50">
+                          <span className="w-2.5 h-3.5" style={{ backgroundColor: preset.ink }} />
+                          <span className="w-2.5 h-3.5" style={{ backgroundColor: preset.light }} />
+                        </span>
                         <span>{preset.name}</span>
                       </button>
                     );
                   })}
                 </div>
-                <div className="grid grid-cols-1 gap-2 mt-3">
-                  <ColorChoice label="Couleur des noms" value={primaryColor} onChange={setPrimaryColor} />
-                  <ColorChoice label="Couleur des boutons" value={rsvpButtonColor} onChange={setRsvpButtonColor} />
-                  <ColorChoice label="Couleur des détails" value={accentColor} onChange={setAccentColor} />
+                <div
+                  className="mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700"
+                  aria-hidden="true"
+                >
+                  <div className="px-3 py-3 text-xs font-semibold text-white" style={{ backgroundColor: primaryColor }}>
+                    Encre
+                  </div>
+                  <div className="px-3 py-3 text-xs font-semibold text-gray-900" style={{ backgroundColor: accentColor }}>
+                    Lumière
+                  </div>
                 </div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
-                  La couleur choisie reste, y compris le rouge ou le rose.
-                </p>
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <ColorChoice
+                    label="Encre"
+                    value={primaryColor}
+                    onChange={(ink) => {
+                      setPrimaryColor(ink);
+                      setRsvpButtonColor(buttonFromPair(ink, accentColor));
+                    }}
+                  />
+                  <ColorChoice
+                    label="Lumière"
+                    value={accentColor}
+                    onChange={(light) => {
+                      setAccentColor(light);
+                      setRsvpButtonColor(buttonFromPair(primaryColor, light));
+                    }}
+                  />
+                </div>
               </div>
 
               <Field
@@ -1569,10 +1604,22 @@ function EditEventContent() {
                 placeholder="La fête continue après la cérémonie."
               />
               <ChoiceRow
-                label="Style du texte de la carte"
+                label="Style des prénoms"
                 value={cardStyle}
                 onChange={setCardStyle}
                 options={TEXT_STYLE_OPTIONS}
+              />
+              <ChoiceRow
+                label="Style du message"
+                value={cardMessageStyle}
+                onChange={setCardMessageStyle}
+                options={TEXT_STYLE_OPTIONS}
+              />
+              <ChoiceRow
+                label="Épaisseur"
+                value={cardWeight}
+                onChange={setCardWeight}
+                options={TEXT_WEIGHT_OPTIONS}
               />
               <ChoiceRow
                 label="Taille du texte de la carte"
@@ -1639,6 +1686,18 @@ function EditEventContent() {
                   onChange={setHeroColor}
                   options={[['white', 'Blanc'], ['black', 'Noir'], ['gold', 'Or']] as const}
                 />
+                <div className="flex items-center justify-between gap-3">
+                  <span>
+                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Bandeau derrière le titre</span>
+                    <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Les lettres restent nettes sur la photo.</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={heroBand}
+                    onChange={(e) => setHeroBand(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                  />
+                </div>
                 <label className="block">
                   <span className="flex items-center justify-between text-xs font-medium text-gray-700 dark:text-gray-300">
                     <span>Lumière de la photo</span>
@@ -1658,7 +1717,7 @@ function EditEventContent() {
                   </span>
                 </label>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Léger relief sur les textes importants</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Léger relief sur les grands titres</span>
                   <input
                     type="checkbox"
                     checked={textRelief}

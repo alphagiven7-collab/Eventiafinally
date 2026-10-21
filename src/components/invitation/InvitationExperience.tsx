@@ -246,7 +246,15 @@ export default function InvitationExperience({
           />
         )}
         <div style={{ position: 'absolute', inset: 0, background: fallbackOverlay }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            background: event.heroBand === false ? 'transparent' : 'rgba(17, 12, 16, 0.46)',
+            borderRadius: event.heroBand === false ? 0 : 18,
+            padding: event.heroBand === false ? 0 : '16px 18px 14px',
+          }}
+        >
           <p style={{ margin: '0 0 14px', fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase' }}>
             {new Date(event.event_date).toLocaleDateString('fr-FR', {
               day: 'numeric',
@@ -265,10 +273,7 @@ export default function InvitationExperience({
               lineHeight: 1.12,
               letterSpacing: fallbackText.style === 'straight' ? '0.14em' : '0.02em',
               textTransform: fallbackText.style === 'straight' ? 'uppercase' : 'none',
-              textShadow:
-                fallbackText.color === 'black' || fallbackText.style === 'script' || fallbackText.style === 'signature'
-                  ? 'none'
-                  : '0 1px 1px rgba(0,0,0,0.55)',
+              textShadow: 'none',
               WebkitFontSmoothing: 'antialiased',
             }}
           >
@@ -340,8 +345,14 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   root.dataset.heroStyle = hero.style;
   root.dataset.heroColor = hero.color;
   root.dataset.cardStyle = card.style;
+  root.dataset.messageStyle = card.messageStyle;
+  root.dataset.cardWeight = card.weight;
   root.dataset.cardSize = card.size;
   root.dataset.cardAlign = card.align;
+  root.dataset.heroBand = event.heroBand === false ? 'off' : 'on';
+  root.style.setProperty('--wash-ink', cssColorSoft(primaryColor, '#1e293b', 0.16));
+  root.style.setProperty('--wash-light', cssColorSoft(accentColor, '#d6c4a8', 0.22));
+  root.style.setProperty('--ink-line', cssColorSoft(primaryColor, '#1e293b', 0.28));
   root.style.setProperty('--hero-photo-brightness', light.photo);
   root.style.setProperty('--hero-veil-white-top', light.whiteTop);
   root.style.setProperty('--hero-veil-white-bottom', light.whiteBottom);
@@ -492,6 +503,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
         programTitleEl.style.display = 'block';
       }
       programContainer.style.display = 'flex';
+      const dayProgram = $('#day-program');
+      if (dayProgram) dayProgram.style.display = 'block';
       programContainer.innerHTML = event.program
         .map((item, i) => {
           const colors: Record<string, string> = {
@@ -505,9 +518,9 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="display:flex;flex-direction:column;align-items:center;padding-top:3px;">
                 <div style="width:11px;height:11px;border-radius:999px;background:${dotColor};box-shadow:0 0 0 4px rgba(124,58,237,0.1);"></div>
-                ${i < event.program!.length - 1 ? '<div class="inv-divider-line" style="width:1px;height:36px;background:#e5e7eb;margin-top:4px;"></div>' : ''}
+                ${i < event.program!.length - 1 ? '<div class="inv-divider-line" style="width:1px;height:16px;background:#e5e7eb;margin-top:3px;"></div>' : ''}
               </div>
-              <div style="padding-bottom:6px;">
+              <div style="padding-bottom:2px;">
                 <p style="font-size:11px;font-weight:600;color:${dotColor};margin-bottom:2px;letter-spacing:0.05em;">${item.time}</p>
                 <p class="inv-text-primary" style="font-size:14px;font-weight:500;">${item.title}</p>
               </div>
@@ -517,6 +530,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     } else {
       if (programTitleEl) programTitleEl.style.display = 'none';
       programContainer.style.display = 'none';
+      const dayProgram = $('#day-program');
+      if (dayProgram) dayProgram.style.display = 'none';
     }
   }
 
@@ -1795,15 +1810,14 @@ function getOriginalCSS(): string {
       line-height: 1.15;
       letter-spacing: 0.02em;
       margin: 0 0 0.65rem;
-      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.55);
+      text-shadow: none;
     }
     .invitation-experience-root .hero-date {
       display: inline-block;
       font-size: 10px;
       letter-spacing: 0.28em;
       text-transform: uppercase;
-      background: rgba(255, 255, 255, 0.16);
-      backdrop-filter: blur(6px);
+      background: rgba(255, 255, 255, 0.18);
       padding: 5px 14px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.25);
@@ -1814,9 +1828,22 @@ function getOriginalCSS(): string {
       font-size: 13px;
       font-weight: 500;
       letter-spacing: 0.2em;
-      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+      text-shadow: none;
       text-transform: uppercase;
       opacity: 0.92;
+    }
+    .invitation-experience-root[data-hero-band="on"] .hero-copy {
+      background: rgba(17, 12, 16, 0.46);
+      border-radius: 18px;
+      padding: 16px 18px 14px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+    }
+    .invitation-experience-root[data-hero-band="on"][data-hero-color="black"] .hero-copy {
+      background: rgba(255, 250, 244, 0.84);
+      box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08);
+    }
+    .invitation-experience-root[data-hero-band="on"][data-hero-color="gold"] .hero-copy {
+      background: rgba(28, 16, 6, 0.52);
     }
     .invitation-experience-root .hero-heart {
       width: 22px;
@@ -1829,17 +1856,17 @@ function getOriginalCSS(): string {
       position: relative;
       overflow: hidden;
       background:
-        radial-gradient(circle at 88% 8%, rgba(124, 58, 237, 0.08), transparent 42%),
-        radial-gradient(circle at 12% 92%, rgba(15, 23, 42, 0.04), transparent 40%),
-        linear-gradient(168deg, #ffffff 0%, #faf8f6 48%, #f8fafc 100%);
-      box-shadow: 0 22px 48px rgba(17, 24, 39, 0.09);
-      border: 1px solid rgba(15, 23, 42, 0.07);
+        radial-gradient(circle at 88% 8%, var(--wash-light, rgba(196, 165, 116, 0.2)), transparent 42%),
+        radial-gradient(circle at 12% 92%, var(--wash-ink, rgba(30, 41, 59, 0.08)), transparent 46%),
+        linear-gradient(168deg, #ffffff 0%, #fffcf8 58%, #ffffff 100%);
+      box-shadow: 0 0 0 1px #fff, 0 16px 36px rgba(17, 24, 39, 0.08);
+      border: 1px solid var(--ink-line, rgba(30, 41, 59, 0.16));
     }
     .invitation-experience-root .invitation-card--floral::before {
       content: "";
       position: absolute;
       inset: 8px;
-      border: 1px solid rgba(219, 39, 119, 0.14);
+      border: 1px solid var(--ink-line, rgba(30, 41, 59, 0.18));
       border-radius: 14px;
       pointer-events: none;
       z-index: 0;
@@ -2924,14 +2951,7 @@ function getOriginalCSS(): string {
       color: #f8fafc !important;
     }
     .invitation-experience-root[data-text-relief="on"] .hero-title,
-    .invitation-experience-root[data-text-relief="on"] .hero-subtitle,
-    .invitation-experience-root[data-text-relief="on"] .invite-card-title,
-    .invitation-experience-root[data-text-relief="on"] .invite-couple-name,
-    .invitation-experience-root[data-text-relief="on"] .invite-greeting,
-    .invitation-experience-root[data-text-relief="on"] .invite-body-text,
-    .invitation-experience-root[data-text-relief="on"] #summary-date,
-    .invitation-experience-root[data-text-relief="on"] #summary-venue,
-    .invitation-experience-root[data-text-relief="on"] .gallery-title {
+    .invitation-experience-root[data-text-relief="on"] .invite-couple-name {
       text-shadow: 1px 1px 0 var(--text-relief, rgba(30, 41, 59, 0.34)) !important;
     }
     .invitation-experience-root[data-hero-style="script"] .hero-title,
@@ -3074,6 +3094,132 @@ function getOriginalCSS(): string {
       letter-spacing: 0.22em;
       text-transform: uppercase;
     }
+    .invitation-experience-root[data-message-style="classic"] .invite-body-text.invite-calligraphy {
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 500;
+      font-style: normal;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      font-size: clamp(1.02rem, 3.8vw, 1.16rem);
+      line-height: 1.55;
+    }
+    .invitation-experience-root[data-message-style="elegant"] .invite-body-text.invite-calligraphy {
+      font-family: "Cormorant Garamond", "Playfair Display", serif;
+      font-weight: 500;
+      font-style: italic;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      font-size: clamp(1.12rem, 4.2vw, 1.32rem);
+      line-height: 1.45;
+    }
+    .invitation-experience-root[data-message-style="modern"] .invite-body-text.invite-calligraphy {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 500;
+      font-style: normal;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      font-size: clamp(0.95rem, 3.6vw, 1.05rem);
+      line-height: 1.6;
+    }
+    .invitation-experience-root[data-message-style="straight"] .invite-body-text.invite-calligraphy {
+      font-family: "Montserrat", sans-serif;
+      font-weight: 500;
+      font-style: normal;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: clamp(0.82rem, 3.2vw, 0.95rem);
+      line-height: 1.65;
+    }
+    .invitation-experience-root[data-message-style="script"] .invite-body-text.invite-calligraphy {
+      font-family: "Dancing Script", cursive;
+      font-weight: 600;
+      font-style: normal;
+      letter-spacing: 0;
+      text-transform: none;
+      font-size: clamp(1.25rem, 4.6vw, 1.5rem);
+      line-height: 1.4;
+    }
+    .invitation-experience-root[data-message-style="signature"] .invite-body-text.invite-calligraphy {
+      font-family: "Great Vibes", cursive;
+      font-weight: 400;
+      font-style: normal;
+      letter-spacing: 0;
+      text-transform: none;
+      font-size: clamp(1.45rem, 5vw, 1.75rem);
+      line-height: 1.35;
+    }
+    .invitation-experience-root[data-card-weight="fine"] .invite-couple-name { font-weight: 500; }
+    .invitation-experience-root[data-card-weight="strong"] .invite-couple-name { font-weight: 700; }
+    .invitation-experience-root[data-card-weight="fine"] .invite-body-text.invite-calligraphy { font-weight: 400; }
+    .invitation-experience-root[data-card-weight="strong"] .invite-body-text.invite-calligraphy { font-weight: 600; }
+    .invitation-experience-root[data-card-style="signature"] .invite-couple-name,
+    .invitation-experience-root[data-message-style="signature"] .invite-body-text.invite-calligraphy { font-weight: 400; }
+    .invitation-experience-root[data-card-style="script"] .invite-couple-name,
+    .invitation-experience-root[data-message-style="script"] .invite-body-text.invite-calligraphy { font-weight: 600; }
+    .invitation-experience-root .day-card {
+      background:
+        linear-gradient(165deg, var(--wash-ink, rgba(30, 41, 59, 0.08)), #fff 38%, var(--wash-light, rgba(196, 165, 116, 0.18)));
+      border: 1px solid var(--primary-color, #1e293b);
+      border-radius: 18px;
+      box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--accent-color, #c4a574);
+      padding: 14px 14px 12px;
+      text-align: center;
+    }
+    .invitation-experience-root .day-kicker {
+      margin: 0 0 10px;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: color-mix(in srgb, var(--accent-color, #c4a574) 55%, #6b7280);
+    }
+    .invitation-experience-root .day-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+    .invitation-experience-root .day-rule {
+      width: 1px;
+      align-self: stretch;
+      min-height: 36px;
+      background: linear-gradient(var(--primary-color, #1e293b), var(--accent-color, #c4a574));
+    }
+    .invitation-experience-root .day-col { min-width: 0; }
+    .invitation-experience-root #summary-date,
+    .invitation-experience-root #summary-venue {
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      line-height: 1.2;
+      margin: 0;
+      color: var(--primary-color, #1e293b);
+      text-shadow: none;
+    }
+    .invitation-experience-root #summary-date { font-size: 1.12rem; }
+    .invitation-experience-root #summary-venue { font-size: 1.02rem; }
+    .invitation-experience-root #summary-time,
+    .invitation-experience-root #summary-address {
+      margin: 4px 0 0;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .invitation-experience-root .day-program {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--ink-line, rgba(30, 41, 59, 0.16));
+    }
+    .invitation-experience-root #program-timeline { gap: 2px; margin-bottom: 10px; }
+    .invitation-experience-root .invite-body-text {
+      color: color-mix(in srgb, var(--primary-color, #1e293b) 78%, #111827);
+    }
+    .invitation-experience-root[data-template="photos"] .day-card {
+      background: linear-gradient(165deg, rgba(255,255,255,0.9), rgba(255,255,255,0.72)) !important;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 0 0 5px var(--accent-color, #c4a574) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .day-card {
+      background: linear-gradient(165deg, rgba(15,23,42,0.35), #1e293b 42%, rgba(196,165,116,0.14)) !important;
+      box-shadow: 0 0 0 4px #0f172a, 0 0 0 5px var(--accent-color, #c4a574) !important;
+      border-color: var(--accent-color, #c4a574) !important;
+    }
     .invitation-experience-root .invitation-end-mark {
       display: flex;
       justify-content: center;
@@ -3165,17 +3311,26 @@ function getOriginalHTML(): string {
         </article>
       </section>
 
-      <section id="section-when-where" style="padding:0 16px;margin-top:24px;">
-        <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
-          <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px;">Le jour et le lieu</p>
-          <p id="summary-date" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:28px;line-height:1.15;margin-bottom:4px;"></p>
-          <p id="summary-time" class="inv-text-muted" style="font-size:13px;margin-bottom:14px;"></p>
-          <h3 id="summary-venue" class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px;"></h3>
-          <p id="summary-address" class="inv-text-muted" style="font-size:13px;line-height:1.5;margin-bottom:16px;"></p>
-          <p id="program-section-title" style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;text-align:center;">Au programme</p>
-          <div id="program-timeline" style="display:flex;flex-direction:column;gap:8px;text-align:left;margin-bottom:16px;"></div>
-          <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:14px;padding:15px 18px;box-shadow:0 10px 20px -5px rgba(124,58,237,0.35);min-height:3.25rem;">
-            <span id="reserve-deadline-text" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">Oui, je viens</span>
+      <section id="section-when-where" style="padding:0 16px;margin-top:16px;">
+        <div class="surface-card day-card">
+          <p class="day-kicker">Le jour et le lieu</p>
+          <div class="day-pair">
+            <div class="day-col">
+              <p id="summary-date" class="inv-text-primary"></p>
+              <p id="summary-time" class="inv-text-muted"></p>
+            </div>
+            <span class="day-rule" aria-hidden="true"></span>
+            <div class="day-col">
+              <h3 id="summary-venue" class="inv-text-primary"></h3>
+              <p id="summary-address" class="inv-text-muted"></p>
+            </div>
+          </div>
+          <div id="day-program" class="day-program">
+            <p id="program-section-title" style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:8px;text-align:center;">Au programme</p>
+            <div id="program-timeline" style="display:flex;flex-direction:column;gap:2px;text-align:left;margin-bottom:10px;"></div>
+          </div>
+          <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:12px 14px;min-height:2.75rem;">
+            <span id="reserve-deadline-text" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.16em;">Oui, je viens</span>
           </button>
         </div>
       </section>

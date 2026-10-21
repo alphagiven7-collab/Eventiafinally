@@ -165,6 +165,7 @@ export type HeroTextSize = 'small' | 'normal' | 'large';
 export type HeroTextStyle = 'classic' | 'elegant' | 'modern' | 'straight' | 'script' | 'signature';
 export type HeroTextColor = 'white' | 'black' | 'gold';
 export type CardTextAlign = 'left' | 'center';
+export type CardTextWeight = 'fine' | 'clear' | 'strong';
 
 export interface HeroTextSettings {
   position?: HeroTextPosition;
@@ -175,8 +176,10 @@ export interface HeroTextSettings {
 
 export interface CardTextSettings {
   style?: HeroTextStyle;
+  messageStyle?: HeroTextStyle;
   size?: HeroTextSize;
   align?: CardTextAlign;
+  weight?: CardTextWeight;
 }
 
 // Complete Event with customization (from JSON files)
@@ -236,6 +239,7 @@ export interface EventWithSettings extends Event {
     invitationTemplate?: InvitationModel | 'elegance' | 'motifs';
     showFamilyMotifs?: boolean;
     heroText?: HeroTextSettings;
+    heroBand?: boolean;
     heroBrightness?: number;
     groomMotifImage?: string;
     brideMotifImage?: string;

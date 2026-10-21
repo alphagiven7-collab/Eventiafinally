@@ -1,6 +1,7 @@
 import {
   CardTextAlign,
   CardTextSettings,
+  CardTextWeight,
   HeroTextColor,
   HeroTextPosition,
   HeroTextSettings,
@@ -66,13 +67,46 @@ export function heroTextOf(value?: HeroTextSettings): Required<HeroTextSettings>
   return { position, size, style, color };
 }
 
+export function cardTextWeightOf(value?: string): CardTextWeight {
+  return value === 'fine' || value === 'strong' ? value : 'clear';
+}
+
 export function cardTextOf(value?: CardTextSettings): Required<CardTextSettings> {
+  const style = textStyleOf(value?.style);
   const align: CardTextAlign = value?.align === 'left' ? 'left' : 'center';
   return {
-    style: textStyleOf(value?.style),
+    style,
+    messageStyle: value?.messageStyle ? textStyleOf(value.messageStyle) : style,
     size: textSizeOf(value?.size),
     align,
+    weight: cardTextWeightOf(value?.weight),
   };
+}
+
+export const COLOR_HARMONIES = [
+  { name: 'Encre & or', ink: '#1c1917', light: '#c4a574' },
+  { name: 'Nuit & ivoire', ink: '#1e293b', light: '#e7d7c1' },
+  { name: 'Bordeaux & rose', ink: '#7f1d1d', light: '#e7b8c4' },
+  { name: 'Forêt & champagne', ink: '#14532d', light: '#e4d5a8' },
+  { name: 'Ardoise & lavande', ink: '#334155', light: '#c4b5fd' },
+  { name: 'Corail & crème', ink: '#9a3412', light: '#f3d5c4' },
+  { name: 'Prune & perle', ink: '#581c87', light: '#e9d5ff' },
+  { name: 'Bleu & sable', ink: '#1e3a8a', light: '#e7d3b0' },
+] as const;
+
+export function mixHex(base: string, tint: string, baseShare = 0.82): string {
+  const ink = cssColor(base, '#1e293b').slice(1);
+  const wash = cssColor(tint, '#d6c4a8').slice(1);
+  const channel = (start: number) =>
+    Math.round(
+      Number.parseInt(ink.slice(start, start + 2), 16) * baseShare +
+        Number.parseInt(wash.slice(start, start + 2), 16) * (1 - baseShare),
+    );
+  return `#${[0, 2, 4].map((start) => channel(start).toString(16).padStart(2, '0')).join('')}`;
+}
+
+export function buttonFromPair(ink: string, light: string): string {
+  return mixHex(ink, light, 0.84);
 }
 
 const HERO_TITLE_SIZE: Record<HeroTextStyle, Record<HeroTextSize, string>> = {

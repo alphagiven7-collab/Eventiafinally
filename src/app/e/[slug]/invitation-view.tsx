@@ -146,6 +146,20 @@ export default function InvitationView({
     ? resolvedGuest
     : null;
 
+  if (loading && initialEvent) {
+    const cover = /^(https:\/\/|\/e\/)/.test(initialEvent.heroImage || '') ? initialEvent.heroImage : '';
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center text-white bg-[#1f1b2e] bg-cover bg-center"
+        style={cover ? { backgroundImage: `linear-gradient(rgba(20,16,34,.62),rgba(20,16,34,.78)), url("${cover}")` } : undefined}
+      >
+        <h1 className="text-3xl" style={{ fontFamily: 'Georgia, serif' }}>{initialEvent.title}</h1>
+        {initialEvent.subtitle && <p className="text-sm opacity-80">{initialEvent.subtitle}</p>}
+        <div className="mt-4 w-8 h-8 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f4f4f6] dark:bg-[#0b0f19]">

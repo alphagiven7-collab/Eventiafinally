@@ -1115,13 +1115,15 @@ function EditEventContent() {
 
       setSaving(true);
       const rawMap = liveEvent.venueDetails?.mapImage || liveEvent.mapImage || '';
-      const shrinkCache = new Map<string, Promise<string>>();
+      const shrinkCache = shrinkCacheStore;
       const optimizedImage = (value: string | undefined, maxBytes: number): Promise<string | undefined> => {
         if (!value || !value.startsWith('data:image')) return Promise.resolve(value);
         const key = `${maxBytes}:${value}`;
         const cached = shrinkCache.get(key);
         if (cached) return cached;
         const pending = shrinkDataUrl(value, maxBytes);
+        pending.catch(() => shrinkCache.delete(key));
+        if (shrinkCache.size > 40) shrinkCache.clear();
         shrinkCache.set(key, pending);
         return pending;
       };
@@ -1261,7 +1263,7 @@ function EditEventContent() {
           <p className="text-xl text-gray-500 dark:text-gray-400">On ne trouve pas cette invitation</p>
           <button
             type="button"
-            onClick={() => router.push(user ? '/dashboard' : '/create')}
+            onClick={() => router.push(user ? '/dashboard' : '/create/wedding')}
             className="mt-4 text-violet-700 dark:text-violet-300 hover:underline"
           >
             {user ? 'Retour aux événements' : 'Créer une invitation'}
@@ -2183,7 +2185,7 @@ function EditEventContent() {
                       savedAt: new Date().toISOString(),
                     });
                     setLeaveAsk(false);
-                    router.push('/create');
+                    router.push('/create/wedding');
                     return;
                   }
                   const saved = await handleSave('draft');
@@ -2197,7 +2199,7 @@ function EditEventContent() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push(user ? '/dashboard' : '/create')}
+                onClick={() => router.push(user ? '/dashboard' : '/create/wedding')}
                 className="py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm"
               >
                 Quitter sans enregistrer
@@ -2230,6 +2232,9 @@ function EditEventContent() {
     </div>
   );
 }
+
+// Les photos déjà compressées ne sont pas recompressées à chaque enregistrement.
+const shrinkCacheStore = new Map<string, Promise<string>>();
 
 export default function EditEventPage() {
   return <EditEventContent />;

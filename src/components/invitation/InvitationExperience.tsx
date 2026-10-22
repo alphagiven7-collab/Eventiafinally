@@ -166,7 +166,10 @@ export default function InvitationExperience({
     };
     offlineBtn?.addEventListener('click', onInstall);
     const detachQuiet = initQuietMark(root);
-    const detachGuestbook = initGuestbook(root, event.slug, event.sections?.guestbook === true);
+    let detachGuestbook = () => {};
+    const idle = 'requestIdleCallback' in window ? window.requestIdleCallback.bind(window) : null;
+    const startGuestbook = () => { detachGuestbook = initGuestbook(root, event.slug, event.sections?.guestbook === true); };
+    const guestbookTimer = idle ? idle(startGuestbook) : window.setTimeout(startGuestbook, 400);
 
     return () => {
       stopCountdown();
@@ -179,6 +182,8 @@ export default function InvitationExperience({
       offlineBtn?.removeEventListener('click', onInstall);
       detachDrinks();
       detachQuiet();
+      if (idle) window.cancelIdleCallback(guestbookTimer);
+      else window.clearTimeout(guestbookTimer);
       detachGuestbook();
       shadow.replaceChildren();
     };
@@ -1769,6 +1774,8 @@ function initGuestbook(root: HTMLElement, slug: string, enabled: boolean) {
 
 function getOriginalCSS(): string {
   return `
+    .invitation-experience-root section[id]:not(#section-when-where) { content-visibility: auto; contain-intrinsic-size: auto 420px; }
+    .invitation-experience-root img { content-visibility: auto; }
     .invitation-experience-root, .invitation-experience-root *, .invitation-experience-root *::before, .invitation-experience-root *::after { box-sizing: border-box; }
     .invitation-experience-root {
       --hero-image-url: url("https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80");
@@ -3326,8 +3333,8 @@ function getOriginalHTML(): string {
     <!-- Main View -->
     <main id="main-view" style="max-width:28rem;margin:0 auto;background:#fafafa;min-height:100vh;position:relative;box-shadow:0 25px 50px -12px rgba(0,0,0,0.22);overflow:hidden;padding-bottom:44px;display:block;opacity:1;">
       <div id="paper-motif-rail" class="paper-motif-rail" aria-hidden="true">
-        <img id="paper-motif-left" alt="">
-        <img id="paper-motif-right" alt="">
+        <img id="paper-motif-left" alt="" decoding="async">
+        <img id="paper-motif-right" alt="" decoding="async">
       </div>
 
       <!-- 1. Hero Couverture -->
@@ -3515,7 +3522,7 @@ function getOriginalHTML(): string {
           <div id="checkin-pass" class="checkin-pass" style="display:none;">
             <p class="checkin-kicker">Votre carte d'entrée</p>
             <div class="checkin-qr-frame">
-              <img id="checkin-qr" alt="Carte d'entrée" width="168" height="168">
+              <img id="checkin-qr" decoding="async" alt="Carte d'entrée" width="168" height="168">
             </div>
             <p id="checkin-qr-caption" class="checkin-caption"></p>
             <p class="checkin-help">Conservez cette carte et présentez-la à l'entrée.</p>
@@ -3603,7 +3610,7 @@ function getOriginalHTML(): string {
     <div id="gallery-lightbox" class="gallery-lightbox" hidden>
       <button type="button" class="gallery-lightbox-close" aria-label="Fermer">×</button>
       <button type="button" class="gallery-lightbox-prev" aria-label="Photo précédente">‹</button>
-      <img class="gallery-lightbox-image" alt="">
+      <img class="gallery-lightbox-image" alt="" decoding="async" loading="lazy">
       <button type="button" class="gallery-lightbox-next" aria-label="Photo suivante">›</button>
       <p class="gallery-lightbox-count"></p>
     </div>

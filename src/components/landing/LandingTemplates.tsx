@@ -8,7 +8,7 @@ export default function LandingTemplates() {
     <section className="mt-6">
       <div className="mx-4 flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-gray-900">Modèles qui cartonnent</h3>
-        <Link href="/create" className="text-xs text-emerald-600 font-medium">Tout voir</Link>
+        <Link href="/create/wedding" className="text-xs text-emerald-600 font-medium">Tout voir</Link>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 snap-x snap-mandatory">
         {[

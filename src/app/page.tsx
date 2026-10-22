@@ -62,7 +62,7 @@ export default function HomePage() {
               Écrivez le texte, ajoutez les photos, le jour et le lieu. Chaque invité reçoit son lien, dit s’il vient, et garde sa carte pour le jour de la fête. Vous commencez avec {TRIAL_INVITATIONS} invitations d’essai.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href={user ? '/dashboard' : '/create'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
+              <Link href={user ? '/dashboard' : '/create/wedding'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
                 Créer mon invitation
               </Link>
               <Link href="/e/yanick-keren" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">

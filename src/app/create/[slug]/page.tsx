@@ -67,6 +67,13 @@ function CreateEventContent() {
       return;
     }
 
+    const parsedDate = new Date(`${eventDate}T${eventTime || '00:00'}`);
+    if (Number.isNaN(parsedDate.getTime())) {
+      addToast('error', 'La date ou l’heure est invalide. Vérifiez-les (année à 4 chiffres).');
+      return;
+    }
+    const eventIso = parsedDate.toISOString();
+
     const finalTitleEarly = computedTitle || 'Notre événement';
     if (!user?.id) {
       const localSlug = newDraftSlug(finalTitleEarly);
@@ -76,7 +83,7 @@ function CreateEventContent() {
         title: finalTitleEarly,
         subtitle: computedTitle || undefined,
         type: 'wedding',
-        event_date: new Date(eventDate + 'T' + (eventTime || '00:00')).toISOString(),
+        event_date: eventIso,
         event_time: eventTime || undefined,
         location: location.trim(),
         venue: location.trim(),
@@ -138,7 +145,7 @@ function CreateEventContent() {
       title: finalTitle,
       subtitle: computedTitle || undefined,
       type: 'wedding',
-      event_date: new Date(eventDate + 'T' + (eventTime || '00:00')).toISOString(),
+      event_date: eventIso,
       event_time: eventTime || undefined,
       location: location.trim(),
       venue: location.trim(),

@@ -1157,7 +1157,7 @@ function initRsvp(
       else hideCheckinQr();
     } else if (status === 'declined') {
       hideCheckinQr();
-      setNote('C’est noté. Merci d’avoir répondu.', false);
+      setNote('Merci, votre réponse est enregistrée.', false);
     }
   };
 
@@ -1200,14 +1200,14 @@ function initRsvp(
         /* la file locale est indisponible */
       }
       if (button) button.disabled = false;
-      paintAnswer('Pas de réseau');
+      paintAnswer('Hors ligne');
       setNote('Pas de réseau. Votre réponse partira dès que vous serez connecté.', false);
       return;
     }
     if (responsesClosed) {
       paintAnswer('Trop tard');
-      setNote('Il est trop tard pour répondre.', false);
-      onRsvpRef?.current?.({ status, error: 'Il est trop tard pour répondre.' });
+      setNote('Les réponses sont closes.', false);
+      onRsvpRef?.current?.({ status, error: 'Les réponses sont closes.' });
       return;
     }
     if (button) button.disabled = true;
@@ -1221,7 +1221,7 @@ function initRsvp(
         const result = await Promise.race([
           submitGuestRsvp(createClient(), { token, status, message }),
           new Promise<{ error: string }>((resolve) => {
-            window.setTimeout(() => resolve({ error: 'Ça prend trop de temps. Réessayez.' }), 12000);
+            window.setTimeout(() => resolve({ error: 'La connexion est lente. Réessayez.' }), 12000);
           }),
         ]);
         if (button) button.disabled = false;
@@ -1248,7 +1248,7 @@ function initRsvp(
         ? 'Ceci est un essai. Les mariés voient la réponse seulement avec le lien personnel de l’invité.'
         : status === 'confirmed'
           ? 'C’est confirmé. Voici votre carte : gardez-la et montrez-la à l’entrée.'
-          : 'C’est noté. Merci d’avoir répondu.';
+          : 'Merci, votre réponse est enregistrée.';
       setNote(notice, status === 'confirmed');
       if (token) void refreshGuestbookPreview(root, slug);
       onRsvpRef?.current?.({ status, notice });
@@ -1281,7 +1281,7 @@ function initRsvp(
       button.style.opacity = '0.55';
       button.style.cursor = 'not-allowed';
     });
-    if (!alreadyAnswered) setNote('Il est trop tard pour répondre.', false);
+    if (!alreadyAnswered) setNote('Les réponses sont closes.', false);
   }
 
   const flushPendingRsvp = async () => {
@@ -1303,7 +1303,7 @@ function initRsvp(
       applyVisualState(pending.status, pending.status === 'confirmed');
       const synced = pending.status === 'confirmed'
         ? 'C’est confirmé. Voici votre carte : gardez-la et montrez-la à l’entrée.'
-        : 'C’est noté. Merci d’avoir répondu.';
+        : 'Merci, votre réponse est enregistrée.';
       setNote(synced, pending.status === 'confirmed');
       onRsvpRef?.current?.({ status: pending.status, notice: synced });
     } catch {
@@ -3407,9 +3407,9 @@ function getOriginalHTML(): string {
             <iframe id="gps-map" title="Carte pour aller au lieu" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
           </div>
           <div class="gps-body">
-            <p class="gps-kicker">Y aller</p>
+            <p class="gps-kicker">Itinéraire</p>
             <p id="gps-place" class="gps-place"></p>
-            <a id="gps-open" class="gps-open" href="#" target="_blank" rel="noopener noreferrer">Ouvrir le GPS</a>
+            <a id="gps-open" class="gps-open" href="#" target="_blank" rel="noopener noreferrer">Ouvrir dans Maps</a>
           </div>
         </div>
       </section>
@@ -3498,10 +3498,10 @@ function getOriginalHTML(): string {
       <section id="section-rsvp" style="padding:0 16px;margin-top:24px;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:22px 18px;border:1px solid #f3f4f6;text-align:center;">
           <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;">Vous venez ?</h3>
-          <p id="rsvp-prompt" class="inv-text-muted" style="font-size:13px;line-height:1.45;margin:0 0 12px;">Dites oui maintenant. Votre carte d'entrée apparaît juste après.</p>
+          <p id="rsvp-prompt" class="inv-text-muted" style="font-size:13px;line-height:1.45;margin:0 0 12px;">Confirmez votre présence pour recevoir votre carte d'entrée.</p>
           <p id="rsvp-deadline-caption" class="inv-text-muted" style="font-size:11px;margin-bottom:14px;display:none;"></p>
-          <label for="guest-message" class="inv-text-muted" style="display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;">Un mot pour les mariés</label>
-          <textarea id="guest-message" class="guest-message" maxlength="500" placeholder="Un souvenir, un souhait, un simple oui…"></textarea>
+          <label for="guest-message" class="inv-text-muted" style="display:block;text-align:left;font-size:12px;font-weight:600;margin-bottom:6px;">Un message (facultatif)</label>
+          <textarea id="guest-message" class="guest-message" maxlength="500" placeholder="Un souvenir, un souhait ou un simple merci…"></textarea>
           <button id="confirm-presence-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:15px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;">
             <span style="width:26px;height:26px;border-radius:999px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;">
               <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -3518,7 +3518,7 @@ function getOriginalHTML(): string {
               <img id="checkin-qr" alt="Carte d'entrée" width="168" height="168">
             </div>
             <p id="checkin-qr-caption" class="checkin-caption"></p>
-            <p class="checkin-help">Gardez-la. Le jour de la fête, montrez-la à l'entrée.</p>
+            <p class="checkin-help">Conservez cette carte et présentez-la à l'entrée.</p>
             <a id="download-checkin-qr" class="checkin-download" href="#">Enregistrer ma carte</a>
           </div>
         </div>
@@ -3551,7 +3551,7 @@ function getOriginalHTML(): string {
               <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>
             </div>
             <h3 class="inv-text-primary" style="font-family:'Playfair Display',serif;font-size:19px;margin-bottom:4px;">Que boire ?</h3>
-            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Choisissez ce que vous aimez. Avec votre lien personnel, les mariés voient ce choix.</p>
+            <p class="inv-text-muted" style="font-size:11px;max-width:320px;margin:0 auto;">Indiquez votre boisson préférée. Les organisateurs verront votre choix.</p>
           </div>
           <div id="drink-menu-grid" class="drink-menu-grid" style="padding:0 16px 16px;"></div>
         </div>
@@ -3561,7 +3561,7 @@ function getOriginalHTML(): string {
       <section id="section-practical-info" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;">
           <h3 class="inv-text-primary" style="font-weight:700;font-size:12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.08em;">
-            <span id="practical-info-title">À savoir</span>
+            <span id="practical-info-title">Informations pratiques</span>
             <span id="practical-info-count" style="color:#9ca3af;font-size:10px;font-weight:500;"></span>
           </h3>
           <div id="practical-info-list" style="display:flex;flex-direction:column;gap:14px;"></div>
@@ -3571,8 +3571,8 @@ function getOriginalHTML(): string {
       <!-- 12. Cadeau / Cagnotte / Contact -->
       <section id="section-gift-contact" style="padding:0 16px;margin-top:24px;display:none;">
         <div class="surface-card" style="background:white;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);padding:20px;border:1px solid #f3f4f6;text-align:center;">
-          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Un cadeau ou une question ?</h3>
-          <p class="inv-text-muted" style="font-size:11px;margin-bottom:14px;">Les liens sont juste en dessous.</p>
+          <h3 class="font-serif inv-text-primary" style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px;">Nous contacter</h3>
+          
           <div style="display:flex;flex-direction:column;gap:8px;">
             <a id="gift-donation-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;background:var(--rsvp-color, #7c3aed);color:white;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
@@ -3584,7 +3584,7 @@ function getOriginalHTML(): string {
             </a>
             <a id="support-email-link" href="#" class="inv-subsurface inv-text-primary" style="display:none;width:100%;justify-content:center;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;font-size:12px;font-weight:600;text-decoration:none;">
               <svg style="width:16px;height:16px;color:var(--icon-color, #2563eb);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              <span>Nous envoyer un e-mail</span>
+              <span>Nous écrire par e-mail</span>
             </a>
           </div>
         </div>

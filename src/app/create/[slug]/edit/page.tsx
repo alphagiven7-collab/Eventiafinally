@@ -302,7 +302,7 @@ function AudioUploader({
             {value ? (
               <audio src={value} controls className="w-full max-w-full h-8 mt-1" />
             ) : (
-              <p className="text-[10px] text-gray-400 mt-1">Elle démarre quand on ouvre l&apos;invitation.</p>
+              <p className="text-[10px] text-gray-400 mt-1">La musique démarre à l&apos;ouverture de l&apos;invitation.</p>
             )}
           </div>
           <button
@@ -1366,44 +1366,44 @@ function EditEventContent() {
         >
           {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
           <Section
-            title="1. Qui, quand, où"
-            subtitle="Les prénoms, le jour et le lieu. C’est ce que tout le monde cherche en premier."
+            title="1. L’essentiel de l’événement"
+            subtitle="Noms, titre, date, heure et lieu. À remplir en premier."
             icon={<Heart className="w-4 h-4" />}
             defaultOpen
           >
             <div className="space-y-4 pt-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Premier prénom"
-                  help="Facultatif. Un seul prénom, ou aucun, laisse la carte sans nom inventé."
+                  label="Prénom 1"
+                  help="Facultatif. Laissez vide si l’événement n’est pas un couple."
                   value={coupleLeft}
                   onChange={setCoupleLeft}
                   placeholder="Marie"
                 />
                 <Field
-                  label="Deuxième prénom"
-                  help="Facultatif, lui aussi."
+                  label="Prénom 2"
+                  help="Facultatif."
                   value={coupleRight}
                   onChange={setCoupleRight}
                   placeholder="Pierre"
                 />
               </div>
               <Field
-                label="Titre sur la photo"
-                help="Le grand texte sur l’image d’accueil. Il ne se remplit pas tout seul à partir des prénoms."
+                label="Titre de l’événement"
+                help="Le grand titre affiché sur la photo d’accueil."
                 value={title}
                 onChange={setTitle}
                 placeholder="Notre journée"
               />
               <Field
-                label="Une phrase sous le titre"
+                label="Sous-titre"
                 value={subtitle}
                 onChange={setSubtitle}
-                placeholder="On vous attend"
+                placeholder="Nous avons hâte de vous voir"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Le jour"
+                  label="Date"
                   value={eventDate}
                   onChange={setEventDate}
                   type="date"
@@ -1417,21 +1417,21 @@ function EditEventContent() {
                 />
               </div>
               <Field
-                label="Jusqu'à quand répondre"
+                label="Date limite de réponse"
                 value={rsvpDeadline}
                 onChange={setRsvpDeadline}
                 type="date"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
-                  label="Le lieu"
+                  label="Nom du lieu"
                   value={location}
                   onChange={setLocation}
                   required
                   placeholder="Salle des fêtes, Yaoundé"
                 />
                 <Field
-                  label="L'adresse"
+                  label="Adresse"
                   value={address}
                   onChange={setAddress}
                   placeholder="12 avenue des Palmiers"
@@ -1489,7 +1489,7 @@ function EditEventContent() {
 
           <Section
             title="Le style"
-            subtitle="Écran ou faire-part, plus un fond photo. Les tissus se rajoutent sur les trois."
+            subtitle="Choisissez le modèle. Les motifs de famille sont disponibles sur les trois."
             icon={<Sparkles className="w-4 h-4" />}
             defaultOpen
           >
@@ -1508,7 +1508,7 @@ function EditEventContent() {
                   <div className="-mt-3 mx-3 h-9 bg-white rounded-lg shadow-sm" />
                 </div>
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Écran</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Grande photo, cartes blanches. On descend la page.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Grande photo en haut, sections en cartes blanches.</p>
               </button>
               <button
                 type="button"
@@ -1524,7 +1524,7 @@ function EditEventContent() {
                   <p className="mt-1 text-center text-[10px] text-[#6b5344]" style={{ fontFamily: 'Georgia, serif' }}>Marie & Pierre</p>
                 </div>
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Faire-part</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Fond ivoire, photo petite. Comme une carte imprimée.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Fond ivoire et petite photo, façon faire-part imprimé.</p>
               </button>
               <button
                 type="button"
@@ -1540,7 +1540,7 @@ function EditEventContent() {
                   <div className="absolute left-10 right-10 bottom-2 h-6 rounded-md bg-white/75 backdrop-blur-sm" />
                 </div>
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Photos</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Même page qu’Écran. La photo passe derrière la carte et le jour. Le texte reste lisible.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Comme Écran, avec la photo en fond derrière les cartes.</p>
               </button>
             </div>
             <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3">
@@ -1551,7 +1551,7 @@ function EditEventContent() {
                 className="mt-0.5 w-4 h-4 accent-violet-600 rounded cursor-pointer"
               />
               <span>
-                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Montrer les tissus des familles</span>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Afficher les motifs des familles</span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   Sur Écran et Photos, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
                 </span>
@@ -1561,13 +1561,13 @@ function EditEventContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <SingleImageUploader
                   label="Famille de l'homme"
-                  help="Le tissu. Vous pouvez le changer ou l’enlever."
+                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
                   value={groomMotifImage}
                   onChange={setGroomMotifImage}
                 />
                 <SingleImageUploader
                   label="Famille de la femme"
-                  help="Le tissu. Vous pouvez le changer ou l’enlever."
+                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
                   value={brideMotifImage}
                   onChange={setBrideMotifImage}
                 />
@@ -1578,7 +1578,7 @@ function EditEventContent() {
           {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
           <Section
             title="2. Le mot et les couleurs"
-            subtitle="Ce texte apparaît sur la carte. Écrivez comme vous parlez."
+            subtitle="Les textes de la carte d’invitation et les couleurs."
             icon={<Mail className="w-4 h-4" />}
           >
             <div className="space-y-4 pt-4">
@@ -1665,11 +1665,11 @@ function EditEventContent() {
               />
               <Field
                 label="Le message sur la carte"
-                help="Écrivez {couple} pour placer les prénoms qui existent. Sans prénom, le mot devient « nous »."
+                help="Tapez {couple} pour insérer les prénoms. Sans prénom, « nous » est utilisé."
                 value={inviteIntro}
                 onChange={setInviteIntro}
                 rows={3}
-                placeholder="On a une grande nouvelle. {couple} se marient, et vous êtes invités."
+                placeholder="{couple} ont le plaisir de vous inviter à leur événement."
               />
               <Field
                 label="Deuxième paragraphe"
@@ -1816,7 +1816,7 @@ function EditEventContent() {
                 <div className="flex items-center justify-between gap-3">
                   <span>
                     <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Cadre sur la photo</span>
-                    <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Décoché, la photo reste libre. Le titre se pose directement dessus.</span>
+                    <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Décochez pour afficher le titre directement sur la photo.</span>
                   </span>
                   <input
                     type="checkbox"
@@ -1844,7 +1844,7 @@ function EditEventContent() {
                   </span>
                 </label>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Léger relief sur les grands titres</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Contour léger pour mieux lire les titres</span>
                   <input
                     type="checkbox"
                     checked={textRelief}
@@ -1913,7 +1913,7 @@ function EditEventContent() {
                       Une musique à l&apos;ouverture
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      Elle démarre quand on ouvre l&apos;invitation. Un bouton permet de la couper.
+                      La musique démarre à l&apos;ouverture de l&apos;invitation. Un bouton permet de la couper.
                     </span>
                   </span>
                   <input
@@ -1969,7 +1969,7 @@ function EditEventContent() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Les boissons
                 </label>
-                <p className="text-[10px] text-gray-400">Si vous n’en mettez pas, cette partie reste cachée. Le choix d’un invité apparaît sur la page Invités, à côté de son nom, quand il répond depuis son lien personnel.</p>
+                <p className="text-[10px] text-gray-400">Sans boisson, cette section n’apparaît pas. Le choix de chaque invité s’affiche sur la page Invités.</p>
                 {drinks.map((drink, index) => (
                   <div key={drink.id} className="flex gap-2">
                     <input
@@ -2058,7 +2058,7 @@ function EditEventContent() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Montrer le livre d’or</span>
-                  <span className="block text-[10px] text-gray-400">Les mots des invités. Décochez pour cacher toute la section.</span>
+                  <span className="block text-[10px] text-gray-400">Messages laissés par les invités. Décochez pour masquer la section.</span>
                 </div>
                 <input
                   type="checkbox"
@@ -2072,7 +2072,7 @@ function EditEventContent() {
                 value={aboutStory1}
                 onChange={setAboutStory1}
                 rows={4}
-                placeholder="On s’est rencontrés un soir d’été. Aujourd’hui, on veut vous avoir avec nous."
+                placeholder="Racontez en quelques lignes votre histoire ou celle de l’événement."
               />
               <SingleImageUploader
                 label="Une photo pour cette histoire"
@@ -2170,7 +2170,7 @@ function EditEventContent() {
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setLeaveAsk(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Quitter cette page ?</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Enregistrez d’abord, sinon les derniers changements seront perdus.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Enregistrez avant de quitter, sinon vos dernières modifications seront perdues.</p>
             <div className="flex flex-col gap-2 mt-4">
               <button
                 type="button"
@@ -2217,7 +2217,7 @@ function EditEventContent() {
               {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
               Modèle : {invitationTemplate === 'fairepart' ? 'Faire-part' : invitationTemplate === 'photos' ? 'Photos' : 'Écran'}.
             </p>
-            <p className="text-xs text-gray-500 mt-2">Le lien devient visible. Vous pourrez encore le modifier après.</p>
+            <p className="text-xs text-gray-500 mt-2">L’invitation sera accessible à toute personne ayant le lien. Vous pourrez la modifier ensuite.</p>
             <div className="flex gap-2 mt-4">
               <button type="button" onClick={() => setConfirmPublish(false)} className="flex-1 py-3 border rounded-xl text-sm">Annuler</button>
               <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">

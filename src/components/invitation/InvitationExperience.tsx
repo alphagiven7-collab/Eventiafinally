@@ -610,8 +610,11 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Oui, je viens';
+  const qrDisplayMode = event.qrDisplayMode || 'after-confirmation';
   setText('#reserve-deadline-text', btnText);
   setText('#confirm-presence-label', btnText);
+  if (event.declineText?.trim()) setText('#decline-presence-btn', event.declineText.trim());
+  if (event.rsvpPrompt?.trim()) setText('#rsvp-prompt', event.rsvpPrompt.trim());
   if (event.rsvpDeadlineText) {
     setText('#rsvp-deadline-caption', event.rsvpDeadlineText);
     const captionEl = $('#rsvp-deadline-caption');
@@ -1082,6 +1085,8 @@ function initRsvp(
   const reserveBtn = root.querySelector('#reserve-deadline-btn') as HTMLButtonElement | null;
   const declineBtn = root.querySelector('#decline-presence-btn') as HTMLButtonElement | null;
   const rsvpSection = root.querySelector('#section-rsvp') as HTMLElement | null;
+  const qrDisplayMode = event.qrDisplayMode || 'after-confirmation';
+  const confirmedLabel = event.confirmedText?.trim() || 'C’est confirmé';
   const token =
     guestToken ||
     (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
@@ -1141,13 +1146,14 @@ function initRsvp(
       setNote('C’est confirmé. On vous attend.', true);
       if (confirmBtn) {
         const lbl = confirmBtn.querySelector('#confirm-presence-label');
-        if (lbl) lbl.textContent = 'C’est confirmé';
+        if (lbl) lbl.textContent = confirmedLabel;
       }
       if (reserveBtn) {
         const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
-        if (topLbl) topLbl.textContent = 'C’est confirmé';
+        if (topLbl) topLbl.textContent = confirmedLabel;
       }
-      if (revealPass && token) void showCheckinQr();
+      const shouldReveal = qrDisplayMode === 'immediate' || revealPass;
+      if (shouldReveal && token) void showCheckinQr();
       else hideCheckinQr();
     } else if (status === 'declined') {
       hideCheckinQr();
@@ -1237,7 +1243,7 @@ function initRsvp(
         } catch {}
       }
       applyVisualState(status, status === 'confirmed' && recorded);
-      paintAnswer(status === 'confirmed' ? 'C’est confirmé' : 'C’est noté');
+      paintAnswer(status === 'confirmed' ? confirmedLabel : 'C’est noté');
       const notice = !token
         ? 'Ceci est un essai. Les mariés voient la réponse seulement avec le lien personnel de l’invité.'
         : status === 'confirmed'

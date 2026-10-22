@@ -193,8 +193,12 @@ export interface EventWithSettings extends Event {
     cardGreeting?: string;
     cardText?: CardTextSettings;
     reserveText?: string;
+    declineText?: string;
+    confirmedText?: string;
+    rsvpPrompt?: string;
     rsvpDeadlineText?: string;
     rsvpButtonColor?: string;
+    qrDisplayMode?: 'immediate' | 'after-confirmation';
     metaDescription?: string;
     aboutTitle?: string;
     aboutStory1?: string;

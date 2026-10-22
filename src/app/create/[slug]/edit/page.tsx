@@ -664,7 +664,11 @@ function EditEventContent() {
   const [heroBand, setHeroBand] = useState(false);
   const [mainText, setMainText] = useState('');
   const [reserveText, setReserveText] = useState('');
+  const [declineText, setDeclineText] = useState('');
+  const [confirmedText, setConfirmedText] = useState('');
+  const [rsvpPrompt, setRsvpPrompt] = useState('');
   const [rsvpDeadlineText, setRsvpDeadlineText] = useState('');
+  const [qrDisplayMode, setQrDisplayMode] = useState<'immediate' | 'after-confirmation'>('after-confirmation');
   const [primaryColor, setPrimaryColor] = useState('#5b21b6');
   const [accentColor, setAccentColor] = useState('#2563eb');
   const [rsvpButtonColor, setRsvpButtonColor] = useState('#7c3aed');
@@ -820,7 +824,11 @@ function EditEventContent() {
       setCardWeight(card.weight);
       setMainText(evt.mainText || '');
       setReserveText(evt.reserveText || '');
+      setDeclineText(evt.declineText || '');
+      setConfirmedText(evt.confirmedText || '');
+      setRsvpPrompt(evt.rsvpPrompt || '');
       setRsvpDeadlineText(evt.rsvpDeadlineText || '');
+      setQrDisplayMode(evt.qrDisplayMode || 'after-confirmation');
 
       setPrimaryColor(evt.branding?.primaryColor || '#5b21b6');
       setAccentColor(evt.branding?.accentColor || '#2563eb');
@@ -918,9 +926,13 @@ function EditEventContent() {
       },
       heroBand,
       mainText: undefined,
-      reserveText: undefined,
+      reserveText: reserveText.trim() || undefined,
+      declineText: declineText.trim() || undefined,
+      confirmedText: confirmedText.trim() || undefined,
+      rsvpPrompt: rsvpPrompt.trim() || undefined,
       rsvpDeadlineText: rsvpDeadlineText || undefined,
       rsvpButtonColor: rsvpButtonColor || undefined,
+      qrDisplayMode,
       branding: {
         primaryColor,
         accentColor,
@@ -1014,6 +1026,10 @@ function EditEventContent() {
     cardAlign,
     cardWeight,
     heroBand,
+    reserveText,
+    declineText,
+    confirmedText,
+    rsvpPrompt,
     rsvpDeadlineText,
     rsvpButtonColor,
     primaryColor,
@@ -1694,11 +1710,62 @@ function EditEventContent() {
                 options={[['center', 'Centré'], ['left', 'À gauche']] as const}
               />
               <Field
+                label="Bouton pour confirmer"
+                value={reserveText}
+                onChange={setReserveText}
+                placeholder="Oui, je viens"
+              />
+              <Field
+                label="Bouton pour refuser"
+                value={declineText}
+                onChange={setDeclineText}
+                placeholder="Non, je ne pourrai pas"
+              />
+              <Field
+                label="Texte une fois confirmé"
+                value={confirmedText}
+                onChange={setConfirmedText}
+                placeholder="C’est confirmé"
+              />
+              <Field
+                label="Phrase au-dessus des boutons"
+                value={rsvpPrompt}
+                onChange={setRsvpPrompt}
+                placeholder="Dites oui maintenant. Votre carte d'entrée apparaît juste après."
+              />
+              <Field
                 label="La phrase pour la date limite"
                 value={rsvpDeadlineText}
                 onChange={setRsvpDeadlineText}
                 placeholder="Répondez avant le 15 mai"
               />
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Affichage du QR</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQrDisplayMode('immediate')}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
+                      qrDisplayMode === 'immediate'
+                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    Afficher tout de suite
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrDisplayMode('after-confirmation')}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
+                      qrDisplayMode === 'after-confirmation'
+                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    Afficher après confirmation
+                  </button>
+                </div>
+              </div>
             </div>
           </Section>
 

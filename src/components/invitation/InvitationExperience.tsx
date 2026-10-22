@@ -3161,80 +3161,69 @@ function getOriginalCSS(): string {
     .invitation-experience-root[data-message-style="signature"] .invite-body-text.invite-calligraphy { font-weight: 400; }
     .invitation-experience-root[data-card-style="script"] .invite-couple-name,
     .invitation-experience-root[data-message-style="script"] .invite-body-text.invite-calligraphy { font-weight: 600; }
-    .invitation-experience-root #section-when-where .day-card,
-    .invitation-experience-root[data-template="photos"] #section-when-where .day-card,
-    .invitation-experience-root[data-template="fairepart"] #section-when-where .day-card,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-card,
-    .invitation-experience-root.dark-mode-applied[data-template="photos"] #section-when-where .day-card,
-    .invitation-experience-root.dark-mode-applied[data-template="fairepart"] #section-when-where .day-card {
-      background: #fffdfb !important;
-      color: #111827 !important;
-      border: 1px solid rgba(17, 24, 39, 0.1) !important;
+    .invitation-experience-root .day-card {
+      background:
+        linear-gradient(165deg, var(--wash-ink, rgba(30, 41, 59, 0.08)), #fff 38%, var(--wash-light, rgba(196, 165, 116, 0.18)));
+      border: 1px solid var(--primary-color, #1e293b);
       border-radius: 18px;
-      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06) !important;
-      padding: 20px 18px 16px;
+      box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--accent-color, #c4a574);
+      padding: 14px 14px 12px;
       text-align: center;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
     }
-    .invitation-experience-root #section-when-where .day-kicker,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-kicker {
+    .invitation-experience-root .day-kicker {
       margin: 0 0 10px;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.16em;
+      font-size: 10px;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
-      color: #1f2937 !important;
+      color: color-mix(in srgb, var(--accent-color, #c4a574) 55%, #6b7280);
     }
-    .invitation-experience-root #section-when-where .day-rule {
-      display: block;
-      width: 42px;
-      height: 1px;
-      margin: 14px auto;
-      background: #111827;
+    .invitation-experience-root .day-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
     }
-    .invitation-experience-root #section-when-where #summary-date,
-    .invitation-experience-root #section-when-where #summary-venue,
-    .invitation-experience-root[data-template="fairepart"] #section-when-where #summary-date,
-    .invitation-experience-root[data-template="fairepart"] #section-when-where #summary-venue,
-    .invitation-experience-root.dark-mode-applied #section-when-where #summary-date,
-    .invitation-experience-root.dark-mode-applied #section-when-where #summary-venue,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-card h3 {
+    .invitation-experience-root .day-rule {
+      width: 1px;
+      align-self: stretch;
+      min-height: 36px;
+      background: linear-gradient(var(--primary-color, #1e293b), var(--accent-color, #c4a574));
+    }
+    .invitation-experience-root .day-col { min-width: 0; }
+    .invitation-experience-root #summary-date,
+    .invitation-experience-root #summary-venue {
       font-family: "Playfair Display", Georgia, serif;
       font-weight: 600;
-      line-height: 1.25;
+      line-height: 1.2;
       margin: 0;
-      color: #111827 !important;
-      text-shadow: none !important;
+      color: var(--primary-color, #1e293b);
+      text-shadow: none;
     }
-    .invitation-experience-root #section-when-where #summary-date { font-size: 1.7rem; }
-    .invitation-experience-root #section-when-where #summary-venue { font-size: 1.4rem; }
-    .invitation-experience-root #section-when-where .day-detail,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-detail {
-      margin: 8px 0 0;
-      font-size: 16px;
-      line-height: 1.45;
-      color: #111827 !important;
-      font-weight: 600;
+    .invitation-experience-root #summary-date { font-size: 1.12rem; }
+    .invitation-experience-root #summary-venue { font-size: 1.02rem; }
+    .invitation-experience-root #summary-time,
+    .invitation-experience-root #summary-address {
+      margin: 4px 0 0;
+      font-size: 12px;
+      line-height: 1.35;
     }
-    .invitation-experience-root #section-when-where .day-program {
-      margin-top: 14px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(17, 24, 39, 0.12);
-    }
-    .invitation-experience-root #section-when-where #program-section-title,
-    .invitation-experience-root.dark-mode-applied #section-when-where #program-section-title {
-      color: #1f2937 !important;
-      font-size: 12px !important;
-    }
-    .invitation-experience-root #section-when-where .day-card .inv-text-primary,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-card .inv-text-primary,
-    .invitation-experience-root.dark-mode-applied #section-when-where .day-card h3 {
-      color: #111827 !important;
+    .invitation-experience-root .day-program {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--ink-line, rgba(30, 41, 59, 0.16));
     }
     .invitation-experience-root #program-timeline { gap: 2px; margin-bottom: 10px; }
     .invitation-experience-root .invite-body-text {
       color: color-mix(in srgb, var(--primary-color, #1e293b) 78%, #111827);
+    }
+    .invitation-experience-root[data-template="photos"] .day-card {
+      background: linear-gradient(165deg, rgba(255,255,255,0.9), rgba(255,255,255,0.72)) !important;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 0 0 5px var(--accent-color, #c4a574) !important;
+    }
+    .invitation-experience-root.dark-mode-applied .day-card {
+      background: linear-gradient(165deg, rgba(15,23,42,0.35), #1e293b 42%, rgba(196,165,116,0.14)) !important;
+      box-shadow: 0 0 0 4px #0f172a, 0 0 0 5px var(--accent-color, #c4a574) !important;
+      border-color: var(--accent-color, #c4a574) !important;
     }
     .invitation-experience-root .invitation-end-mark {
       display: flex;
@@ -3330,13 +3319,19 @@ function getOriginalHTML(): string {
       <section id="section-when-where" style="padding:0 16px;margin-top:16px;">
         <div class="surface-card day-card">
           <p class="day-kicker">Le jour et le lieu</p>
-          <p id="summary-date"></p>
-          <p id="summary-time" class="day-detail"></p>
-          <span class="day-rule" aria-hidden="true"></span>
-          <h3 id="summary-venue"></h3>
-          <p id="summary-address" class="day-detail"></p>
+          <div class="day-pair">
+            <div class="day-col">
+              <p id="summary-date" class="inv-text-primary"></p>
+              <p id="summary-time" class="inv-text-muted"></p>
+            </div>
+            <span class="day-rule" aria-hidden="true"></span>
+            <div class="day-col">
+              <h3 id="summary-venue" class="inv-text-primary"></h3>
+              <p id="summary-address" class="inv-text-muted"></p>
+            </div>
+          </div>
           <div id="day-program" class="day-program">
-            <p id="program-section-title" style="font-size:12px;font-weight:700;color:#1f2937;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:10px;text-align:center;">Au programme</p>
+            <p id="program-section-title" style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:8px;text-align:center;">Au programme</p>
             <div id="program-timeline" style="display:flex;flex-direction:column;gap:2px;text-align:left;margin-bottom:10px;"></div>
           </div>
           <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:12px 14px;min-height:2.75rem;">

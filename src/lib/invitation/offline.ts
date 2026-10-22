@@ -101,6 +101,11 @@ export async function saveOfflineInvitation(input: {
   if (event.aboutImage) event.aboutImage = await shrinkToDataUrl(event.aboutImage);
   if (event.groomMotifImage) event.groomMotifImage = await shrinkToDataUrl(event.groomMotifImage);
   if (event.brideMotifImage) event.brideMotifImage = await shrinkToDataUrl(event.brideMotifImage);
+  if (event.cardPhotos) {
+    const next: Record<string, string> = {};
+    for (const [k, v] of Object.entries(event.cardPhotos)) next[k] = await shrinkToDataUrl(v);
+    event.cardPhotos = next;
+  }
   const saved: OfflineInvitation = {
     key: offlineKey(event.slug, input.token),
     slug: event.slug,

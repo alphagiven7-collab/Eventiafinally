@@ -9,7 +9,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { cardTextOf, cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
+import { INVITATION_CARDS, cardTextOf, cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -849,10 +849,33 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
     const modal = root.querySelector(`#${id}`);
     if (modal && main) main.appendChild(modal);
   });
+  applyCardControls(root, event);
   const endMark = root.querySelector('.invitation-end-mark');
   if (endMark && main) main.appendChild(endMark);
   const offlineBar = root.querySelector('#offline-invitation-bar');
   if (offlineBar && main) main.appendChild(offlineBar);
+}
+
+function applyCardControls(root: HTMLElement, event: EventWithSettings) {
+  const hidden = new Set(event.hiddenCards || []);
+  INVITATION_CARDS.forEach(({ id, selector }) => {
+    const el = root.querySelector<HTMLElement>(selector);
+    if (!el) return;
+    if (hidden.has(id)) el.setAttribute('data-card-hidden', 'true');
+    else el.removeAttribute('data-card-hidden');
+    const target = (id === 'message' ? el.querySelector<HTMLElement>('.invitation-card') : el.firstElementChild) as HTMLElement | null;
+    if (!target) return;
+    target.querySelectorAll(':scope > .card-photo-bg').forEach((n) => n.remove());
+    target.classList.remove('has-card-photo');
+    const photo = event.cardPhotos?.[id];
+    if (!photo || !/^(data:image\/|https?:\/\/|\/)/.test(photo)) return;
+    const bg = document.createElement('span');
+    bg.className = 'card-photo-bg';
+    bg.setAttribute('aria-hidden', 'true');
+    bg.style.backgroundImage = `url("${photo.replace(/"/g, '%22')}")`;
+    target.insertBefore(bg, target.firstChild);
+    target.classList.add('has-card-photo');
+  });
 }
 
 function initCountdown(root: HTMLElement, dateStr: string) {
@@ -1885,6 +1908,30 @@ function getOriginalCSS(): string {
       z-index: 0;
       color: #111827;
     }
+    .invitation-experience-root [data-card-hidden="true"] { display: none !important; }
+    .invitation-experience-root .has-card-photo { position: relative; overflow: hidden; isolation: isolate; }
+    .invitation-experience-root .card-photo-bg {
+      position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none;
+      background-size: cover; background-position: center;
+    }
+    .invitation-experience-root .card-photo-bg::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.84));
+    }
+    .invitation-experience-root.dark-mode-applied .card-photo-bg::after {
+      background: linear-gradient(180deg, rgba(15,23,42,0.82), rgba(15,23,42,0.7) 50%, rgba(15,23,42,0.86));
+    }
+    .invitation-experience-root .has-card-photo > :not(.card-photo-bg):not(.invitation-card-floral):not(.invitation-card-corner) { position: relative; z-index: 1; }
+    .invitation-experience-root .invitation-card--floral .card-ornament { display: block; margin: 0 auto 0.9rem; width: 9rem; height: 1rem; color: var(--accent-color, #c4a574); opacity: 0.9; }
+    .invitation-experience-root .invitation-card--floral::after {
+      content: ""; position: absolute; inset: 14px; border: 1px dashed var(--ink-line, rgba(30,41,59,0.18));
+      border-radius: 10px; pointer-events: none; z-index: 0; opacity: 0.7;
+    }
+    .invitation-experience-root .invitation-card-corner { position: absolute; width: 2.6rem; height: 2.6rem; color: var(--accent-color, #c4a574); opacity: 0.85; pointer-events: none; z-index: 1; }
+    .invitation-experience-root .invitation-card-corner--tl { top: 10px; left: 10px; }
+    .invitation-experience-root .invitation-card-corner--tr { top: 10px; right: 10px; transform: scaleX(-1); }
+    .invitation-experience-root .invitation-card-corner--bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+    .invitation-experience-root .invitation-card-corner--br { bottom: 10px; right: 10px; transform: scale(-1, -1); }
     .invitation-experience-root .invitation-card-floral--tl { top: 0.4rem; left: 0.4rem; }
     .invitation-experience-root .invitation-card-floral--br { right: 0.4rem; bottom: 0.4rem; transform: rotate(180deg); }
     .invitation-experience-root .invitation-card-inner {
@@ -3300,7 +3347,12 @@ function getOriginalHTML(): string {
           <div class="invitation-card-floral invitation-card-floral--br" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><path d="M12 58c8-18 26-22 34-38 3-6 2-12-1-16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M18 24c6 4 10 10 10 18 0 8-5 14-12 16" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M42 14c-2 8 2 16 8 22" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="24" cy="34" r="5" stroke="currentColor" stroke-width="1"/><circle cx="38" cy="22" r="3.5" fill="currentColor"/><circle cx="52" cy="30" r="2.5" fill="currentColor"/><path d="M20 48c4 6 10 8 16 6" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
           </div>
+          <svg class="invitation-card-corner invitation-card-corner--tl" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M2 38V14C2 7 7 2 14 2h24"/><path d="M8 38V18c0-6 4-10 10-10h20" opacity=".55"/><circle cx="14" cy="14" r="2.2" fill="currentColor" stroke="none"/><path d="M20 20c3-1 5-3 6-6-3 0-5 2-6 6zM20 20c-1 3-3 5-6 6 0-3 2-5 6-6z" fill="currentColor" stroke="none" opacity=".6"/></svg>
+          <svg class="invitation-card-corner invitation-card-corner--tr" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M2 38V14C2 7 7 2 14 2h24"/><path d="M8 38V18c0-6 4-10 10-10h20" opacity=".55"/><circle cx="14" cy="14" r="2.2" fill="currentColor" stroke="none"/><path d="M20 20c3-1 5-3 6-6-3 0-5 2-6 6zM20 20c-1 3-3 5-6 6 0-3 2-5 6-6z" fill="currentColor" stroke="none" opacity=".6"/></svg>
+          <svg class="invitation-card-corner invitation-card-corner--bl" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M2 38V14C2 7 7 2 14 2h24"/><path d="M8 38V18c0-6 4-10 10-10h20" opacity=".55"/><circle cx="14" cy="14" r="2.2" fill="currentColor" stroke="none"/><path d="M20 20c3-1 5-3 6-6-3 0-5 2-6 6zM20 20c-1 3-3 5-6 6 0-3 2-5 6-6z" fill="currentColor" stroke="none" opacity=".6"/></svg>
+          <svg class="invitation-card-corner invitation-card-corner--br" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M2 38V14C2 7 7 2 14 2h24"/><path d="M8 38V18c0-6 4-10 10-10h20" opacity=".55"/><circle cx="14" cy="14" r="2.2" fill="currentColor" stroke="none"/><path d="M20 20c3-1 5-3 6-6-3 0-5 2-6 6zM20 20c-1 3-3 5-6 6 0-3 2-5 6-6z" fill="currentColor" stroke="none" opacity=".6"/></svg>
           <div class="invitation-card-inner">
+            <svg class="card-ornament" viewBox="0 0 120 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 8h42M76 8h42"/><path d="M60 2l4 6-4 6-4-6z" fill="currentColor"/><circle cx="50" cy="8" r="1.6" fill="currentColor" stroke="none"/><circle cx="70" cy="8" r="1.6" fill="currentColor" stroke="none"/></svg>
             <p id="card-kicker" class="invite-card-overline">On vous invite</p>
             <div id="couple-row-container" class="invite-couple-row">
               <span id="couple-name-left" class="invite-couple-name invite-couple-name--left"></span>

@@ -238,6 +238,8 @@ export interface EventWithSettings extends Event {
     guestLimit?: number;
     invitationTemplate?: InvitationModel | 'elegance' | 'motifs';
     showFamilyMotifs?: boolean;
+    hiddenCards?: string[];
+    cardPhotos?: Record<string, string>;
     heroText?: HeroTextSettings;
     heroBand?: boolean;
     heroBrightness?: number;

@@ -141,3 +141,18 @@ export function cssColorSoft(value: string | undefined, fallback: string, alpha 
   const blue = Number.parseInt(hex.slice(4, 6), 16);
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
+
+export const INVITATION_CARDS: { id: string; label: string; selector: string }[] = [
+  { id: 'message', label: "Carte d'invitation (message)", selector: '.invite-sheet' },
+  { id: 'day', label: 'Le jour et le lieu', selector: '#section-when-where' },
+  { id: 'gps', label: 'Itinéraire', selector: '#section-gps' },
+  { id: 'about', label: 'Notre histoire', selector: '#section-about' },
+  { id: 'gallery', label: 'Galerie', selector: '#section-gallery' },
+  { id: 'dress', label: 'Code vestimentaire', selector: '#section-dress-code' },
+  { id: 'drinks', label: 'Boissons', selector: '#drink-menu-section' },
+  { id: 'countdown', label: 'Compte à rebours', selector: '#section-countdown' },
+  { id: 'rsvp', label: 'Réponse (RSVP)', selector: '#section-rsvp' },
+  { id: 'guestbook', label: "Livre d'or", selector: '#section-guestbook' },
+  { id: 'practical', label: 'Infos pratiques', selector: '#section-practical-info' },
+  { id: 'gift', label: 'Cadeau / contact', selector: '#section-gift-contact' },
+];

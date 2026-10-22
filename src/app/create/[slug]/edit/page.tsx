@@ -37,7 +37,7 @@ import {
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
-import { buttonFromPair, cardTextOf, COLOR_HARMONIES, familyMotifsVisible, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { buttonFromPair, cardTextOf, COLOR_HARMONIES, familyMotifsVisible, INVITATION_CARDS, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -712,6 +712,8 @@ function EditEventContent() {
   const [heroBrightness, setHeroBrightness] = useState(50);
   const [textRelief, setTextRelief] = useState(true);
   const [textReliefColor, setTextReliefColor] = useState('#1e293b');
+  const [hiddenCards, setHiddenCards] = useState<string[]>([]);
+  const [cardPhotos, setCardPhotos] = useState<Record<string, string>>({});
   const [groomMotifImage, setGroomMotifImage] = useState('');
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
@@ -859,6 +861,8 @@ function EditEventContent() {
       setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
       setTextRelief(evt.textRelief !== false);
       setTextReliefColor(evt.textReliefColor || '#1e293b');
+      setHiddenCards(evt.hiddenCards || []);
+      setCardPhotos(evt.cardPhotos || {});
       setGroomMotifImage(evt.groomMotifImage || '');
       setBrideMotifImage(evt.brideMotifImage || '');
       setRsvpDeadline(evt.rsvpDeadline ? evt.rsvpDeadline.slice(0, 10) : '');
@@ -968,6 +972,8 @@ function EditEventContent() {
       },
       invitationTemplate,
       showFamilyMotifs,
+      hiddenCards,
+      cardPhotos,
       heroText: {
         position: heroPosition,
         size: heroSize,
@@ -1033,6 +1039,8 @@ function EditEventContent() {
     secGuestbook,
     invitationTemplate,
     showFamilyMotifs,
+    hiddenCards,
+    cardPhotos,
     heroPosition,
     heroSize,
     heroStyle,
@@ -1116,6 +1124,7 @@ function EditEventContent() {
         bride,
         bestPhotos,
         dressImages,
+        cardPhotoList,
       ] = await Promise.all([
         optimizedImage(liveEvent.heroImage, 90 * 1024),
         optimizedImage(liveEvent.aboutImage, 80 * 1024),
@@ -1127,6 +1136,9 @@ function EditEventContent() {
         optimizedImage(liveEvent.brideMotifImage, 80 * 1024),
         optimizedList(liveEvent.bestPhotos),
         optimizedList(liveEvent.dressImages),
+        Promise.all(
+          Object.entries(liveEvent.cardPhotos || {}).map(async ([k, v]) => [k, await optimizedImage(v, 80 * 1024)] as const),
+        ),
       ] as const);
       const prepared: EventWithSettings = {
         ...liveEvent,
@@ -1142,6 +1154,7 @@ function EditEventContent() {
         brideMotifImage: bride || undefined,
         bestPhotos,
         dressImages,
+        cardPhotos: Object.fromEntries(cardPhotoList.filter(([, v]) => v)) as Record<string, string>,
         branding: liveEvent.branding
           ? {
               ...liveEvent.branding,
@@ -1408,6 +1421,53 @@ function EditEventContent() {
                   placeholder="12 avenue des Palmiers"
                 />
               </div>
+            </div>
+          </Section>
+
+          <Section
+            title="Les cartes"
+            subtitle="Cacher une carte, ou mettre une photo derrière. Le texte reste lisible."
+            icon={<Sparkles className="w-4 h-4" />}
+          >
+            <div className="space-y-3">
+              {INVITATION_CARDS.map((card) => {
+                const visible = !hiddenCards.includes(card.id);
+                return (
+                  <div key={card.id} className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3 space-y-3">
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{card.label}</span>
+                      <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        {visible ? 'Affichée' : 'Cachée'}
+                        <input
+                          type="checkbox"
+                          checked={visible}
+                          onChange={(e) =>
+                            setHiddenCards((prev) =>
+                              e.target.checked ? prev.filter((id) => id !== card.id) : [...prev, card.id],
+                            )
+                          }
+                          className="w-4 h-4 accent-violet-600 rounded cursor-pointer"
+                        />
+                      </span>
+                    </label>
+                    {visible && (
+                      <SingleImageUploader
+                        label="Photo de fond"
+                        help="Un voile clair est posé dessus pour garder le texte lisible."
+                        value={cardPhotos[card.id] || ''}
+                        onChange={(v) =>
+                          setCardPhotos((prev) => {
+                            const next = { ...prev };
+                            if (v) next[card.id] = v;
+                            else delete next[card.id];
+                            return next;
+                          })
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Section>
 

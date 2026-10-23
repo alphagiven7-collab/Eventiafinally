@@ -647,6 +647,16 @@ function EditEventContent() {
   const [coupleRight, setCoupleRight] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
+  const [editorMode, setEditorMode] = useState<'simple' | 'advanced' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('eventia_editor_mode');
+    return saved === 'simple' || saved === 'advanced' ? saved : null;
+  });
+  const advanced = editorMode === 'advanced';
+  const chooseEditorMode = (mode: 'simple' | 'advanced') => {
+    setEditorMode(mode);
+    localStorage.setItem('eventia_editor_mode', mode);
+  };
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
   const [mapLink, setMapLink] = useState('');
@@ -1367,6 +1377,44 @@ function EditEventContent() {
             showMobilePreview ? 'hidden lg:block' : 'block'
           }`}
         >
+          {editorMode === null ? (
+            <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-5">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Comment voulez-vous personnaliser ?</h2>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">Vous pourrez changer à tout moment. Rien n’est perdu.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => chooseEditorMode('simple')}
+                  className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 p-4 text-left hover:border-violet-500 transition"
+                >
+                  <span className="block text-sm font-bold text-gray-900 dark:text-gray-100">Simple</span>
+                  <span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">L’essentiel : les informations, les textes, les couleurs, les photos et la musique. Idéal pour publier vite.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => chooseEditorMode('advanced')}
+                  className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 p-4 text-left hover:border-violet-500 transition"
+                >
+                  <span className="block text-sm font-bold text-gray-900 dark:text-gray-100">Avancé</span>
+                  <span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">Tout le reste : modèle, cartes et photos de fond, programme, tenue, histoire, cadeau et contact.</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-100 dark:bg-gray-800 px-4 py-2.5">
+              <p className="text-xs text-gray-600 dark:text-gray-300">
+                {advanced ? 'Mode avancé : toutes les options sont affichées.' : 'Mode simple : seulement l’essentiel.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => chooseEditorMode(advanced ? 'simple' : 'advanced')}
+                className="shrink-0 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline"
+              >
+                {advanced ? 'Passer en simple' : 'Voir toutes les options'}
+              </button>
+            </div>
+          )}
+
           {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
           <Section
             title="1. L’essentiel de l’événement"
@@ -1444,6 +1492,7 @@ function EditEventContent() {
             </div>
           </Section>
 
+          {advanced && (
           <Section
             title="Les cartes"
             subtitle="Cacher une carte, ou mettre une photo derrière. Le texte reste lisible."
@@ -1490,7 +1539,9 @@ function EditEventContent() {
               })}
             </div>
           </Section>
+          )}
 
+          {advanced && (
           <Section
             title="Le style"
             subtitle="Choisissez le modèle. Les motifs de famille sont disponibles sur les trois."
@@ -1578,10 +1629,11 @@ function EditEventContent() {
               </div>
             )}
           </Section>
+          )}
 
           {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
           <Section
-            title="2. Le mot et les couleurs"
+            title="2. Textes et couleurs"
             subtitle="Les textes de la carte d’invitation et les couleurs."
             icon={<Mail className="w-4 h-4" />}
           >
@@ -1944,8 +1996,9 @@ function EditEventContent() {
           </Section>
 
           {/* ═══════ 4. PROGRAMME, TENUE & INFOS ═══════ */}
+          {advanced && (
           <Section
-            title="4. La journée"
+            title="La journée"
             subtitle="Le programme, la tenue, et ce qu’il faut savoir."
             icon={<Calendar className="w-4 h-4" />}
           >
@@ -2051,10 +2104,12 @@ function EditEventContent() {
               </div>
             </div>
           </Section>
+          )}
 
           {/* ═══════ 5. NOTRE HISTOIRE & CONTACT (OPTIONNEL) ═══════ */}
+          {advanced && (
           <Section
-            title="5. Histoire, cadeau, contact"
+            title="Histoire, cadeau, contact"
             subtitle="Ces parties n’apparaissent que si vous les remplissez."
             icon={<Sparkles className="w-4 h-4" />}
           >
@@ -2109,6 +2164,7 @@ function EditEventContent() {
               </div>
             </div>
           </Section>
+          )}
 
           {/* Boutons d'action en bas */}
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -7,7 +7,8 @@ import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { fetchInvitationBySlug, fromDatabase, listInvitations, publishInvitation } from '@/lib/events/store';
 import { isCurrentSuperAdmin } from '@/lib/admin/session';
-import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest } from '@/lib/guests/store';
+import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest, type GuestDraft } from '@/lib/guests/store';
+import { parseGuestCsv } from '@/lib/guests/csv';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
@@ -73,7 +74,7 @@ function GuestManagementContent() {
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
   const [csvPreview, setCsvPreview] = useState<null | {
-    ready: { name: string; phone?: string; email?: string; group?: string }[];
+    ready: GuestDraft[];
     bad: { line: number; text: string; reason: string }[];
     duplicates: string[];
   }>(null);
@@ -338,37 +339,8 @@ function GuestManagementContent() {
     e.target.value = '';
     if (!file) return;
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((line) => line.trim());
-    if (lines.length === 0) return;
-    const header = lines[0].toLowerCase();
-    const hasHeader = header.includes('nom') || header.includes('name');
-    const dataLines = hasHeader ? lines.slice(1) : lines;
-    const known = new Set(guests.map((guest) => guest.name.trim().toLowerCase()));
-    const seen = new Set<string>();
-    const ready: { name: string; phone?: string; email?: string; group?: string }[] = [];
-    const bad: { line: number; text: string; reason: string }[] = [];
-    const duplicates: string[] = [];
-    dataLines.forEach((line, index) => {
-      const parts = line.split(',').map((part) => part.trim().replace(/^"|"$/g, ''));
-      const name = parts[0] || '';
-      const lineNo = index + (hasHeader ? 2 : 1);
-      if (!name || name.toLowerCase() === 'sans nom') {
-        bad.push({ line: lineNo, text: line, reason: 'Nom manquant' });
-        return;
-      }
-      const key = name.toLowerCase();
-      if (known.has(key) || seen.has(key)) {
-        duplicates.push(`${name} (ligne ${lineNo})`);
-        return;
-      }
-      seen.add(key);
-      ready.push({
-        name,
-        phone: parts[1] || undefined,
-        group: parts[2] || undefined,
-        email: parts[3] || undefined,
-      });
-    });
+    const { ready, bad, duplicates } = parseGuestCsv(text, guests.map((guest) => guest.name));
+    if (ready.length + bad.length + duplicates.length === 0) return;
     setCsvPreview({ ready, bad, duplicates });
   };
 
@@ -694,7 +666,7 @@ function GuestManagementContent() {
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">CSV : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom,telephone,groupe,email</code>. Le nom suffit.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, groupe, email, table</code>. Seul le nom est obligatoire. Les séparateurs , et ; sont acceptés.</p>
                 <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />

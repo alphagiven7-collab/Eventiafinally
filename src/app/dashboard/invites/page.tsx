@@ -873,7 +873,7 @@ function GuestManagementContent() {
                                 disabled={publishing}
                                 className="mt-3 w-full min-h-11 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-2.5 text-xs font-semibold text-amber-800 dark:text-amber-200 hover:bg-amber-100 disabled:opacity-60"
                               >
-                                {publishing ? 'Publication…' : 'Publier l’invitation pour envoyer ce lien'}
+                                {publishing ? 'Publication…' : 'Publier'}
                               </button>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">

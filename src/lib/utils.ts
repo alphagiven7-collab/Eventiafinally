@@ -38,6 +38,16 @@ export function formatTime(time: string): string {
   return `${hours}h${minutes}`;
 }
 
+/** Convertit « 16h00 », « 16:00 » ou « 9h » en « HH:MM » pour un champ heure. */
+export function toTimeInput(value?: string): string {
+  const match = (value || '').trim().match(/^(\d{1,2})\s*(?:h|:)\s*(\d{2})?$/i);
+  if (!match) return '';
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] || 0);
+  if (hours > 23 || minutes > 59) return '';
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 export function formatDateTime(date: string, time?: string): string {
   const dateStr = formatDate(date, 'EEEE d MMMM yyyy');
   if (time) {

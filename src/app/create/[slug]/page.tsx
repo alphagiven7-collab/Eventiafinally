@@ -11,10 +11,10 @@ import { createClient } from '@/lib/supabase/client';
 import { ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { FREE_EVENT_LIMIT } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
-import { Sparkles } from 'lucide-react';
 
 function Field({
   label,
+  help,
   value,
   onChange,
   type = 'text',
@@ -22,6 +22,7 @@ function Field({
   required,
 }: {
   label: string;
+  help?: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
@@ -33,6 +34,7 @@ function Field({
       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
         {label} {required && <span className="text-rose-500">*</span>}
       </label>
+      {help && <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5 leading-snug">{help}</p>}
       <input
         type={type}
         value={value}
@@ -205,18 +207,9 @@ function CreateEventContent() {
       </header>
 
       <main className="max-w-lg mx-auto px-5 py-8">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300 text-xs font-semibold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Étape 1 sur 2</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-1">
-            D’abord, l’essentiel
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Qui, quand, où. Les photos, les couleurs et le texte viennent juste après.
-          </p>
-        </div>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 text-center">
+          Votre événement
+        </h1>
 
         {needsPermission && (
           <div className="mb-4">
@@ -231,18 +224,17 @@ function CreateEventContent() {
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-4"
         >
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Les prénoms sont facultatifs. Un seul nom, ou aucun, suffit : la carte n’en invente pas.
-          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
-              label="Premier prénom"
+              label="Premier prénom (optionnel)"
+              help="Affiché sur la couverture et sur la carte d’invitation."
               value={coupleLeft}
               onChange={setCoupleLeft}
               placeholder="Ex: Marie"
             />
             <Field
-              label="Second prénom"
+              label="Second prénom (optionnel)"
+              help="Affiché à côté du premier prénom."
               value={coupleRight}
               onChange={setCoupleRight}
               placeholder="Ex: Pierre"
@@ -251,7 +243,8 @@ function CreateEventContent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
-              label="Date de l'événement"
+              label="Date"
+              help="Affichée sur la carte, avec le compte à rebours."
               value={eventDate}
               onChange={setEventDate}
               type="date"
@@ -259,14 +252,16 @@ function CreateEventContent() {
             />
             <Field
               label="Heure (optionnel)"
+              help="Affichée à côté de la date."
               value={eventTime}
               onChange={setEventTime}
-              placeholder="Ex: 16h00"
+              type="time"
             />
           </div>
 
           <Field
-            label="Lieu ou salle de réception"
+            label="Nom du lieu"
+            help="Affiché sur la carte du lieu."
             value={location}
             onChange={setLocation}
             required
@@ -274,7 +269,8 @@ function CreateEventContent() {
           />
 
           <Field
-            label="Adresse complète (optionnel)"
+            label="Adresse (optionnel)"
+            help="Sert au bouton d’itinéraire."
             value={address}
             onChange={setAddress}
             placeholder="Ex: 12 Avenue des Champs, 75008 Paris"

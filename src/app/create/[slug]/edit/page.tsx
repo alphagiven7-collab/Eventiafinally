@@ -1,5 +1,6 @@
 'use client';
 
+import { toTimeInput } from '@/lib/utils';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui';
@@ -801,7 +802,7 @@ function EditEventContent() {
       setCoupleLeft(evt.coupleLeft || '');
       setCoupleRight(evt.coupleRight || '');
       setEventDate(evt.event_date ? new Date(evt.event_date).toISOString().split('T')[0] : '');
-      setEventTime(evt.event_time || '');
+      setEventTime(toTimeInput(evt.event_time) || evt.event_time || '');
       setLocation(evt.venue || evt.location || '');
       setAddress(evt.venueDetails?.address || evt.address || '');
       setMapLink(evt.links?.map || evt.mapLink || '');
@@ -1412,10 +1413,11 @@ function EditEventContent() {
                   required
                 />
                 <Field
-                  label="L'heure"
+                  label="Heure"
+                  help="Affichée à côté de la date sur la carte."
                   value={eventTime}
                   onChange={setEventTime}
-                  placeholder="16h00"
+                  type="time"
                 />
               </div>
               <Field

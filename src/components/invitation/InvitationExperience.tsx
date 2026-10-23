@@ -1,5 +1,6 @@
 'use client';
 
+import { toTimeInput, formatTime } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 import { EventWithSettings, GuestStatus } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
@@ -487,7 +488,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   // Heure : champ dédié, sinon l'heure déjà portée par la date
   const timeEl = $('#summary-time');
-  let timeLabel = (event.event_time || '').trim();
+  const normalizedTime = toTimeInput(event.event_time);
+  let timeLabel = normalizedTime ? formatTime(normalizedTime) : (event.event_time || '').trim();
   if (!timeLabel && event.event_date) {
     const clock = new Date(event.event_date);
     if (!isNaN(clock.getTime()) && (clock.getHours() !== 0 || clock.getMinutes() !== 0)) {

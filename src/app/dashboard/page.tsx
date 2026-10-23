@@ -12,7 +12,7 @@ import { deleteInvitation, listInvitations, ownedEventCount, publishInvitation }
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, MessageCircle, Heart } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
-import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, TRIAL_INVITATIONS } from '@/constants/pricing';
+import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
 import InstallApp from '@/components/pwa/InstallApp';
 import { useOrganizerUnlocked } from '@/hooks/useOrganizerUnlocked';
@@ -50,6 +50,12 @@ export default function DashboardPage() {
   const [needsPermission, setNeedsPermission] = useState(false);
   const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; pending: number }>>({});
   const organizerUnlocked = useOrganizerUnlocked();
+  const [offerHidden, setOfferHidden] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('eventia_offer_hidden') === '1');
+  const hideOffer = () => {
+    setOfferHidden(true);
+    localStorage.setItem('eventia_offer_hidden', '1');
+  };
 
   // Charger les événements
   const loadEvents = useCallback(async () => {
@@ -207,13 +213,21 @@ export default function DashboardPage() {
       <AdminLayout>
         <div id="evenements" className="space-y-6">
           <InstallApp />
-          {organizerUnlocked === false && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-rose-100 dark:border-gray-700">
+          {organizerUnlocked === false && !offerHidden && (
+            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-4 pr-12 border border-rose-100 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={hideOffer}
+                aria-label="Masquer cette carte"
+                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
               <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                {TRIAL_INVITATIONS} invitations d&apos;essai, puis 0,30 $ par invité
+                Offre de lancement : {TRIAL_INVITATIONS} invitations offertes
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {GUEST_PACKS.map((pack) => `${pack} invités · ${formatUsd(packTotalUsd(pack))}`).join(' · ')}. L&apos;essai s&apos;ajoute au forfait.
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                Au-delà, vous ne payez que les invitations envoyées, à {formatUsd(PRICE_PER_GUEST_USD)} chacune. Un couple ou une famille compte pour une seule invitation. Forfaits : {GUEST_PACKS.map((pack) => `${pack} invitations à ${formatUsd(packTotalUsd(pack))}`).join(', ')}. Les {TRIAL_INVITATIONS} invitations offertes s&apos;ajoutent au forfait.
               </p>
               <a href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold">
                 Voir les forfaits

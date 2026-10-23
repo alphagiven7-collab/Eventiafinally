@@ -444,7 +444,6 @@ export async function publishInvitation(
     reserve_text: event.reserveText ?? null,
     rsvp_deadline_text: event.rsvpDeadlineText ?? null,
     rsvp_button_color: event.rsvpButtonColor ?? null,
-    qr_display_mode: event.qrDisplayMode ?? null,
     meta_description: event.metaDescription ?? null,
     about_title: event.aboutTitle ?? null,
     main_text: event.mainText ?? null,

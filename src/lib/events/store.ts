@@ -59,7 +59,7 @@ export function isUuid(value: string | undefined): boolean {
 
 export function explainWriteError(message: string): string {
   if (/payload|schema cache|column/i.test(message)) {
-    return 'La base doit être mise à jour. Exécutez supabase/migrations/006_hosted_invitation.sql dans le SQL Editor de Supabase.';
+    return 'Service momentanément indisponible. Réessayez plus tard.';
   }
   return message;
 }
@@ -534,7 +534,7 @@ export async function setGalleryVisibility(
   const { error } = await supabase.from('events').update({ show_in_gallery: visible }).eq('id', eventId);
   if (!error) return { error: null };
   if (/show_in_gallery|column|schema cache/i.test(error.message)) {
-    return { error: 'La galerie n’est pas encore activée. Exécutez la migration 019 dans Supabase.' };
+    return { error: 'La galerie n’est pas encore disponible.' };
   }
   return { error: error.message };
 }

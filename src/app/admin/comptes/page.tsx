@@ -57,7 +57,7 @@ export default function AccountsPage() {
     }
     const { error } = await createClient().from('users').update({ role: next }).eq('id', id);
     if (error) {
-      message.error('Le rôle n’a pas été enregistré. Relancez le script d’accès dans Supabase.');
+      message.error('Le rôle n’a pas été enregistré. Vérifiez vos droits d’administrateur.');
       return;
     }
     message.success('Rôle enregistré.');

@@ -45,7 +45,7 @@ export type GuestDraft = {
 
 export const CHECKIN_PREFIX = 'invitia:checkin:';
 
-const MIGRATION_HINT = 'La base doit être mise à jour. Exécutez supabase/migrations/009_checkin_and_rsvp.sql dans le SQL Editor de Supabase.';
+const MIGRATION_HINT = 'Service momentanément indisponible. Réessayez plus tard.';
 
 export function checkinPayload(token: string): string {
   return `${CHECKIN_PREFIX}${token}`;
@@ -74,7 +74,7 @@ export function explainGuestError(message: string): string {
   if (/not assigned yet|GUEST_NOT_FOUND/i.test(message)) return 'Ce lien ne correspond à aucun invité.';
   if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n’est pas encore ouverte.';
   if (/row-level security|permission denied/i.test(message)) {
-    return 'La confirmation n’a pas été autorisée. Relancez le script de correction dans Supabase.';
+    return 'La confirmation n’a pas été autorisée. Réessayez plus tard.';
   }
   if (/schema cache|could not find the function|submit_guest_rsvp|lookup_guest_by_token|argument of NOT must be type boolean/i.test(message)) {
     return MIGRATION_HINT;

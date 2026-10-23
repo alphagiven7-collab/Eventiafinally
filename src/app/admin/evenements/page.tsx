@@ -147,7 +147,7 @@ function EventsView() {
     const { error } = await action();
     setBusy(false);
     if (error) {
-      message.error('Action refusée. Ouvrez Supabase, SQL Editor, et lancez le script d’accès admin.');
+      message.error('Action refusée. Vérifiez vos droits d’administrateur.');
       return;
     }
     message.success(success);

@@ -86,7 +86,7 @@ export default function UnlockEventPage() {
     }
     setSaving(false);
     if (failed) {
-      message.error('La limite n’a pas été enregistrée. Relancez le script d’accès dans Supabase.');
+      message.error('La limite n’a pas été enregistrée. Vérifiez vos droits d’administrateur.');
       return;
     }
     message.success(`${result.title || 'Invitation'} : ${totalPlaces} invitations débloquées.`);

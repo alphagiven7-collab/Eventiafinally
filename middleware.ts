@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { isSupabaseReady } from '@/config/supabase';
 import { safeNextPath } from '@/lib/auth/redirect';
 
-const PROTECTED = ['/profile', '/dashboard', '/admin', '/checkin', '/create'];
+const PROTECTED = ['/profile', '/dashboard', '/admin', '/checkin'];
 
 function isProtected(pathname: string) {
   return PROTECTED.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -69,5 +69,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/profile/:path*', '/dashboard/:path*', '/admin/:path*', '/checkin/:path*', '/create/:path*', '/auth/:path*'],
+  matcher: ['/profile/:path*', '/dashboard/:path*', '/admin/:path*', '/checkin/:path*', '/auth/:path*'],
 };

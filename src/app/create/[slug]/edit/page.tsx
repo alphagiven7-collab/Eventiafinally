@@ -1763,6 +1763,15 @@ function EditEventContent() {
                 onChange={setCardAlign}
                 options={[['center', 'Centré'], ['left', 'À gauche']] as const}
               />
+            </div>
+          </Section>
+
+          <Section
+            title="Boutons de réponse"
+            subtitle="Les mots que vos invités voient pour confirmer leur présence."
+            icon={<MessageCircle className="w-4 h-4" />}
+          >
+            <div className="space-y-4 pt-4">
               <Field
                 label="Bouton pour confirmer"
                 value={reserveText}

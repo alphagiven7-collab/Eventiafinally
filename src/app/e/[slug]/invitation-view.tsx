@@ -49,7 +49,6 @@ export default function InvitationView({
           setEvent(saved.event);
           setUsingOffline(true);
           setOfflineGuest({ name: saved.guestName, table: saved.guestTable, status: saved.guestStatus });
-          setOfflineNote('Invitation disponible hors ligne.');
           setLoading(false);
           return;
         }
@@ -94,13 +93,6 @@ export default function InvitationView({
               return hosted;
             });
             setLoading(false);
-            const saved = await readOfflineInvitation(slug, token);
-            if (cancelled) return;
-            if (saved && saved.updatedAt && hosted.updated_at && saved.updatedAt !== hosted.updated_at) {
-              setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
-            } else if (saved) {
-              setOfflineNote('Invitation disponible hors ligne.');
-            }
             return;
           }
         } catch {
@@ -112,13 +104,6 @@ export default function InvitationView({
       if (!cancelled) {
         setEvent(demo);
         setLoading(false);
-        const saved = await readOfflineInvitation(slug, token);
-        if (cancelled) return;
-        if (saved && demo && saved.updatedAt && demo.updated_at && saved.updatedAt !== demo.updated_at) {
-          setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
-        } else if (saved) {
-          setOfflineNote('Invitation disponible hors ligne.');
-        }
       }
     }
 

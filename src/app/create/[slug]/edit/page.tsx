@@ -1487,6 +1487,13 @@ function EditEventContent() {
                   placeholder="12 avenue des Palmiers"
                 />
               </div>
+              <Field
+                label="Lien Google Maps (facultatif)"
+                value={mapLink}
+                onChange={setMapLink}
+                placeholder="https://maps.google.com/…"
+                help="Collez le lien de partage Google Maps. Le bouton « Itinéraire » de l’invitation l’ouvrira. Sans lien, il utilise le nom du lieu et l’adresse."
+              />
             </div>
           </Section>
 

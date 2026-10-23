@@ -9,8 +9,17 @@ import { StoryArt, StoryCredit } from '@/components/brand/StoryArt';
 import { formatUsd, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
 import InstallApp from '@/components/pwa/InstallApp';
 import { readGuestEntry } from '@/lib/pwa/install-prompt';
+import WhatsAppFloat, { WhatsAppGlyph } from '@/components/landing/WhatsAppFloat';
+import { CONTACT_MESSAGE, TEAM_WHATSAPP_DISPLAY, TEAM_WHATSAPP_URL } from '@/constants/contact';
 
 const packs = [50, 100, 200];
+
+const supportSteps = [
+  { title: 'On échange', text: 'Vous nous parlez de votre mariage, de votre style et de vos invités.' },
+  { title: 'On prépare ensemble', text: 'Nous vous aidons à rédiger et personnaliser votre invitation.' },
+  { title: 'On envoie', text: 'Chaque invité reçoit son lien. Vous suivez les réponses en direct.' },
+  { title: 'On est là le jour J', text: 'Cartes d’entrée, liste des invités et assistance jusqu’à la fête.' },
+];
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -36,6 +45,9 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="font-bold text-base">Eventia</Link>
           <div className="flex items-center gap-2">
+            <a href="#contact" className="hidden sm:inline-flex px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:text-violet-700">
+              Nous contacter
+            </a>
             <ThemeToggle />
             {!loading && user ? (
               <Link href="/dashboard" className="px-4 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
@@ -64,6 +76,9 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href={user ? '/dashboard' : '/create/wedding'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
                 Créer mon invitation
+              </Link>
+              <Link href="/pricing" className="inline-flex justify-center px-5 py-3 border border-rose-200 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:border-rose-900 dark:text-rose-300 rounded-2xl text-sm font-bold">
+                Passer une commande
               </Link>
               <Link href="/e/yanick-keren" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
                 Voir un exemple
@@ -108,6 +123,39 @@ export default function HomePage() {
             Plus de 200 invités ? Le prix s’affiche avant de payer : {formatUsd(PRICE_PER_GUEST_USD)} fois le nombre choisi.
           </p>
           <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir les prix</Link>
+          <Link href="/pricing" className="inline-flex ml-4 mt-3 px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-bold">Passer une commande</Link>
+        </section>
+
+        <section id="contact" className="mb-10 scroll-mt-20 overflow-hidden rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-6 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 md:p-8">
+          <div className="grid gap-8 md:grid-cols-2 md:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Nous contacter</p>
+              <h2 className="text-2xl font-extrabold leading-tight mb-3">Nous vous accompagnons jusqu’au jour du mariage.</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+                Une question, une idée, un doute ? Écrivez-nous. Une personne de l’équipe vous répond et vous guide à chaque étape, de la première invitation à l’arrivée de vos invités.
+              </p>
+              <a
+                href={`${TEAM_WHATSAPP_URL}?text=${encodeURIComponent(CONTACT_MESSAGE)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#25D366] to-[#128C7E] px-5 py-3 text-sm font-bold text-white shadow-md hover:brightness-105"
+              >
+                <WhatsAppGlyph className="h-5 w-5" />
+                WhatsApp · {TEAM_WHATSAPP_DISPLAY}
+              </a>
+            </div>
+            <ol className="space-y-3">
+              {supportSteps.map((step, index) => (
+                <li key={step.title} className="flex gap-3 rounded-2xl bg-white/80 p-3.5 ring-1 ring-violet-100 dark:bg-gray-800/70 dark:ring-gray-700">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">{index + 1}</span>
+                  <div>
+                    <p className="text-sm font-bold">{step.title}</p>
+                    <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">{step.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         </section>
 
         <footer className="pt-4 border-t border-gray-200 dark:border-gray-800">
@@ -115,6 +163,7 @@ export default function HomePage() {
           <p className="text-[11px] text-gray-400 mt-2">© {new Date().getFullYear()} Eventia</p>
         </footer>
       </main>
+      <WhatsAppFloat />
     </div>
   );
 }

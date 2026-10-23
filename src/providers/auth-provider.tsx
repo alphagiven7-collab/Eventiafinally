@@ -22,7 +22,7 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export const SUPABASE_REQUIRED = 'Configurez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local.';
+export const SUPABASE_REQUIRED = 'Service momentanément indisponible. Réessayez plus tard.';
 
 export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

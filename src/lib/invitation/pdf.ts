@@ -15,6 +15,8 @@ export type InvitationPdfFailure = {
 
 const INVITATION_WIDTH = 448;
 const MAX_PDF_EDGE = 14000;
+const IMAGE_WAIT_MS = 6000;
+const FONT_WAIT_MS = 4000;
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -34,7 +36,7 @@ function canvasHeightLimit() {
 }
 
 function captureScale(limit: number) {
-  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1.5 : 2;
+  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1.25 : 1.75;
   const maxScale = Math.max(1, Math.floor((limit - 32) / 900));
   return Math.min(preferred, maxScale);
 }
@@ -50,10 +52,16 @@ async function settleImages(root: ParentNode) {
       const done = () => resolve();
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
+      window.setTimeout(done, IMAGE_WAIT_MS);
     });
   }));
   const fonts = (root.ownerDocument ?? document).fonts;
-  if (fonts?.ready) await fonts.ready;
+  if (fonts?.ready) {
+    await Promise.race([
+      fonts.ready,
+      new Promise<void>((resolve) => window.setTimeout(resolve, FONT_WAIT_MS)),
+    ]);
+  }
 }
 
 function inlineHero(root: HTMLElement) {

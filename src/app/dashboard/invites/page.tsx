@@ -231,6 +231,29 @@ function GuestManagementContent() {
     setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: next } : event));
   };
 
+  const [publishing, setPublishing] = useState(false);
+  const publishNow = async () => {
+    if (!selectedEvent || !user?.id || !isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    setPublishing(true);
+    const full = await fetchInvitationBySlug(createClient(), selectedEvent.slug);
+    if (!full) {
+      setPublishing(false);
+      addToast('error', 'Invitation introuvable. Réessayez.');
+      return;
+    }
+    const result = await publishInvitation(createClient(), { ...full, user_id: user.id, is_published: true });
+    setPublishing(false);
+    if (result.error) {
+      addToast('error', result.error);
+      return;
+    }
+    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, is_published: true } : event));
+    addToast('success', 'Invitation publiée. Vous pouvez envoyer les liens.');
+  };
+
   // Ajouter un invité
   const handleAddGuest = async () => {
     if (!newName.trim()) { addToast('error', 'Le nom est obligatoire.'); return; }
@@ -844,9 +867,14 @@ function GuestManagementContent() {
                                 Envoyer par WhatsApp
                               </a>
                             ) : (
-                              <p className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-200">
-                                Publiez l&apos;invitation pour pouvoir envoyer ce lien. Avant, il n&apos;ouvre rien.
-                              </p>
+                              <button
+                                type="button"
+                                onClick={() => void publishNow()}
+                                disabled={publishing}
+                                className="mt-3 w-full min-h-11 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-2.5 text-xs font-semibold text-amber-800 dark:text-amber-200 hover:bg-amber-100 disabled:opacity-60"
+                              >
+                                {publishing ? 'Publication…' : 'Publier l’invitation pour envoyer ce lien'}
+                              </button>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <select

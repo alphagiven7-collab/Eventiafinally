@@ -1235,8 +1235,7 @@ function EditEventContent() {
 
   const handleInviteGuest = useCallback(() => {
     if (!user?.id) {
-      addToast('error', 'Enregistrez d’abord l’invitation pour ajouter un invité.');
-      router.push(`/auth/register?redirect=${encodeURIComponent(`/create/${slug}/edit`)}`);
+      addToast('info', 'Enregistrez ou publiez d’abord l’invitation pour ajouter des invités et envoyer les liens.');
       return;
     }
     if (!event?.id || !isSupabaseReady()) {
@@ -1244,7 +1243,7 @@ function EditEventContent() {
       return;
     }
     router.push(`/dashboard/invites?event=${encodeURIComponent(event.id)}&tool=add`);
-  }, [user?.id, event?.id, slug, addToast, router]);
+  }, [user?.id, event?.id, addToast, router]);
 
   if (loading) {
     return (
@@ -1380,7 +1379,6 @@ function EditEventContent() {
           {editorMode === null ? (
             <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-5">
               <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Comment voulez-vous personnaliser votre invitation ?</h2>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">Vous pourrez changer à tout moment. Rien n’est perdu.</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"

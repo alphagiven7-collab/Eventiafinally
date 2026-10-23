@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui';
 import { useAuth } from '@/providers/auth-provider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { deleteInvitation, listInvitations, ownedEventCount, publishInvitation } from '@/lib/events/store';
+import { deleteInvitation, fetchInvitationBySlug, listInvitations, ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, Users, MessageCircle, Heart } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, MessageCircle, Heart } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
 import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
@@ -38,6 +39,7 @@ function eventStatus(event: EventWithSettings) {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { addToast } = useToast();
 
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,6 +186,22 @@ export default function DashboardPage() {
       setCreateError('Erreur lors de la création. Rafraîchissez et réessayez.');
     }
     setCreating(false);
+  };
+
+  const [publishingId, setPublishingId] = useState('');
+  const publishFromList = async (event: EventWithSettings) => {
+    if (!user?.id || !isSupabaseReady()) return;
+    setPublishingId(event.id);
+    const client = createClient();
+    const full = await fetchInvitationBySlug(client, event.slug);
+    const result = full ? await publishInvitation(client, { ...full, user_id: user.id, is_published: true }) : { error: 'Invitation introuvable.' };
+    setPublishingId('');
+    if (result.error) {
+      addToast('error', result.error);
+      return;
+    }
+    setEvents((current) => current.map((item) => item.id === event.id ? { ...item, is_published: true } : item));
+    addToast('success', 'Invitation publiée.');
   };
 
   // Supprimer un événement
@@ -389,14 +407,21 @@ export default function DashboardPage() {
                   </div>
                   <a
                     href={`/dashboard/invites?event=${event.id}`}
-                    className="mt-4 inline-flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-violet-600 px-4 py-2.5 text-center text-white shadow-md hover:bg-violet-700 active:scale-[0.99]"
+                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-105 active:scale-[0.99]"
                   >
-                    <span className="inline-flex flex-wrap items-center justify-center gap-2 text-center text-sm font-bold">
-                      <Users className="w-4 h-4 shrink-0" />
-                      Ajouter et gérer vos invités
-                    </span>
-                    <span className="text-[11px] font-medium leading-snug text-violet-100">Noms, tables et lien WhatsApp</span>
+                    <MessageCircle className="w-4 h-4 shrink-0" />
+                    Inviter vos proches
                   </a>
+                  {!event.is_published && (
+                    <button
+                      type="button"
+                      onClick={() => void publishFromList(event)}
+                      disabled={publishingId === event.id}
+                      className="mt-2 w-full min-h-10 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200"
+                    >
+                      {publishingId === event.id ? 'Publication…' : 'Publier l’invitation pour envoyer les liens'}
+                    </button>
+                  )}
                   <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-2">
                     <a
                       href={`/e/${event.slug}`}
@@ -412,13 +437,6 @@ export default function DashboardPage() {
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       Modifier
-                    </a>
-                    <a
-                      href={`/dashboard/invites?event=${event.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      WhatsApp
                     </a>
                     <button
                       onClick={() => setDeleteTarget(event)}

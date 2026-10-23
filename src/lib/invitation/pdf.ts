@@ -17,6 +17,17 @@ const INVITATION_WIDTH = 448;
 const MAX_PDF_EDGE = 14000;
 const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
+const SLICE_TIMEOUT_MS = 40000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => { window.clearTimeout(timer); resolve(value); },
+      (error) => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -114,7 +125,9 @@ async function captureSlices(main: HTMLElement) {
       frame.style.height = `${cssHeight}px`;
       viewport.style.height = `${cssHeight}px`;
       mover.style.marginTop = `-${offset}px`;
-      const canvas = await html2canvas(viewport, {
+      const canvas = await withTimeout(html2canvas(viewport, {
+        imageTimeout: 8000,
+        ignoreElements: (element) => ['IFRAME', 'VIDEO', 'AUDIO'].includes(element.tagName),
         scale,
         useCORS: true,
         allowTaint: false,
@@ -128,7 +141,7 @@ async function captureSlices(main: HTMLElement) {
         x: 0,
         y: 0,
         logging: false,
-      });
+      }), SLICE_TIMEOUT_MS, 'Le PDF met trop de temps à se créer. Réessayez avec une meilleure connexion.');
       slices.push({ canvas, cssHeight });
     }
     return { slices, total };
@@ -171,6 +184,7 @@ export async function generateInvitationPdf(
   });
 
   try {
+    mounted.root.querySelectorAll('iframe, video').forEach((node) => node.remove());
     viewport.style.height = 'auto';
     viewport.style.overflow = 'visible';
     iframe.style.height = '4000px';

@@ -16,7 +16,7 @@ export default function EventPermission({
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
       <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
-        {FREE_EVENT_LIMIT} événements au maximum
+        {FREE_EVENT_LIMIT} mariages au maximum
       </p>
       <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
         Pour en créer un autre, demandez la permission à l’admin.

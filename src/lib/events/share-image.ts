@@ -40,6 +40,6 @@ export function shareDescription(event: ShareSource): string {
   const text = event?.metaDescription || event?.welcomeMessage || event?.description || '';
   const clean = text.replace(/\s+/g, ' ').trim();
   if (clean) return clean.slice(0, 180);
-  const name = event?.title?.trim() || 'cet événement';
+  const name = event?.title?.trim() || 'ce mariage';
   return `Découvrez l’invitation de ${name} sur Eventia.`;
 }

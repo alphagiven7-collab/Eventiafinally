@@ -20,7 +20,7 @@ export function adminContactMessage(): string {
 
 export function adminEventPermissionMessage(email?: string | null, name?: string | null): string {
   const lines = [
-    'Bonjour, j’ai déjà 3 événements sur Eventia.',
+    'Bonjour, j’ai déjà 3 mariages sur Eventia.',
     'Je demande la permission d’en créer un autre.',
   ];
   if (name?.trim()) lines.push('', `Nom : ${name.trim()}`);

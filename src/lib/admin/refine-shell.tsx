@@ -74,7 +74,7 @@ function AdminRefine({ children }: { children: React.ReactNode }) {
           name: 'events',
           list: '/admin/evenements',
           show: '/admin/evenements/show/:id',
-          meta: { label: 'Événements', icon: <CalendarOutlined /> },
+          meta: { label: 'Mariages', icon: <CalendarOutlined /> },
         },
       ]}
       options={{ syncWithLocation: false, warnWhenUnsavedChanges: false }}

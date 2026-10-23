@@ -168,7 +168,7 @@ const conferenceTech: EventWithSettings = {
   coupleLeft: '',
   coupleRight: '',
   welcomeMessage: 'Bienvenue à la Conférence Tech 2026',
-  gateHint: 'Entrez votre nom pour accéder à l\'événement',
+  gateHint: 'Entrez votre nom pour accéder au mariage',
   inviteIntro: 'Rejoignez-nous pour la plus grande conférence tech de l\'année !',
   inviteSecondary: 'Networkez avec les meilleurs experts du domaine.',
   reserveText: 'S\'inscrire',

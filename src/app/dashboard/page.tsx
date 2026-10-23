@@ -120,11 +120,11 @@ export default function DashboardPage() {
   const handleCreateEvent = async () => {
     setCreateError('');
     if (!newEventName.trim()) {
-      setCreateError('Veuillez saisir un nom d\'événement.');
+      setCreateError('Veuillez saisir un nom de mariage.');
       return;
     }
     if (!user?.id) {
-      setCreateError('Vous devez être connecté pour créer un événement. Rafraîchissez la page.');
+      setCreateError('Vous devez être connecté pour créer un mariage. Rafraîchissez la page.');
       return;
     }
     const already = await ownedEventCount(createClient(), user.id);
@@ -132,7 +132,7 @@ export default function DashboardPage() {
     if (!admin && (already ?? events.length) >= FREE_EVENT_LIMIT) {
       setNeedsPermission(true);
       setShowCreateInput(false);
-      setCreateError(`Vous avez déjà ${FREE_EVENT_LIMIT} événements. Demandez la permission à l’admin pour en créer un autre.`);
+      setCreateError(`Vous avez déjà ${FREE_EVENT_LIMIT} mariages. Demandez la permission à l’admin pour en créer un autre.`);
       return;
     }
     setCreating(true);
@@ -238,7 +238,7 @@ export default function DashboardPage() {
           {/* En-tête */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mes événements</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mes mariages</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {events.length > 0 ? `${events.length} invitation${events.length > 1 ? 's' : ''}` : 'Aucune invitation pour le moment'}
               </p>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                   type="text"
                   value={newEventName}
                   onChange={(e) => setNewEventName(e.target.value)}
-                  placeholder="Nom de l'événement"
+                  placeholder="Nom du mariage"
                   className="min-w-0 w-full sm:flex-1 px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-400 outline-none"
                   autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateEvent()}
@@ -443,7 +443,7 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 text-center mb-2">Supprimer cet événement ?</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 text-center mb-2">Supprimer ce mariage ?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
               &ldquo;{deleteTarget.title}&rdquo; sera définitivement supprimé. Cette action est irréversible.
             </p>

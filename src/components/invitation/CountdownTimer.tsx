@@ -39,7 +39,7 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
     return (
       <div className="text-center py-8 animate-fade-in">
         <p className="font-serif text-3xl text-gray-800 mb-2">
-          L'événement a eu lieu
+          Le mariage a eu lieu
         </p>
         <p className="text-gray-600 font-sans">
           Merci d'avoir participé !

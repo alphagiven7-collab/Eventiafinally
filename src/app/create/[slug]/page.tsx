@@ -76,7 +76,7 @@ function CreateEventContent() {
     }
     const eventIso = parsedDate.toISOString();
 
-    const finalTitleEarly = computedTitle || 'Notre événement';
+    const finalTitleEarly = computedTitle || 'Notre mariage';
     if (!user?.id) {
       const localSlug = newDraftSlug(finalTitleEarly);
       const draftEvent: EventWithSettings = {
@@ -125,12 +125,12 @@ function CreateEventContent() {
     if (already != null && already >= FREE_EVENT_LIMIT) {
       setNeedsPermission(true);
       setLoading(false);
-      addToast('error', `Vous avez déjà ${FREE_EVENT_LIMIT} événements. Demandez la permission à l’admin.`);
+      addToast('error', `Vous avez déjà ${FREE_EVENT_LIMIT} mariages. Demandez la permission à l’admin.`);
       return;
     }
 
 
-    const finalTitle = computedTitle || 'Notre événement';
+    const finalTitle = computedTitle || 'Notre mariage';
     const slug =
       finalTitle
         .toLowerCase()
@@ -208,7 +208,7 @@ function CreateEventContent() {
 
       <main className="max-w-lg mx-auto px-5 py-8">
         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 text-center">
-          Votre événement
+          Votre mariage
         </h1>
 
         {needsPermission && (

@@ -61,7 +61,7 @@ export function getCountdown(date: string): { days: number; message: string } {
   const now = new Date();
   
   if (isBefore(eventDate, now)) {
-    return { days: 0, message: 'Événement passé' };
+    return { days: 0, message: 'Mariage passé' };
   }
   
   const days = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));

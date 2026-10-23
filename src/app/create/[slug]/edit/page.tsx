@@ -903,7 +903,7 @@ function EditEventContent() {
     if (!event) return null;
     const primaryCover = heroImage || coverPhotos[0] || event.cover_image || '';
     const namedTitle = [coupleLeft.trim(), coupleRight.trim()].filter(Boolean).join(' & ');
-    const photoTitle = title.trim() || namedTitle || 'Votre événement';
+    const photoTitle = title.trim() || namedTitle || 'Votre mariage';
     return {
       ...event,
       title: photoTitle,
@@ -1260,7 +1260,7 @@ function EditEventContent() {
         <div className="text-center max-w-sm">
           <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Cette invitation n&apos;est pas la vôtre.</p>
           <button type="button" onClick={() => router.push('/dashboard')} className="mt-4 text-violet-700 dark:text-violet-300 hover:underline">
-            Retour à mes événements
+            Retour à mes mariages
           </button>
         </div>
       </div>
@@ -1277,7 +1277,7 @@ function EditEventContent() {
             onClick={() => router.push(user ? '/dashboard' : '/create/wedding')}
             className="mt-4 text-violet-700 dark:text-violet-300 hover:underline"
           >
-            {user ? 'Retour aux événements' : 'Créer une invitation'}
+            {user ? 'Retour aux mariages' : 'Créer une invitation'}
           </button>
         </div>
       </div>
@@ -1296,7 +1296,7 @@ function EditEventContent() {
               className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl border border-violet-300 bg-white text-violet-700 text-sm font-semibold hover:bg-violet-50 dark:bg-gray-900 dark:text-violet-200 dark:border-violet-700"
             >
               <ArrowLeft className="w-4 h-4 shrink-0" />
-              {fromAdmin ? 'Retour à l’administration' : 'Retour aux événements'}
+              {fromAdmin ? 'Retour à l’administration' : 'Retour aux mariages'}
             </button>
             <button
               type="button"
@@ -1379,7 +1379,7 @@ function EditEventContent() {
         >
           {editorMode === null ? (
             <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Comment voulez-vous personnaliser ?</h2>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Comment voulez-vous personnaliser votre invitation ?</h2>
               <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">Vous pourrez changer à tout moment. Rien n’est perdu.</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button
@@ -1417,7 +1417,7 @@ function EditEventContent() {
 
           {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
           <Section
-            title="1. L’essentiel de l’événement"
+            title="1. L’essentiel du mariage"
             subtitle="Noms, titre, date, heure et lieu. À remplir en premier."
             icon={<Heart className="w-4 h-4" />}
             defaultOpen
@@ -1426,7 +1426,7 @@ function EditEventContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Prénom 1"
-                  help="Facultatif. Laissez vide si l’événement n’est pas un couple."
+                  help="Facultatif. Laissez vide pour ne pas afficher de prénoms."
                   value={coupleLeft}
                   onChange={setCoupleLeft}
                   placeholder="Marie"
@@ -1440,7 +1440,7 @@ function EditEventContent() {
                 />
               </div>
               <Field
-                label="Titre de l’événement"
+                label="Titre du mariage"
                 help="Le grand titre affiché sur la photo d’accueil."
                 value={title}
                 onChange={setTitle}
@@ -1725,7 +1725,7 @@ function EditEventContent() {
                 value={inviteIntro}
                 onChange={setInviteIntro}
                 rows={3}
-                placeholder="{couple} ont le plaisir de vous inviter à leur événement."
+                placeholder="{couple} ont le plaisir de vous inviter à leur mariage."
               />
               <Field
                 label="Deuxième paragraphe"
@@ -2131,7 +2131,7 @@ function EditEventContent() {
                 value={aboutStory1}
                 onChange={setAboutStory1}
                 rows={4}
-                placeholder="Racontez en quelques lignes votre histoire ou celle de l’événement."
+                placeholder="Racontez en quelques lignes votre histoire ou celle du mariage."
               />
               <SingleImageUploader
                 label="Une photo pour cette histoire"

@@ -48,7 +48,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const pathname = usePathname();
   const nav = [
-    { href: '/dashboard', label: 'Événements', icon: CalendarDays },
+    { href: '/dashboard', label: 'Mariages', icon: CalendarDays },
     { href: '/dashboard/invites', label: 'Invités', icon: Users },
     { href: '/profile', label: 'Profil', icon: CircleUser },
   ];

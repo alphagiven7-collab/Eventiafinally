@@ -129,7 +129,7 @@ function CheckInContent() {
       <header className="bg-[#1A1A2E] px-5 py-4 text-white">
         <div className="mx-auto w-full max-w-md">
           <Link href="/dashboard" className="inline-flex text-sm font-semibold underline underline-offset-4">
-            Retour aux événements
+            Retour aux mariages
           </Link>
           <h1 className="mt-2 text-2xl font-bold tracking-tight">Accueillir les invités</h1>
           <p className="mt-1 text-sm leading-relaxed text-white/80">

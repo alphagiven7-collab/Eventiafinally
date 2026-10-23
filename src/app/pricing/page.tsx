@@ -43,7 +43,7 @@ export default function PricingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
-              Événements
+              Mariages
             </Link>
           </div>
         </div>
@@ -126,7 +126,7 @@ export default function PricingPage() {
             href="/dashboard"
             className="mt-3 inline-flex min-h-12 w-[calc(100%-4.5rem)] items-center justify-center rounded-xl bg-violet-600 py-3 text-sm font-bold text-white"
           >
-            Retourner aux événements
+            Retourner aux mariages
           </Link>
         </div>
       </main>

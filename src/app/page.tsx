@@ -39,7 +39,7 @@ export default function HomePage() {
             <ThemeToggle />
             {!loading && user ? (
               <Link href="/dashboard" className="px-4 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">
-                Événements
+                Mariages
               </Link>
             ) : (
               <Link href="/auth/login" className="px-4 py-2 text-xs font-semibold bg-violet-600 text-white rounded-xl">

@@ -46,7 +46,7 @@ export default function AdminHomePage() {
           <Link href="/admin/comptes"><Card hoverable><Statistic title="Comptes" value={accounts} /></Card></Link>
         </Col>
         <Col xs={12} sm={8}>
-          <Link href="/admin/evenements"><Card hoverable><Statistic title="Événements" value={events} /></Card></Link>
+          <Link href="/admin/evenements"><Card hoverable><Statistic title="Mariages" value={events} /></Card></Link>
         </Col>
         <Col xs={12} sm={8}>
           <Link href="/admin/evenements"><Card hoverable><Statistic title="Publiés" value={published} /></Card></Link>

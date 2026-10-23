@@ -156,7 +156,7 @@ export default function GuestTable({ guests, onEdit, onDelete, onStatusChange }:
           <p className="text-gray-500">
             {searchTerm || filterStatus !== 'all' 
               ? 'Aucun invité ne correspond à vos filtres' 
-              : 'Aucun invité pour cet événement'}
+              : 'Aucun invité pour ce mariage'}
           </p>
         </div>
       )}

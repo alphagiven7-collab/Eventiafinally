@@ -95,7 +95,7 @@ export default function UnlockEventPage() {
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <Link href="/admin/evenements">Retour aux événements</Link>
+      <Link href="/admin/evenements">Retour aux mariages</Link>
       <Typography.Title level={3}>Débloquer les invitations</Typography.Title>
       <Card loading={query.isLoading}>
         <Typography.Title level={4} style={{ marginTop: 0 }}>{result?.title || 'Invitation'}</Typography.Title>

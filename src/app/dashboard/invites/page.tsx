@@ -396,11 +396,11 @@ function GuestManagementContent() {
     if (zipLock.current) return;
     const selected = events.find((event) => event.id === selectedEventId);
     if (!user?.id || !selected) {
-      addToast('error', 'Choisissez un événement avant d’exporter les PDF.');
+      addToast('error', 'Choisissez un mariage avant d’exporter les PDF.');
       return;
     }
     if (selected.user_id && selected.user_id !== user.id) {
-      addToast('error', 'Vous ne pouvez exporter que les invités de vos événements.');
+      addToast('error', 'Vous ne pouvez exporter que les invités de vos mariages.');
       return;
     }
     if (!isSupabaseReady()) {

@@ -258,7 +258,7 @@ export default function AdminAccess({
             href="/dashboard"
             className="inline-flex min-h-12 items-center justify-center rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300"
           >
-            Retour aux événements
+            Retour aux mariages
           </Link>
         </div>
       </div>

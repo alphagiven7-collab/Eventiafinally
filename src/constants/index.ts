@@ -3,7 +3,7 @@
 // ============================================
 
 export const APP_NAME = 'Eventia';
-export const APP_DESCRIPTION = 'Créez votre événement. Partagez-le. Gérez vos invités.';
+export const APP_DESCRIPTION = 'Créez votre mariage. Partagez-le. Gérez vos invités.';
 
 // Event Types
 export const EVENT_TYPES = {

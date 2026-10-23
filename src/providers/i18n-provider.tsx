@@ -7,7 +7,7 @@ import { I18nextProvider, initReactI18next } from 'react-i18next';
 // Données inline pour éviter les problèmes d'import JSON
 const fr = {
   common: { appName: 'Eventia', loading: 'Chargement...', save: 'Sauvegarder', cancel: 'Annuler', delete: 'Supprimer', edit: 'Modifier', close: 'Fermer' },
-  home: { heroTitle: "Tu stresses pour ton événement ?", heroSubtitle: "On a créé Eventia pour toi.", ctaCreate: 'Créer mon invitation', ctaDemo: 'Voir une démo' },
+  home: { heroTitle: "Tu stresses pour ton mariage ?", heroSubtitle: "On a créé Eventia pour toi.", ctaCreate: 'Créer mon invitation', ctaDemo: 'Voir une démo' },
   invitation: { welcomeTitle: 'Vous êtes cordialement invité(e)', rsvpButton: 'Confirmer ma présence' },
   admin: { guests: 'Invités', total: 'Total', confirmed: 'Confirmés', declined: 'Déclinés', pending: 'En attente' },
   checkin: { title: 'Check-in des invités', scan: 'Scanner QR', manual: 'Saisie manuelle', validate: 'Valider la présence' },

@@ -116,7 +116,7 @@ export default function EventsPage() {
   const createEvent = async () => {
     const name = title.trim();
     if (!name) {
-      message.error('Le nom de l’événement est obligatoire.');
+      message.error('Le nom du mariage est obligatoire.');
       return;
     }
     if (!user?.id) {
@@ -168,7 +168,7 @@ export default function EventsPage() {
 
   const removeEvent = (event: EventRow) => {
     Modal.confirm({
-      title: 'Supprimer cet événement ?',
+      title: 'Supprimer ce mariage ?',
       content: `${event.title || 'Invitation'}, ses invités et ses réponses seront retirés.`,
       okText: 'Supprimer',
       cancelText: 'Annuler',
@@ -180,7 +180,7 @@ export default function EventsPage() {
         const direct = await createClient().from('events').delete().eq('id', event.id).select('id');
         if (direct.error || !direct.data?.length) return { error: direct.error || { message: 'empty' } };
         return { error: null };
-      }, 'Événement supprimé.'),
+      }, 'Mariage supprimé.'),
     });
   };
 
@@ -188,7 +188,7 @@ export default function EventsPage() {
     <div style={{ display: 'grid', gap: 16, maxWidth: 980 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div>
-          <Typography.Title level={3} style={{ margin: 0 }}>Événements</Typography.Title>
+          <Typography.Title level={3} style={{ margin: 0 }}>Mariages</Typography.Title>
           <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
             {summary.sent} invitations envoyées · {summary.confirmed} confirmées · {summary.pending} en attente · {summary.declined} refusées
           </Typography.Paragraph>
@@ -199,7 +199,7 @@ export default function EventsPage() {
       {creating && (
         <Card title="Créer une invitation">
           <div style={{ display: 'grid', gap: 12 }}>
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nom de l’événement" />
+            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nom du mariage" />
             <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
             <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Lieu" />
             <Select
@@ -252,7 +252,7 @@ export default function EventsPage() {
           </Card>
         );
       })}
-      {!filtered.length && <Typography.Paragraph type="secondary">Aucun événement.</Typography.Paragraph>}
+      {!filtered.length && <Typography.Paragraph type="secondary">Aucun mariage.</Typography.Paragraph>}
     </div>
   );
 }

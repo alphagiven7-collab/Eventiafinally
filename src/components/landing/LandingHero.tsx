@@ -15,7 +15,7 @@ export default function LandingHero() {
         <div className="relative h-72">
           <Image 
             src="https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80"
-            alt="Événement"
+            alt="Mariage"
             fill
             className="object-cover"
             priority
@@ -29,7 +29,7 @@ export default function LandingHero() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-1 leading-tight">
               Tu stresses pour ton<br />
-              <span className="text-emerald-300">événement ?</span>
+              <span className="text-emerald-300">mariage ?</span>
             </h2>
             <p className="text-xs text-white/80 mb-4 leading-relaxed">
               On a créé Eventia pour toi. Plus besoin de courir après les invités,<br />

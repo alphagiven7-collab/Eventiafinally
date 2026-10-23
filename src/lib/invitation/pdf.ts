@@ -85,6 +85,42 @@ function inlineHero(root: HTMLElement) {
   hero.style.backgroundPosition = 'center';
 }
 
+
+const COLOR_PROPS = [
+  'color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color',
+  'border-left-color', 'outline-color', 'text-decoration-color', 'fill', 'stroke',
+  'box-shadow', 'text-shadow',
+];
+
+// html2canvas ne comprend pas color(srgb …), que le navigateur renvoie pour color-mix().
+function flattenModernColors(root: HTMLElement) {
+  const view = root.ownerDocument.defaultView;
+  if (!view) return;
+  const probe = root.ownerDocument.createElement('canvas');
+  probe.width = 1;
+  probe.height = 1;
+  const ctx = probe.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return;
+  const toRgb = (value: string) => {
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#000';
+    ctx.fillStyle = value;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
+  };
+  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+  for (const node of nodes) {
+    const computed = view.getComputedStyle(node);
+    for (const prop of COLOR_PROPS) {
+      const value = computed.getPropertyValue(prop);
+      if (!value || !value.includes('color(')) continue;
+      const fixed = value.replace(/color\([^)]*\)/g, (match) => toRgb(match));
+      node.style.setProperty(prop, fixed, 'important');
+    }
+  }
+}
+
 function assertGuest(root: HTMLElement, guest?: InvitationPdfGuest | null) {
   const name = guest?.name?.trim();
   if (name) {
@@ -190,6 +226,7 @@ export async function generateInvitationPdf(
     iframe.style.height = '4000px';
     await settleImages(mounted.root);
     inlineHero(mounted.root);
+    flattenModernColors(mounted.root);
     assertGuest(mounted.root, guest);
     viewport.style.overflow = 'hidden';
     iframe.style.height = '800px';

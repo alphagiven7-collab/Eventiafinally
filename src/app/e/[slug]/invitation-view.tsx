@@ -93,13 +93,14 @@ export default function InvitationView({
               }
               return hosted;
             });
+            setLoading(false);
             const saved = await readOfflineInvitation(slug, token);
+            if (cancelled) return;
             if (saved && saved.updatedAt && hosted.updated_at && saved.updatedAt !== hosted.updated_at) {
               setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
             } else if (saved) {
               setOfflineNote('Invitation disponible hors ligne.');
             }
-            setLoading(false);
             return;
           }
         } catch {
@@ -110,13 +111,14 @@ export default function InvitationView({
       const demo = known || getEventBySlug(slug);
       if (!cancelled) {
         setEvent(demo);
+        setLoading(false);
         const saved = await readOfflineInvitation(slug, token);
+        if (cancelled) return;
         if (saved && demo && saved.updatedAt && demo.updated_at && saved.updatedAt !== demo.updated_at) {
           setOfflineNote('Une version plus récente est en ligne. Enregistrez-la à nouveau pour le hors ligne.');
         } else if (saved) {
           setOfflineNote('Invitation disponible hors ligne.');
         }
-        setLoading(false);
       }
     }
 

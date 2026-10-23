@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button, Card, Input, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button, Card, Dropdown, Input, Modal, Segmented, Select, Switch, Table, Tag, Typography, message } from 'antd';
+import type { MenuProps } from 'antd';
+import {
+  AppstoreOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  LockOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  TeamOutlined,
+  UnlockOutlined,
+} from '@ant-design/icons';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
-import { publishInvitation } from '@/lib/events/store';
+import { publishInvitation, setGalleryVisibility } from '@/lib/events/store';
 import { useAuth } from '@/providers/auth-provider';
 import { emptyGuestTotals, loadGuestTotalsByEvent, type GuestTotals } from '@/lib/admin/session';
 import type { EventWithSettings } from '@/types';
@@ -21,9 +34,11 @@ type EventRow = {
   is_published?: boolean | null;
   is_blocked?: boolean | null;
   guest_limit?: number | null;
+  show_in_gallery?: boolean | null;
 };
 
 type Account = { id: string; email?: string | null; full_name?: string | null };
+type Filter = 'tous' | 'publie' | 'brouillon' | 'bloque';
 
 function slugFromTitle(title: string): string {
   const base = title
@@ -36,56 +51,82 @@ function slugFromTitle(title: string): string {
 }
 
 function statusTag(event: EventRow) {
-  if (event.is_blocked) return <Tag color="red">Bloqué</Tag>;
-  if (event.is_published) return <Tag color="green">Publiée</Tag>;
-  return <Tag color="gold">Brouillon</Tag>;
+  if (event.is_blocked) return <Tag color="red" style={{ margin: 0 }}>Bloqué</Tag>;
+  if (event.is_published) return <Tag color="green" style={{ margin: 0 }}>Publiée</Tag>;
+  return <Tag color="gold" style={{ margin: 0 }}>Brouillon</Tag>;
 }
 
-export default function EventsPage() {
+function statusOf(event: EventRow): Filter {
+  if (event.is_blocked) return 'bloque';
+  return event.is_published ? 'publie' : 'brouillon';
+}
+
+function EventsView() {
   const router = useRouter();
+  const params = useSearchParams();
   const { user } = useAuth();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [totals, setTotals] = useState<Record<string, GuestTotals>>({});
   const [search, setSearch] = useState('');
-  const [creating, setCreating] = useState(false);
+  const initialFilter = params.get('filtre');
+  const [filter, setFilter] = useState<Filter>(
+    initialFilter === 'publie' || initialFilter === 'brouillon' || initialFilter === 'bloque' ? initialFilter : 'tous',
+  );
+  const [creating, setCreating] = useState(params.get('nouveau') === '1');
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(isSupabaseReady());
 
   const load = async () => {
     if (!isSupabaseReady()) return;
     const supabase = createClient();
-    const [eventResult, accountResult, guestTotals] = await Promise.all([
-      supabase
-        .from('events')
-        .select('id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, created_at')
-        .order('created_at', { ascending: false }),
+    const withGallery = 'id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, show_in_gallery, created_at';
+    const withoutGallery = 'id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, created_at';
+    let eventResult: { data: unknown[] | null; error: unknown } = await supabase.from('events').select(withGallery).order('created_at', { ascending: false });
+    if (eventResult.error) {
+      eventResult = await supabase.from('events').select(withoutGallery).order('created_at', { ascending: false });
+    }
+    const [accountResult, guestTotals] = await Promise.all([
       supabase.from('users').select('id, email, full_name').order('created_at', { ascending: false }),
       loadGuestTotalsByEvent(),
     ]);
     setEvents((eventResult.data || []) as EventRow[]);
     setAccounts((accountResult.data || []) as Account[]);
     setTotals(guestTotals);
+    setLoading(false);
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, []);
 
-  const emailOf = (userId?: string | null) => {
+  const ownerOf = (userId?: string | null) => {
     const account = accounts.find((item) => item.id === userId);
-    return account?.full_name || account?.email || '—';
+    return { name: account?.full_name || account?.email || '—', email: account?.email || '' };
   };
+
+  const counts = useMemo(() => ({
+    tous: events.length,
+    publie: events.filter((e) => statusOf(e) === 'publie').length,
+    brouillon: events.filter((e) => statusOf(e) === 'brouillon').length,
+    bloque: events.filter((e) => statusOf(e) === 'bloque').length,
+  }), [events]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return events;
     return events.filter((event) => {
-      const owner = emailOf(event.user_id).toLowerCase();
-      return [event.title, event.slug, event.location, owner].some((value) => (value || '').toLowerCase().includes(query));
+      if (filter !== 'tous' && statusOf(event) !== filter) return false;
+      if (!query) return true;
+      const owner = ownerOf(event.user_id);
+      return [event.title, event.slug, event.location, owner.name, owner.email].some((value) => (value || '').toLowerCase().includes(query));
     });
-  }, [events, search, accounts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, search, filter, accounts]);
 
   const summary = filtered.reduce((sum, event) => {
     const row = totals[event.id] || emptyGuestTotals();
@@ -166,6 +207,15 @@ export default function EventsPage() {
     return { error: null };
   }, blocked ? 'Invitation bloquée.' : 'Invitation de nouveau accessible.');
 
+  const toggleGallery = async (event: EventRow, visible: boolean) => {
+    const result = await setGalleryVisibility(createClient(), event.id, visible);
+    if (result.error) {
+      message.error(result.error);
+      return;
+    }
+    setEvents((current) => current.map((item) => item.id === event.id ? { ...item, show_in_gallery: visible } : item));
+  };
+
   const removeEvent = (event: EventRow) => {
     Modal.confirm({
       title: 'Supprimer ce mariage ?',
@@ -184,27 +234,52 @@ export default function EventsPage() {
     });
   };
 
+  const menuFor = (event: EventRow): MenuProps['items'] => [
+    ...(event.slug ? [{ key: 'open', icon: <EyeOutlined />, label: <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer">Ouvrir l’invitation</a> }] : []),
+    { key: 'seats', icon: <AppstoreOutlined />, label: <Link href={`/admin/evenements/show/${event.id}`}>Places et paiement</Link> },
+    { type: 'divider' },
+    {
+      key: 'publish',
+      icon: <EyeOutlined />,
+      label: event.is_published ? 'Remettre en brouillon' : 'Publier',
+      onClick: () => void setPublished(event, !event.is_published),
+    },
+    {
+      key: 'block',
+      icon: event.is_blocked ? <UnlockOutlined /> : <LockOutlined />,
+      label: event.is_blocked ? 'Rendre accessible' : 'Bloquer',
+      onClick: () => void setBlocked(event, !event.is_blocked),
+    },
+    { type: 'divider' },
+    { key: 'delete', icon: <DeleteOutlined />, label: 'Supprimer', danger: true, onClick: () => removeEvent(event) },
+  ];
+
   return (
-    <div style={{ display: 'grid', gap: 16, maxWidth: 980 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div style={{ display: 'grid', gap: 20, maxWidth: 1100 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div>
           <Typography.Title level={3} style={{ margin: 0 }}>Mariages</Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
+          <Typography.Text type="secondary">
             {summary.sent} invitations envoyées · {summary.confirmed} confirmées · {summary.pending} en attente · {summary.declined} refusées
-          </Typography.Paragraph>
+          </Typography.Text>
         </div>
-        <Button type="primary" onClick={() => setCreating((open) => !open)}>Nouvelle invitation</Button>
+        <Button type="primary" size="large" icon={<PlusOutlined />} style={{ borderRadius: 12 }} onClick={() => setCreating((open) => !open)}>
+          Nouvelle invitation
+        </Button>
       </div>
 
       {creating && (
-        <Card title="Créer une invitation">
-          <div style={{ display: 'grid', gap: 12 }}>
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nom du mariage" />
-            <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-            <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Lieu" />
+        <Card title="Créer une invitation" style={{ borderRadius: 16 }}>
+          <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <Input size="large" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nom du mariage" />
+            <Input size="large" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <Input size="large" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Lieu" />
             <Select
+              size="large"
               value={ownerId || user?.id}
               onChange={setOwnerId}
+              showSearch
+              optionFilterProp="label"
               options={[
                 ...(user?.id ? [{ value: user.id, label: 'Mon compte admin' }] : []),
                 ...accounts.filter((account) => account.id !== user?.id).map((account) => ({
@@ -213,46 +288,132 @@ export default function EventsPage() {
                 })),
               ]}
             />
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
             <Button type="primary" loading={busy} onClick={() => void createEvent()}>Créer et modifier</Button>
+            <Button onClick={() => setCreating(false)}>Annuler</Button>
           </div>
         </Card>
       )}
 
-      <Input.Search value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nom, lieu ou organisateur" allowClear />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between' }}>
+        <Segmented<Filter>
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'tous', label: `Tous · ${counts.tous}` },
+            { value: 'publie', label: `Publiés · ${counts.publie}` },
+            { value: 'brouillon', label: `Brouillons · ${counts.brouillon}` },
+            { value: 'bloque', label: `Bloqués · ${counts.bloque}` },
+          ]}
+        />
+        <Input
+          allowClear
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Nom, lieu ou organisateur"
+          style={{ maxWidth: 320, borderRadius: 10 }}
+        />
+      </div>
 
-      {filtered.map((event) => {
-        const numbers = totals[event.id] || emptyGuestTotals();
-        return (
-          <Card key={event.id} title={event.title || 'Sans titre'} extra={statusTag(event)}>
-            <Typography.Paragraph style={{ marginBottom: 8 }}>
-              {emailOf(event.user_id)}
-              {event.event_date ? ` · ${new Date(event.event_date).toLocaleDateString('fr-FR')}` : ''}
-              {event.location ? ` · ${event.location}` : ''}
-              {` · ${event.guest_limit ?? 3} places`}
-            </Typography.Paragraph>
-            <Space wrap size={[8, 8]} style={{ marginBottom: 12 }}>
-              <Tag>{numbers.sent} envoyées</Tag>
-              <Tag color="green">{numbers.confirmed} confirmées</Tag>
-              <Tag color="gold">{numbers.pending} en attente</Tag>
-              <Tag>{numbers.declined} refusées</Tag>
-            </Space>
-            <Space wrap>
-              {event.slug && <Link href={`/create/${event.slug}/edit?from=admin`}><Button type="primary" size="small">Modifier</Button></Link>}
-              <Link href={`/dashboard/invites?event=${encodeURIComponent(event.id)}`}><Button size="small">Invités</Button></Link>
-              <Link href={`/admin/evenements/show/${event.id}`}><Button size="small">Places</Button></Link>
-              {event.slug && <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer"><Button size="small">Ouvrir</Button></a>}
-              <Button size="small" disabled={busy} onClick={() => setPublished(event, !event.is_published)}>
-                {event.is_published ? 'Dépublier' : 'Publier'}
-              </Button>
-              <Button size="small" disabled={busy} onClick={() => setBlocked(event, !event.is_blocked)}>
-                {event.is_blocked ? 'Rendre accessible' : 'Bloquer'}
-              </Button>
-              <Button size="small" danger disabled={busy} onClick={() => removeEvent(event)}>Supprimer</Button>
-            </Space>
-          </Card>
-        );
-      })}
-      {!filtered.length && <Typography.Paragraph type="secondary">Aucun mariage.</Typography.Paragraph>}
+      <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 16, overflow: 'hidden' }}>
+        <Table<EventRow>
+          rowKey="id"
+          loading={loading}
+          dataSource={filtered}
+          pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+          scroll={{ x: 880 }}
+          locale={{ emptyText: 'Aucun mariage.' }}
+          columns={[
+            {
+              title: 'Mariage',
+              key: 'title',
+              render: (_, event) => (
+                <div style={{ display: 'grid', gap: 2, minWidth: 180 }}>
+                  <Typography.Text strong>{event.title || 'Sans titre'}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {[event.event_date ? new Date(event.event_date).toLocaleDateString('fr-FR') : '', event.location].filter(Boolean).join(' · ') || '—'}
+                  </Typography.Text>
+                </div>
+              ),
+            },
+            {
+              title: 'Organisateur',
+              key: 'owner',
+              render: (_, event) => {
+                const owner = ownerOf(event.user_id);
+                return (
+                  <div style={{ display: 'grid', gap: 2 }}>
+                    <Typography.Text>{owner.name}</Typography.Text>
+                    {owner.email && owner.email !== owner.name && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{owner.email}</Typography.Text>}
+                  </div>
+                );
+              },
+            },
+            { title: 'Statut', key: 'status', width: 110, render: (_, event) => statusTag(event) },
+            {
+              title: 'Invités',
+              key: 'guests',
+              width: 190,
+              render: (_, event) => {
+                const numbers = totals[event.id] || emptyGuestTotals();
+                return (
+                  <div style={{ display: 'grid', gap: 2 }}>
+                    <Typography.Text strong>{numbers.sent} <Typography.Text type="secondary" style={{ fontWeight: 400 }}>/ {event.guest_limit ?? 3}</Typography.Text></Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {numbers.confirmed} oui · {numbers.pending} attente · {numbers.declined} non
+                    </Typography.Text>
+                  </div>
+                );
+              },
+            },
+            {
+              title: 'Galerie',
+              key: 'gallery',
+              width: 90,
+              align: 'center',
+              render: (_, event) => (
+                <Switch
+                  size="small"
+                  checked={Boolean(event.show_in_gallery)}
+                  disabled={!event.is_published || event.is_blocked === true}
+                  onChange={(checked) => void toggleGallery(event, checked)}
+                />
+              ),
+            },
+            {
+              title: '',
+              key: 'actions',
+              width: 150,
+              align: 'right',
+              render: (_, event) => (
+                <div style={{ display: 'inline-flex', gap: 8 }}>
+                  {event.slug && (
+                    <Link href={`/create/${event.slug}/edit?from=admin`}>
+                      <Button size="small" type="primary" icon={<EditOutlined />}>Modifier</Button>
+                    </Link>
+                  )}
+                  <Link href={`/dashboard/invites?event=${encodeURIComponent(event.id)}`}>
+                    <Button size="small" icon={<TeamOutlined />} aria-label="Invités" />
+                  </Link>
+                  <Dropdown menu={{ items: menuFor(event) }} trigger={['click']} disabled={busy}>
+                    <Button size="small" icon={<MoreOutlined />} aria-label="Plus d’actions" />
+                  </Dropdown>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventsView />
+    </Suspense>
   );
 }

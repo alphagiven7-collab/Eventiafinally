@@ -42,7 +42,7 @@ export default function LandingHero() {
                   Créer mon invitation
                 </button>
               </Link>
-              <Link href="/e/yanick-keren" className="flex-1">
+              <Link href="/e/mariage-sv4x" className="flex-1">
                 <button className="w-full bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-xl shadow-lg hover:bg-emerald-700 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   Voir une démo

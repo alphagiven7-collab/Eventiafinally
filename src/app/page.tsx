@@ -77,11 +77,14 @@ export default function HomePage() {
               <Link href={user ? '/dashboard' : '/create/wedding'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
                 Créer mon invitation
               </Link>
-              <Link href="/pricing" className="inline-flex justify-center px-5 py-3 border border-rose-200 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:border-rose-900 dark:text-rose-300 rounded-2xl text-sm font-bold">
+              <Link href="/pricing" className="inline-flex justify-center px-5 py-3 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white shadow-md hover:brightness-105 rounded-2xl text-sm font-bold">
                 Passer une commande
               </Link>
-              <Link href="/e/yanick-keren" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
+              <Link href="/e/mariage-sv4x" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
                 Voir un exemple
+              </Link>
+              <Link href="/exemples" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
+                Voir les invitations créées
               </Link>
             </div>
           </div>
@@ -123,7 +126,7 @@ export default function HomePage() {
             Plus de 200 invités ? Le prix s’affiche avant de payer : {formatUsd(PRICE_PER_GUEST_USD)} fois le nombre choisi.
           </p>
           <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir les prix</Link>
-          <Link href="/pricing" className="inline-flex ml-4 mt-3 px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-bold">Passer une commande</Link>
+          <Link href="/pricing" className="inline-flex ml-4 mt-3 px-4 py-2 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white rounded-xl text-sm font-bold">Passer une commande</Link>
         </section>
 
         <section id="contact" className="mb-10 scroll-mt-20 overflow-hidden rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-6 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 md:p-8">

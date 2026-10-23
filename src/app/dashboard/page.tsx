@@ -9,7 +9,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
-import { deleteInvitation, fetchInvitationBySlug, listInvitations, ownedEventCount, publishInvitation } from '@/lib/events/store';
+import { deleteInvitation, fetchGalleryFlags, fetchInvitationBySlug, listInvitations, setGalleryVisibility, ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, MessageCircle, Heart } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
@@ -188,6 +188,26 @@ export default function DashboardPage() {
     setCreating(false);
   };
 
+  const [galleryFlags, setGalleryFlags] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!user?.id || !isSupabaseReady()) return;
+    let cancelled = false;
+    fetchGalleryFlags(createClient(), user.id).then((flags) => {
+      if (!cancelled) setGalleryFlags(flags);
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, events.length]);
+  const toggleGallery = async (event: EventWithSettings) => {
+    const next = !galleryFlags[event.id];
+    setGalleryFlags((current) => ({ ...current, [event.id]: next }));
+    const result = await setGalleryVisibility(createClient(), event.id, next);
+    if (result.error) {
+      setGalleryFlags((current) => ({ ...current, [event.id]: !next }));
+      addToast('error', result.error);
+      return;
+    }
+    addToast('success', next ? 'Invitation ajoutée à la galerie.' : 'Invitation retirée de la galerie.');
+  };
   const [publishingId, setPublishingId] = useState('');
   const publishFromList = async (event: EventWithSettings) => {
     if (!user?.id || !isSupabaseReady()) return;
@@ -417,6 +437,17 @@ export default function DashboardPage() {
                     >
                       {publishingId === event.id ? 'Publication…' : 'Publier'}
                     </button>
+                  )}
+                  {event.is_published && (
+                    <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-900/40 dark:text-gray-300">
+                      <span>Afficher dans la galerie publique</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(galleryFlags[event.id])}
+                        onChange={() => void toggleGallery(event)}
+                        className="h-4 w-4 cursor-pointer accent-violet-600"
+                      />
+                    </label>
                   )}
                   <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-2">
                     <a

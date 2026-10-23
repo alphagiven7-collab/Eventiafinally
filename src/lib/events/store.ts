@@ -491,3 +491,50 @@ export async function deleteInvitation(supabase: DbClient, eventId: string): Pro
   const { error } = await supabase.from('events').delete().eq('id', eventId);
   return { error: error ? explainWriteError(error.message) : null };
 }
+
+export type GalleryItem = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  event_date: string | null;
+  location: string | null;
+  cover_image: string | null;
+};
+
+export async function listGalleryInvitations(supabase: DbClient): Promise<GalleryItem[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, slug, title, subtitle, event_date, location, cover_image')
+    .eq('is_published', true)
+    .eq('show_in_gallery', true)
+    .order('updated_at', { ascending: false })
+    .limit(60);
+  if (error || !data) return [];
+  return data as GalleryItem[];
+}
+
+export async function fetchGalleryFlags(
+  supabase: DbClient,
+  userId: string,
+): Promise<Record<string, boolean>> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('id, show_in_gallery')
+    .eq('user_id', userId);
+  if (error || !data) return {};
+  return Object.fromEntries((data as { id: string; show_in_gallery: boolean | null }[]).map((row) => [row.id, Boolean(row.show_in_gallery)]));
+}
+
+export async function setGalleryVisibility(
+  supabase: DbClient,
+  eventId: string,
+  visible: boolean,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('events').update({ show_in_gallery: visible }).eq('id', eventId);
+  if (!error) return { error: null };
+  if (/show_in_gallery|column|schema cache/i.test(error.message)) {
+    return { error: 'La galerie n’est pas encore activée. Exécutez la migration 019 dans Supabase.' };
+  }
+  return { error: error.message };
+}

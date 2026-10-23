@@ -6,7 +6,7 @@ import { dataProvider } from '@refinedev/supabase';
 import { ThemedLayout, ThemedTitle, useNotificationProvider } from '@refinedev/antd';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import frFR from 'antd/locale/fr_FR';
-import { CalendarOutlined, TeamOutlined } from '@ant-design/icons';
+import { CalendarOutlined, DashboardOutlined, TeamOutlined } from '@ant-design/icons';
 import type { AuthProvider } from '@refinedev/core';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
@@ -65,6 +65,11 @@ function AdminRefine({ children }: { children: React.ReactNode }) {
       authProvider={authProvider}
       notificationProvider={notificationProvider}
       resources={[
+        {
+          name: 'dashboard',
+          list: '/admin',
+          meta: { label: 'Vue d’ensemble', icon: <DashboardOutlined /> },
+        },
         {
           name: 'users',
           list: '/admin/comptes',

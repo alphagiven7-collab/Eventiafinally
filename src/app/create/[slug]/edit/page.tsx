@@ -1492,8 +1492,8 @@ function EditEventContent() {
 
           {advanced && (
           <Section
-            title="Les cartes"
-            subtitle="Cacher une carte, ou mettre une photo derrière. Le texte reste lisible."
+            title="Photos de fond des cartes"
+            subtitle="Ajoutez une photo derrière chaque carte, ou cachez celles que vous ne voulez pas."
             icon={<Sparkles className="w-4 h-4" />}
           >
             <div className="space-y-3">

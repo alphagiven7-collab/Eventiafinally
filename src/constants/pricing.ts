@@ -35,5 +35,5 @@ export function invitationTotalUsd(guestCount: number): number {
 }
 
 export function freeGuestLimitMessage(limit = TRIAL_INVITATIONS): string {
-  return `Cette invitation comprend ${limit} place${limit > 1 ? 's' : ''}, dont ${TRIAL_INVITATIONS} invitations d'essai. Pour en ajouter, choisissez un forfait : 50 invités (${formatUsd(packTotalUsd(50))}), 100 (${formatUsd(packTotalUsd(100))}) ou 200 (${formatUsd(packTotalUsd(200))}).`;
+  return `Vous avez atteint ${limit} invitation${limit > 1 ? 's' : ''}, dont ${TRIAL_INVITATIONS} d'essai. Un couple ou une famille compte pour une seule invitation. Pour en ajouter, choisissez un forfait : 50 invités (${formatUsd(packTotalUsd(50))}), 100 (${formatUsd(packTotalUsd(100))}) ou 200 (${formatUsd(packTotalUsd(200))}).`;
 }

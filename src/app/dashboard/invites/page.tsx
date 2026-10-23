@@ -630,10 +630,10 @@ function GuestManagementContent() {
                     onChange={(e) => setNewCouple(e.target.checked)}
                     className="w-5 h-5 accent-violet-600"
                   />
-                  Couple : 2 places lorsqu&apos;une table est choisie
+                  Couple : une seule invitation, 2 places à table
                 </label>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Seul le nom est obligatoire. {guests.length}/{capacity} places, dont {TRIAL_INVITATIONS} invitations d&apos;essai.
+                  Seul le nom est obligatoire. {guests.length}/{capacity} invitations, dont {TRIAL_INVITATIONS} d&apos;essai. Un couple compte pour une seule invitation.
                 </p>
               </form>
             )}
@@ -697,7 +697,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Tables et places</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Créez la table ici, puis choisissez-la sur la ligne de l&apos;invité. Un couple compte pour 2 places.
+                  Créez la table ici, puis choisissez-la sur la ligne de l&apos;invité. Un couple occupe 2 places à la table, mais ne compte que pour une invitation.
                 </p>
                 <div className="flex gap-2 mb-3">
                   <input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="Nom, ex. Famille"
@@ -833,15 +833,21 @@ function GuestManagementContent() {
                               {statusLabel(g.status)}
                             </span>
                             </div>
-                            <a
-                              href={whatsAppShareHref(g)}
-                              target="_blank"
-                              rel="noopener"
-                              className="mt-3 inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d]"
-                            >
-                              <MessageCircle className="w-4 h-4 shrink-0" />
-                              Partager l&apos;invitation sur WhatsApp
-                            </a>
+                            {selectedEvent?.is_published ? (
+                              <a
+                                href={whatsAppShareHref(g)}
+                                target="_blank"
+                                rel="noopener"
+                                className="mt-3 inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d]"
+                              >
+                                <MessageCircle className="w-4 h-4 shrink-0" />
+                                Envoyer par WhatsApp
+                              </a>
+                            ) : (
+                              <p className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-200">
+                                Publiez l&apos;invitation pour pouvoir envoyer ce lien. Avant, il n&apos;ouvre rien.
+                              </p>
+                            )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <select
                               aria-label={`Table de ${g.name}`}

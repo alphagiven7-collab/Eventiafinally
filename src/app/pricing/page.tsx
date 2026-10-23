@@ -54,7 +54,7 @@ export default function PricingPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Offres</p>
           <h1 className="text-3xl font-extrabold">{unit} par invité</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Les {TRIAL_INVITATIONS} invitations d&apos;essai s&apos;ajoutent au forfait. Un forfait de 50 invités garde ses 50 places, et les {TRIAL_INVITATIONS} invitations d&apos;essai en plus.
+            Les {TRIAL_INVITATIONS} invitations d&apos;essai s&apos;ajoutent au forfait. Un forfait de 50 invitations garde ses 50 invitations, et les {TRIAL_INVITATIONS} d&apos;essai en plus. Un couple ou une famille compte pour une seule invitation.
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export default function PricingPage() {
           </p>
           <p className="text-4xl font-extrabold mt-1">{formatUsd(total)}</p>
           <p className="mt-2 pr-16 text-xs text-gray-500">
-            {count} places payées + {TRIAL_INVITATIONS} invitations d&apos;essai = {guestCapacity(count)} places.
+            {count} invitations payées + {TRIAL_INVITATIONS} d&apos;essai = {guestCapacity(count)} invitations.
             Le paiement se confirme avec l&apos;admin sur WhatsApp.
           </p>
           {missingNumber && (

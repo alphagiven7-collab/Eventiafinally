@@ -1349,11 +1349,11 @@ function EditEventContent() {
             <button
               type="button"
               onClick={handleInviteGuest}
-              aria-label="Inviter une personne sur WhatsApp"
+              aria-label="Gérer les invités et envoyer les liens"
               className="px-3 py-2 border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:bg-emerald-100 transition"
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Inviter sur WhatsApp</span>
+              <span className="hidden sm:inline">Invités et liens</span>
             </button>
           </div>
           </div>

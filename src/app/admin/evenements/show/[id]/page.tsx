@@ -52,7 +52,7 @@ export default function UnlockEventPage() {
 
   const unlock = async () => {
     if (!result?.id || count == null || count < 0) {
-      message.error('Indiquez le nombre de places payées.');
+      message.error('Indiquez le nombre d’invitations payées.');
       return;
     }
     if (!isSupabaseReady()) {
@@ -69,7 +69,7 @@ export default function UnlockEventPage() {
     });
     if (rpc.error && /INVALID_LIMIT/i.test(rpc.error.message)) {
       setSaving(false);
-      message.error('Indiquez au moins une place payée.');
+      message.error('Indiquez au moins une invitation payée.');
       return;
     }
     let failed = Boolean(rpc.error);
@@ -89,14 +89,14 @@ export default function UnlockEventPage() {
       message.error('La limite n’a pas été enregistrée. Relancez le script d’accès dans Supabase.');
       return;
     }
-    message.success(`${result.title || 'Invitation'} : ${totalPlaces} places débloquées.`);
+    message.success(`${result.title || 'Invitation'} : ${totalPlaces} invitations débloquées.`);
     void query.refetch();
   };
 
   return (
     <div style={{ maxWidth: 640 }}>
       <Link href="/admin/evenements">Retour aux événements</Link>
-      <Typography.Title level={3}>Débloquer les places</Typography.Title>
+      <Typography.Title level={3}>Débloquer les invitations</Typography.Title>
       <Card loading={query.isLoading}>
         <Typography.Title level={4} style={{ marginTop: 0 }}>{result?.title || 'Invitation'}</Typography.Title>
         <Typography.Paragraph>
@@ -120,11 +120,11 @@ export default function UnlockEventPage() {
           ))}
         </Space>
         <div style={{ marginTop: 16 }}>
-          <Typography.Text>Autre nombre de places payées</Typography.Text>
+          <Typography.Text>Autre nombre d’invitations payées</Typography.Text>
           <InputNumber min={0} max={5000} value={count} onChange={(value) => setCount(value ?? 0)} style={{ width: '100%', marginTop: 8 }} />
         </div>
         <Typography.Paragraph style={{ marginTop: 16 }}>
-          <strong>{count || 0} places payées + 3 invitations d’essai = {totalPlaces} places.</strong>
+          <strong>{count || 0} invitations payées + 3 d’essai = {totalPlaces} invitations.</strong>
           <br />
           Total à encaisser : {price}.
         </Typography.Paragraph>
@@ -135,7 +135,7 @@ export default function UnlockEventPage() {
           rows={3}
         />
         <Button type="primary" size="large" block style={{ marginTop: 16 }} loading={saving} onClick={() => void unlock()}>
-          Débloquer {totalPlaces} places
+          Débloquer {totalPlaces} invitations
         </Button>
       </Card>
     </div>

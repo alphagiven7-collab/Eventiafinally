@@ -226,6 +226,8 @@ export interface EventWithSettings extends Event {
     venueTitle?: string;
     welcomeImage?: string;
     heroImage?: string;
+    coverPhotoCleared?: boolean;
+    coverPosition?: { x: number; y: number };
     bestPhotos?: string[];
     galleryKicker?: string;
     galleryTitle?: string;

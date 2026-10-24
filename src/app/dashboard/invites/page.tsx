@@ -59,7 +59,7 @@ function GuestManagementContent() {
   const [detailsReady, setDetailsReady] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const eventsRef = useRef(events);
-  eventsRef.current = events;
+  useEffect(() => { eventsRef.current = events; }, [events]);
   const [shareOrigin, setShareOrigin] = useState('');
 
   // Formulaire ajout : seul le nom est obligatoire
@@ -71,6 +71,7 @@ function GuestManagementContent() {
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
   const [zipFailures, setZipFailures] = useState<{ name: string; reason: string }[]>([]);
   const zipLock = useRef(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [tableName, setTableName] = useState('');
   const [tableSeats, setTableSeats] = useState('8');
   const [csvPreview, setCsvPreview] = useState<null | {
@@ -238,10 +239,15 @@ function GuestManagementContent() {
       return;
     }
     setPublishing(true);
+    try {
     const full = await fetchInvitationBySlug(createClient(), selectedEvent.slug);
     if (!full) {
       setPublishing(false);
       addToast('error', 'Invitation introuvable. Réessayez.');
+      return;
+    }
+    if (!full.event_date || !full.location?.trim()) {
+      addToast('error', 'Complétez la date et le lieu dans la personnalisation avant de publier.');
       return;
     }
     const result = await publishInvitation(createClient(), { ...full, user_id: user.id, is_published: true });
@@ -251,7 +257,15 @@ function GuestManagementContent() {
       return;
     }
     setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, is_published: true } : event));
-    addToast('success', 'Invitation publiée. Vous pouvez envoyer les liens.');
+    addToast('success', 'Invitation publiée. Ajoutez votre invité pour lui envoyer son lien.');
+    setActiveTab('guests');
+    setOpenTool('add');
+    window.requestAnimationFrame(() => nameInputRef.current?.focus());
+    } catch {
+      addToast('error', 'La publication a échoué. Réessayez.');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   // Ajouter un invité
@@ -431,6 +445,7 @@ function GuestManagementContent() {
       return;
     }
     zipLock.current = true;
+    setPdfOpen(true);
     setZipFailures([]);
     setZipProgress({ done: 0, total: guests.length });
     try {
@@ -472,13 +487,18 @@ function GuestManagementContent() {
 
   const pdfZipControls = (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 space-y-2">
+      <button type="button" onClick={() => setPdfOpen((open) => !open)} aria-expanded={pdfOpen} aria-controls="invitation-pdf-downloads" className="flex min-h-11 w-full items-center justify-between gap-3 text-sm font-semibold text-gray-800 dark:text-gray-100">
+        <span className="flex items-center gap-2"><Download className="h-4 w-4" /> Télécharger les PDF</span>
+        <span className="flex items-center gap-2">{zipProgress && <span role="status" className="text-xs">{zipProgress.done} / {zipProgress.total}</span>}<ChevronDown className={`h-4 w-4 transition ${pdfOpen ? 'rotate-180' : ''}`} /></span>
+      </button>
+      <div id="invitation-pdf-downloads" hidden={!pdfOpen} className="space-y-3 pt-2">
       <p className="text-xs text-gray-600 dark:text-gray-300">
-        {guests.length} PDF {guests.length > 1 ? 'seront générés' : 'sera généré'}, un par invité de la liste complète.
+        {guests.length} PDF {guests.length > 1 ? 'seront générés' : 'sera généré'}, un par invité de la liste complète du mariage sélectionné, même si un filtre est actif.
       </p>
       <button
         type="button"
         onClick={() => void exportAllPdfs()}
-        disabled={Boolean(zipProgress) || guests.length === 0}
+        disabled={Boolean(zipProgress) || guests.length === 0 || !detailsReady}
         className="w-full min-h-12 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60"
       >
         {zipProgress ? `${zipProgress.done} / ${zipProgress.total}` : 'Télécharger tous les PDF (ZIP)'}
@@ -501,6 +521,7 @@ function GuestManagementContent() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 
@@ -873,7 +894,7 @@ function GuestManagementContent() {
                                 disabled={publishing}
                                 className="mt-3 w-full min-h-11 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-2.5 text-xs font-semibold text-amber-800 dark:text-amber-200 hover:bg-amber-100 disabled:opacity-60"
                               >
-                                {publishing ? 'Publication…' : 'Publier'}
+                                {publishing ? 'Publication…' : 'Publier et partager'}
                               </button>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">

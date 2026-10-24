@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui';
+import { ShareInvitationDialog } from '@/components/share/ShareInvitationDialog';
 import { useAuth } from '@/providers/auth-provider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { addToast } = useToast();
+  const [shareTarget, setShareTarget] = useState<EventWithSettings | null>(null);
 
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,16 +214,25 @@ export default function DashboardPage() {
   const publishFromList = async (event: EventWithSettings) => {
     if (!user?.id || !isSupabaseReady()) return;
     setPublishingId(event.id);
-    const client = createClient();
-    const full = await fetchInvitationBySlug(client, event.slug);
-    const result = full ? await publishInvitation(client, { ...full, user_id: user.id, is_published: true }) : { error: 'Invitation introuvable.' };
-    setPublishingId('');
-    if (result.error) {
-      addToast('error', result.error);
-      return;
+    try {
+      const client = createClient();
+      const full = await fetchInvitationBySlug(client, event.slug);
+      if (!full) { addToast('error', 'Invitation introuvable.'); return; }
+      if (!full.event_date || !full.location?.trim()) {
+        addToast('info', 'Complétez la date et le lieu avant de publier.');
+        router.push(`/create/${event.slug}/edit`);
+        return;
+      }
+      const result = await publishInvitation(client, { ...full, user_id: user.id, is_published: true });
+      if (result.error) { addToast('error', result.error); return; }
+      setEvents((current) => current.map((item) => item.id === event.id ? { ...item, is_published: true } : item));
+      addToast('success', 'Invitation publiée.');
+      setShareTarget({ ...event, is_published: true });
+    } catch {
+      addToast('error', 'La publication a échoué. Réessayez.');
+    } finally {
+      setPublishingId('');
     }
-    setEvents((current) => current.map((item) => item.id === event.id ? { ...item, is_published: true } : item));
-    addToast('success', 'Invitation publiée.');
   };
 
   // Supprimer un événement
@@ -249,7 +260,7 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div id="evenements" className="space-y-6">
+        <div id="evenements" className="mx-auto w-full min-w-0 space-y-6">
           <InstallApp />
           {organizerUnlocked === false && !offerHidden && (
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-4 pr-12 border border-rose-100 dark:border-gray-700">
@@ -274,14 +285,14 @@ export default function DashboardPage() {
           )}
 
           {/* En-tête */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left sm:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mes mariages</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {events.length > 0 ? `${events.length} invitation${events.length > 1 ? 's' : ''}` : 'Aucune invitation pour le moment'}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap justify-center gap-2 sm:w-auto sm:justify-end">
               <button
                 type="button"
                 onClick={() => router.push('/checkin')}
@@ -377,7 +388,7 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4">
               {events.map((event) => {
                 const status = eventStatus(event);
                 const counts = guestCounts[event.id];
@@ -397,7 +408,7 @@ export default function DashboardPage() {
                       {status.label}
                     </span>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 pl-9 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 justify-center text-center sm:justify-start sm:pl-9 sm:text-left text-xs text-gray-500 dark:text-gray-400">
                     {event.event_date && (
                       <span className="inline-flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 shrink-0" />
@@ -421,13 +432,24 @@ export default function DashboardPage() {
                       <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">En attente</span>
                     </div>
                   </div>
-                  <a
-                    href={`/dashboard/invites?event=${event.id}`}
-                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-105 active:scale-[0.99]"
-                  >
-                    <MessageCircle className="w-4 h-4 shrink-0" />
-                    Inviter vos proches
-                  </a>
+                  {event.is_published ? (
+                    <button
+                      type="button"
+                      onClick={() => setShareTarget(event)}
+                      className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-105 active:scale-[0.99]"
+                    >
+                      <MessageCircle className="w-4 h-4 shrink-0" />
+                      Partager
+                    </button>
+                  ) : (
+                    <a
+                      href={`/dashboard/invites?event=${encodeURIComponent(event.id)}&tool=add`}
+                      className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-105 active:scale-[0.99]"
+                    >
+                      <MessageCircle className="w-4 h-4 shrink-0" />
+                      Ajouter des invités
+                    </a>
+                  )}
                   {!event.is_published && (
                     <button
                       type="button"
@@ -435,7 +457,7 @@ export default function DashboardPage() {
                       disabled={publishingId === event.id}
                       className="mt-2 w-full min-h-10 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200"
                     >
-                      {publishingId === event.id ? 'Publication…' : 'Publier'}
+                      {publishingId === event.id ? 'Publication…' : 'Publier et partager'}
                     </button>
                   )}
                   {event.is_published && (
@@ -453,14 +475,14 @@ export default function DashboardPage() {
                     <a
                       href={`/e/${event.slug}`}
                       target="_blank"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Aperçu
                     </a>
                     <a
                       href={`/create/${event.slug}/edit`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       Modifier
@@ -509,6 +531,15 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+      {shareTarget && (
+        <ShareInvitationDialog
+          isOpen
+          onClose={() => setShareTarget(null)}
+          slug={shareTarget.slug}
+          title={shareTarget.title || 'Notre mariage'}
+          eventId={shareTarget.id}
+        />
       )}
     </ProtectedRoute>
   );

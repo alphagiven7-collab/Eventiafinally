@@ -113,7 +113,7 @@ export default function PricingPage() {
           <ul className="mt-4 space-y-2 pr-16 text-sm">
             {[
               'Réponses des invités, tables et cartes d’entrée avec QR code',
-              'Deux modèles d’invitation',
+              'Trois modèles d’invitation',
               'Brouillon, aperçu, puis publication',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">

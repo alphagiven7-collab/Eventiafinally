@@ -1,11 +1,12 @@
 'use client';
 
 import { toTimeInput } from '@/lib/utils';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useId, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
+import { ShareInvitationDialog } from '@/components/share/ShareInvitationDialog';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { compressImageFile, formatDataUrlSize, shareJpegDataUrl, shrinkDataUrl } from '@/lib/utils/image-compression';
 import {
@@ -39,6 +40,7 @@ import {
   PracticalInfoItem,
 } from '@/types';
 import { buttonFromPair, cardTextOf, COLOR_HARMONIES, familyMotifsVisible, INVITATION_CARDS, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { coverPhotoOf, coverPositionOf } from '@/lib/invitation/cover';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -63,11 +65,14 @@ function Section({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = useId();
   return (
     <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={contentId}
         className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 dark:hover:bg-gray-750 transition"
       >
         <div className="flex flex-col gap-0.5">
@@ -92,7 +97,7 @@ function Section({
         </svg>
       </button>
       {open && (
-        <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
+        <div id={contentId} className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
           {subtitle && (
             <p className="text-[11px] text-gray-400 dark:text-gray-500 italic mb-2 -mx-5 px-5 py-2.5 bg-gray-50/50 dark:bg-gray-700/30">
               {subtitle}
@@ -629,6 +634,7 @@ function EditEventContent() {
   const [event, setEvent] = useState<EventWithSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   useEffect(() => {
@@ -686,6 +692,7 @@ function EditEventContent() {
 
   // ── 3. Photos & Musique ──
   const [heroImage, setHeroImage] = useState('');
+  const [coverPosition, setCoverPosition] = useState({ x: 50, y: 50 });
   const [coverPhotos, setCoverPhotos] = useState<string[]>([]);
   const [secGallery, setSecGallery] = useState(true);
   const [galleryKicker, setGalleryKicker] = useState('Ensemble');
@@ -732,7 +739,6 @@ function EditEventContent() {
   const [groomMotifImage, setGroomMotifImage] = useState('');
   const [brideMotifImage, setBrideMotifImage] = useState('');
   const [rsvpDeadline, setRsvpDeadline] = useState('');
-  const [confirmPublish, setConfirmPublish] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState(false);
   const [fromAdmin, setFromAdmin] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -818,12 +824,13 @@ function EditEventContent() {
       setMapLink(evt.links?.map || evt.mapLink || '');
       setVenueMapImage(evt.venueDetails?.mapImage || evt.mapImage || '');
 
-      setHeroImage(evt.heroImage || evt.hero_image || evt.branding?.heroImage || '');
+      setHeroImage(coverPhotoOf(evt));
+      setCoverPosition(coverPositionOf(evt.coverPosition));
       setCoverPhotos(evt.bestPhotos || (evt.cover_image ? [evt.cover_image] : []));
       setGalleryKicker(evt.galleryKicker ?? 'Ensemble');
       setGalleryTitle(evt.galleryTitle ?? 'Nos photos');
       setGalleryFlowText(evt.galleryFlowText ?? 'La suite de nos souvenirs');
-      setInviteIntro(evt.inviteIntro || '');
+      setInviteIntro(evt.inviteIntro || '{couple} ont le plaisir de vous inviter à leur mariage. Votre présence rendra cette journée encore plus belle.');
       setInviteSecondary(evt.inviteSecondary || '');
       setCardKicker(evt.cardKicker === undefined ? 'On vous invite' : evt.cardKicker);
       setCardGreeting(evt.cardGreeting === undefined ? 'Bonjour' : evt.cardGreeting);
@@ -901,7 +908,7 @@ function EditEventContent() {
   /* ── Objet événement construit en direct (pour l'aperçu ET la sauvegarde) ── */
   const liveEvent = useMemo<EventWithSettings | null>(() => {
     if (!event) return null;
-    const primaryCover = heroImage || coverPhotos[0] || event.cover_image || '';
+    const primaryCover = heroImage;
     const namedTitle = [coupleLeft.trim(), coupleRight.trim()].filter(Boolean).join(' & ');
     const photoTitle = title.trim() || namedTitle || 'Votre mariage';
     return {
@@ -917,7 +924,9 @@ function EditEventContent() {
       address: address || undefined,
       cover_image: primaryCover,
       hero_image: primaryCover || undefined,
-      heroImage: primaryCover || undefined,
+      heroImage: primaryCover,
+      coverPosition,
+      coverPhotoCleared: !primaryCover,
       bestPhotos: coverPhotos,
       galleryKicker,
       galleryTitle,
@@ -936,7 +945,7 @@ function EditEventContent() {
         weight: cardWeight,
       },
       heroBand,
-      mainText: undefined,
+      mainText: mainText || undefined,
       reserveText: reserveText.trim() || undefined,
       declineText: declineText.trim() || undefined,
       confirmedText: confirmedText.trim() || undefined,
@@ -945,30 +954,32 @@ function EditEventContent() {
       rsvpButtonColor: rsvpButtonColor || undefined,
       qrDisplayMode,
       branding: {
+        ...event.branding,
         primaryColor,
         accentColor,
         heroImage: primaryCover,
         welcomeImage: primaryCover,
         ogShareImage: primaryCover,
       },
-      aboutTitle: undefined,
+      aboutTitle: aboutTitle || undefined,
       aboutStory1: aboutStory1 || undefined,
-      aboutStory2: undefined,
+      aboutStory2: aboutStory2 || undefined,
       aboutImage: aboutImage || undefined,
-      programSectionTitle: undefined,
+      programSectionTitle: programSectionTitle || undefined,
       program: program.length > 0 ? program : undefined,
       drinks: drinks.filter((drink) => drink.name.trim()).length > 0 ? drinks.filter((drink) => drink.name.trim()) : undefined,
       venueDetails: {
+        ...event.venueDetails,
+        lat: event.venueDetails?.lat || '',
+        lng: event.venueDetails?.lng || '',
         title: location || 'Lieu de réception',
         address: address || '',
-        lat: '',
-        lng: '',
         mapImage: venueMapImage || '',
       },
       dressCodeTitle: dressCodeTitle || undefined,
       dressCodeColor,
       dressImages: dressImages.length > 0 ? dressImages : undefined,
-      practicalSectionTitle: undefined,
+      practicalSectionTitle: practicalSectionTitle || undefined,
       practicalInfo: practicalInfo.length > 0 ? practicalInfo : undefined,
       ambiance: {
         enabled: musicEnabled,
@@ -977,11 +988,12 @@ function EditEventContent() {
         hasFile: musicHasFile || musicUrl.startsWith('data:'),
       },
       links: {
+        ...event.links,
         map: mapLink || undefined,
         supportEmail: supportEmail || undefined,
         donation: donationLink || undefined,
         whatsappDonation: whatsappDonation || undefined,
-        donationWhatsAppMessage: undefined,
+        donationWhatsAppMessage: whatsappDonationMessage || undefined,
       },
       supportEmail: supportEmail || undefined,
       mapLink: mapLink || undefined,
@@ -1023,6 +1035,7 @@ function EditEventContent() {
     mapLink,
     venueMapImage,
     heroImage,
+    coverPosition,
     coverPhotos,
     galleryKicker,
     galleryTitle,
@@ -1037,6 +1050,13 @@ function EditEventContent() {
     cardAlign,
     cardWeight,
     heroBand,
+    mainText,
+    aboutTitle,
+    aboutStory2,
+    programSectionTitle,
+    practicalSectionTitle,
+    whatsappDonationMessage,
+    qrDisplayMode,
     reserveText,
     declineText,
     confirmedText,
@@ -1125,6 +1145,7 @@ function EditEventContent() {
       }
 
       setSaving(true);
+      try {
       const rawMap = liveEvent.venueDetails?.mapImage || liveEvent.mapImage || '';
       const shrinkCache = shrinkCacheStore;
       const optimizedImage = (value: string | undefined, maxBytes: number): Promise<string | undefined> => {
@@ -1172,7 +1193,7 @@ function EditEventContent() {
       const prepared: EventWithSettings = {
         ...liveEvent,
         user_id: liveEvent.user_id || user.id,
-        is_published: mode === 'publish' ? true : mode === 'draft' ? false : Boolean(liveEvent.is_published),
+        is_published: mode === 'publish' || Boolean(liveEvent.is_published),
         updated_at: new Date().toISOString(),
         heroImage: hero,
         hero_image: hero,
@@ -1197,7 +1218,7 @@ function EditEventContent() {
           : liveEvent.venueDetails,
       };
       let shareCover = '';
-      const shareSource = hero || bestPhotos?.[0] || '';
+      const shareSource = hero || '';
       if (shareSource.startsWith('data:image')) {
         try {
           shareCover = await shareJpegDataUrl(shareSource);
@@ -1216,10 +1237,9 @@ function EditEventContent() {
       }
 
       setEvent(prepared);
-      setConfirmPublish(false);
       if (mode === 'publish') {
         addToast('success', 'Invitation publiée.');
-        router.push(`/e/${liveEvent.slug}`);
+        setShareOpen(true);
         return true;
       }
       if (mode === 'preview') {
@@ -1227,8 +1247,14 @@ function EditEventContent() {
         window.open(`/e/${liveEvent.slug}`, '_blank', 'noopener');
         return true;
       }
-      addToast('success', 'Brouillon enregistré.');
+      addToast('success', prepared.is_published ? 'Invitation enregistrée.' : 'Brouillon enregistré.');
       return true;
+      } catch {
+        addToast('error', 'L’enregistrement a échoué. Vos modifications sont conservées ici ; réessayez.');
+        return false;
+      } finally {
+        setSaving(false);
+      }
     },
     [liveEvent, eventDate, location, user?.id, addToast, router]
   );
@@ -1299,11 +1325,11 @@ function EditEventContent() {
             </button>
             <button
               type="button"
-              onClick={() => setConfirmPublish(true)}
+              onClick={() => void handleSave('publish')}
               disabled={saving}
               className="inline-flex w-full sm:w-auto min-h-11 items-center justify-center px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 disabled:opacity-50"
             >
-              Publier l'invitation
+              {event.is_published ? 'Mettre à jour et partager' : 'Publier et partager'}
             </button>
           </div>
           <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
@@ -1372,51 +1398,20 @@ function EditEventContent() {
       <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start min-w-0">
         {/* Colonne de gauche : les 5 sections de personnalisation */}
         <main
-          className={`lg:col-span-7 space-y-4 ${
+          className={`min-w-0 lg:col-span-7 space-y-4 ${
             showMobilePreview ? 'hidden lg:block' : 'block'
           }`}
         >
-          {editorMode === null ? (
-            <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-5">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Comment voulez-vous personnaliser votre invitation ?</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => chooseEditorMode('simple')}
-                  className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 p-4 text-left hover:border-violet-500 transition"
-                >
-                  <span className="block text-sm font-bold text-gray-900 dark:text-gray-100">Simple</span>
-                  <span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">L’essentiel : les informations, les textes, les couleurs, les photos et la musique. Idéal pour publier vite.</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => chooseEditorMode('advanced')}
-                  className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 p-4 text-left hover:border-violet-500 transition"
-                >
-                  <span className="block text-sm font-bold text-gray-900 dark:text-gray-100">Avancé</span>
-                  <span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">Tout le reste : modèle, cartes et photos de fond, programme, tenue, histoire, cadeau et contact.</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-100 dark:bg-gray-800 px-4 py-2.5">
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {advanced ? 'Mode avancé : toutes les options sont affichées.' : 'Mode simple : seulement l’essentiel.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => chooseEditorMode(advanced ? 'simple' : 'advanced')}
-                className="shrink-0 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline"
-              >
-                {advanced ? 'Passer en simple' : 'Voir toutes les options'}
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-100 dark:bg-gray-800 px-4 py-3">
+            <p className="text-xs text-gray-600 dark:text-gray-300">{advanced ? 'Mode avancé' : 'Mode simple'}</p>
+            <button type="button" onClick={() => chooseEditorMode(advanced ? 'simple' : 'advanced')} className="min-h-10 text-xs font-semibold text-violet-700 dark:text-violet-300">
+              {advanced ? 'Passer en mode simple' : 'Afficher les réglages avancés'}
+            </button>
+          </div>
 
-          {/* ═══════ 1. L'ESSENTIEL (QUI, QUAND, OÙ) ═══════ */}
           <Section
-            title="1. L’essentiel du mariage"
-            subtitle="Noms, titre, date, heure et lieu. À remplir en premier."
+            title="Informations principales"
+            subtitle="Noms, date, heure et lieu de votre mariage."
             icon={<Heart className="w-4 h-4" />}
             defaultOpen
           >
@@ -1444,12 +1439,14 @@ function EditEventContent() {
                 onChange={setTitle}
                 placeholder="Notre journée"
               />
+{advanced && (
               <Field
                 label="Sous-titre"
                 value={subtitle}
                 onChange={setSubtitle}
                 placeholder="Nous avons hâte de vous voir"
               />
+)}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Date"
@@ -1466,12 +1463,7 @@ function EditEventContent() {
                   type="time"
                 />
               </div>
-              <Field
-                label="Date limite de réponse"
-                value={rsvpDeadline}
-                onChange={setRsvpDeadline}
-                type="date"
-              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field
                   label="Nom du lieu"
@@ -1497,62 +1489,150 @@ function EditEventContent() {
             </div>
           </Section>
 
-          {advanced && (
-          <Section
-            title="Photos de fond des cartes"
-            subtitle="Ajoutez une photo derrière chaque carte, ou cachez celles que vous ne voulez pas."
-            icon={<Sparkles className="w-4 h-4" />}
-          >
-            <div className="space-y-3">
-              {INVITATION_CARDS.map((card) => {
-                const visible = !hiddenCards.includes(card.id);
-                return (
-                  <div key={card.id} className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3 space-y-3">
-                    <label className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{card.label}</span>
-                      <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        {visible ? 'Affichée' : 'Cachée'}
-                        <input
-                          type="checkbox"
-                          checked={visible}
-                          onChange={(e) =>
-                            setHiddenCards((prev) =>
-                              e.target.checked ? prev.filter((id) => id !== card.id) : [...prev, card.id],
-                            )
-                          }
-                          className="w-4 h-4 accent-violet-600 rounded cursor-pointer"
-                        />
-                      </span>
-                    </label>
-                    {visible && (
-                      <SingleImageUploader
-                        label="Photo de fond"
-                        help="Un voile clair est posé dessus pour garder le texte lisible."
-                        value={cardPhotos[card.id] || ''}
-                        onChange={(v) =>
-                          setCardPhotos((prev) => {
-                            const next = { ...prev };
-                            if (v) next[card.id] = v;
-                            else delete next[card.id];
-                            return next;
-                          })
-                        }
-                      />
-                    )}
+          <Section title="Photo de couverture" subtitle="La photo principale de votre invitation." icon={<Camera className="w-4 h-4" />} defaultOpen>
+            <div className="space-y-4 pt-4">
+              <SingleImageUploader
+                label="Photo de couverture"
+                help="La photo affichée en haut de votre invitation. Vous pouvez la remplacer ou la retirer."
+                value={heroImage}
+                onChange={(image) => { setHeroImage(image); setCoverPosition({ x: 50, y: 50 }); }}
+              />
+
+              {heroImage && (
+                <div className="space-y-3">
+                  <div className="relative mx-auto aspect-[4/5] max-h-80 w-full max-w-64 overflow-hidden rounded-xl bg-gray-100">
+                    <img src={heroImage} alt="Cadrage de la couverture" className="h-full w-full object-cover" style={{ objectPosition: `${coverPosition.x}% ${coverPosition.y}%` }} />
                   </div>
-                );
-              })}
+                  <p className="text-xs text-gray-500">Ajustez la position de la photo. Le cadrage final dépend du modèle et de l’écran.</p>
+                  {(['x', 'y'] as const).map((axis) => (
+                    <label key={axis} className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {axis === 'x' ? 'Position horizontale' : 'Position verticale'}
+                      <input type="range" min={0} max={100} value={coverPosition[axis]} onChange={(e) => setCoverPosition((current) => ({ ...current, [axis]: Number(e.target.value) }))} className="mt-2 w-full accent-violet-600" />
+                    </label>
+                  ))}
+                  <button type="button" onClick={() => setCoverPosition({ x: 50, y: 50 })} className="min-h-10 text-xs font-semibold text-violet-600 dark:text-violet-300">Recentrer la photo</button>
+                </div>
+              )}
+
             </div>
           </Section>
-          )}
 
-          {advanced && (
+          <Section title="Message d’invitation" subtitle="Le texte adressé à vos invités. Les prénoms sont ajoutés automatiquement." icon={<Mail className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
+              <Field
+                label="Introduction"
+                help="Laissez vide pour masquer cette ligne."
+                value={cardKicker}
+                onChange={setCardKicker}
+                placeholder="On vous invite"
+              />
+              <Field
+                label="Salutation"
+                help="Le prénom de l’invité s’ajoute après, quand le lien est personnel. Laissez vide pour masquer la salutation."
+                value={cardGreeting}
+                onChange={setCardGreeting}
+                placeholder="Bonjour"
+              />
+              <Field
+                label="Message"
+                help="Tapez {couple} pour insérer les prénoms. Sans prénom, « nous » est utilisé."
+                value={inviteIntro}
+                onChange={setInviteIntro}
+                rows={3}
+                placeholder="{couple} ont le plaisir de vous inviter à leur mariage."
+              />
+              <Field
+                label="Message complémentaire"
+                help="Laissez vide pour n’afficher qu’un seul message."
+                value={inviteSecondary}
+                onChange={setInviteSecondary}
+                rows={3}
+                placeholder="La fête continue après la cérémonie."
+              />
+
+              {mainText && <Field label="Texte additionnel" value={mainText} onChange={setMainText} rows={3} help="Texte conservé depuis votre invitation existante." />}
+
+            </div>
+          </Section>
+
           <Section
-            title="Le style"
-            subtitle="Choisissez le modèle. Les motifs de famille sont disponibles sur les trois."
-            icon={<Sparkles className="w-4 h-4" />}
-            defaultOpen
+            title="Confirmation de présence"
+            subtitle="Date limite et présentation des réponses de vos invités."
+            icon={<MessageCircle className="w-4 h-4" />}
           >
+            <div className="space-y-4 pt-4">
+              <Field
+                label="Date limite de réponse"
+                value={rsvpDeadline}
+                onChange={setRsvpDeadline}
+                type="date"
+              />
+              <p className="text-xs text-gray-500">Les boutons de réponse sont prêts à l’emploi. La date limite est facultative.</p>
+              {advanced && (<>
+              <Field
+                label="Bouton pour confirmer"
+                value={reserveText}
+                onChange={setReserveText}
+                placeholder="Oui, je viens"
+              />
+              <Field
+                label="Bouton pour refuser"
+                value={declineText}
+                onChange={setDeclineText}
+                placeholder="Non, je ne pourrai pas"
+              />
+              <Field
+                label="Texte une fois confirmé"
+                value={confirmedText}
+                onChange={setConfirmedText}
+                placeholder="C’est confirmé"
+              />
+              <Field
+                label="Phrase au-dessus des boutons"
+                value={rsvpPrompt}
+                onChange={setRsvpPrompt}
+                placeholder="Dites oui maintenant. Votre carte d'entrée apparaît juste après."
+              />
+              <Field
+                label="La phrase pour la date limite"
+                value={rsvpDeadlineText}
+                onChange={setRsvpDeadlineText}
+                placeholder="Répondez avant le 15 mai"
+              />
+
+              </>)}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Affichage du QR</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQrDisplayMode('immediate')}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
+                      qrDisplayMode === 'immediate'
+                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    Afficher tout de suite
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrDisplayMode('after-confirmation')}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
+                      qrDisplayMode === 'after-confirmation'
+                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
+                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    Afficher après confirmation
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Apparence" subtitle="Modèle, couleurs et typographies de votre invitation." icon={<Sparkles className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
               <button
                 type="button"
@@ -1603,46 +1683,6 @@ function EditEventContent() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Comme Écran, avec la photo en fond derrière les cartes.</p>
               </button>
             </div>
-            <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3">
-              <input
-                type="checkbox"
-                checked={showFamilyMotifs}
-                onChange={(e) => setShowFamilyMotifs(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-violet-600 rounded cursor-pointer"
-              />
-              <span>
-                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Afficher les motifs des familles</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Sur Écran et Photos, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
-                </span>
-              </span>
-            </label>
-            {showFamilyMotifs && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                <SingleImageUploader
-                  label="Famille de l'homme"
-                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
-                  value={groomMotifImage}
-                  onChange={setGroomMotifImage}
-                />
-                <SingleImageUploader
-                  label="Famille de la femme"
-                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
-                  value={brideMotifImage}
-                  onChange={setBrideMotifImage}
-                />
-              </div>
-            )}
-          </Section>
-          )}
-
-          {/* ═══════ 2. LA CARTE & LES COULEURS ═══════ */}
-          <Section
-            title="2. Textes et couleurs"
-            subtitle="Les textes de la carte d’invitation et les couleurs."
-            icon={<Mail className="w-4 h-4" />}
-          >
-            <div className="space-y-4 pt-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Deux couleurs liées
@@ -1710,36 +1750,8 @@ function EditEventContent() {
                 </div>
               </div>
 
-              <Field
-                label="Petit texte au-dessus des prénoms"
-                help="Laissez vide pour masquer cette ligne."
-                value={cardKicker}
-                onChange={setCardKicker}
-                placeholder="On vous invite"
-              />
-              <Field
-                label="La salutation"
-                help="Le prénom de l’invité s’ajoute après, quand le lien est personnel. Laissez vide pour masquer la salutation."
-                value={cardGreeting}
-                onChange={setCardGreeting}
-                placeholder="Bonjour"
-              />
-              <Field
-                label="Le message sur la carte"
-                help="Tapez {couple} pour insérer les prénoms. Sans prénom, « nous » est utilisé."
-                value={inviteIntro}
-                onChange={setInviteIntro}
-                rows={3}
-                placeholder="{couple} ont le plaisir de vous inviter à leur mariage."
-              />
-              <Field
-                label="Deuxième paragraphe"
-                help="Laissez vide pour n’afficher qu’un seul message."
-                value={inviteSecondary}
-                onChange={setInviteSecondary}
-                rows={3}
-                placeholder="La fête continue après la cérémonie."
-              />
+
+{advanced && (<>
               <ChoiceRow
                 label="Style des prénoms"
                 value={cardStyle}
@@ -1769,88 +1781,6 @@ function EditEventContent() {
                 value={cardAlign}
                 onChange={setCardAlign}
                 options={[['center', 'Centré'], ['left', 'À gauche']] as const}
-              />
-            </div>
-          </Section>
-
-          <Section
-            title="Boutons de réponse"
-            subtitle="Les mots que vos invités voient pour confirmer leur présence."
-            icon={<MessageCircle className="w-4 h-4" />}
-          >
-            <div className="space-y-4 pt-4">
-              <Field
-                label="Bouton pour confirmer"
-                value={reserveText}
-                onChange={setReserveText}
-                placeholder="Oui, je viens"
-              />
-              <Field
-                label="Bouton pour refuser"
-                value={declineText}
-                onChange={setDeclineText}
-                placeholder="Non, je ne pourrai pas"
-              />
-              <Field
-                label="Texte une fois confirmé"
-                value={confirmedText}
-                onChange={setConfirmedText}
-                placeholder="C’est confirmé"
-              />
-              <Field
-                label="Phrase au-dessus des boutons"
-                value={rsvpPrompt}
-                onChange={setRsvpPrompt}
-                placeholder="Dites oui maintenant. Votre carte d'entrée apparaît juste après."
-              />
-              <Field
-                label="La phrase pour la date limite"
-                value={rsvpDeadlineText}
-                onChange={setRsvpDeadlineText}
-                placeholder="Répondez avant le 15 mai"
-              />
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Affichage du QR</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQrDisplayMode('immediate')}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
-                      qrDisplayMode === 'immediate'
-                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    Afficher tout de suite
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQrDisplayMode('after-confirmation')}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition ${
-                      qrDisplayMode === 'after-confirmation'
-                        ? 'border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200'
-                        : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    Afficher après confirmation
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* ═══════ 3. PHOTOS & MUSIQUE ═══════ */}
-          <Section
-            title="3. Photos et musique"
-            subtitle="Les photos se réduisent toutes seules."
-            icon={<Camera className="w-4 h-4" />}
-          >
-            <div className="space-y-5 pt-4">
-              <SingleImageUploader
-                label="Photo du haut"
-                help="Sans photo ici, on prend la première de la galerie."
-                value={heroImage}
-                onChange={setHeroImage}
               />
               <div className="space-y-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-3">
                 <div>
@@ -1931,89 +1861,89 @@ function EditEventContent() {
                 )}
               </div>
 
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Montrer les photos
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={secGallery}
-                    onChange={(e) => setSecGallery(e.target.checked)}
-                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-                  />
-                </div>
-                {secGallery && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field
-                        label="Petit texte de la galerie"
-                        value={galleryKicker}
-                        onChange={setGalleryKicker}
-                        placeholder="Ensemble"
-                      />
-                      <Field
-                        label="Titre de la galerie"
-                        value={galleryTitle}
-                        onChange={setGalleryTitle}
-                        placeholder="Nos photos"
-                      />
-                    </div>
-                    <Field
-                      label="Texte au-dessus des photos qui défilent"
-                      help="Laissez vide pour masquer cette ligne."
-                      value={galleryFlowText}
-                      onChange={setGalleryFlowText}
-                      placeholder="La suite de nos souvenirs"
-                    />
-                    <PhotoUploader
-                      onPhotosChange={setCoverPhotos}
-                      existingPhotos={coverPhotos}
-                      maxPhotos={12}
-                      label="Photos du couple"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                <label className="flex items-center justify-between gap-3 min-h-11">
-                  <span>
-                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                      Une musique à l&apos;ouverture
-                    </span>
-                    <span className="block text-[10px] text-gray-400">
-                      La musique démarre à l&apos;ouverture de l&apos;invitation. Un bouton permet de la couper.
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={musicEnabled}
-                    onChange={(e) => setMusicEnabled(e.target.checked)}
-                    className="w-5 h-5 accent-violet-600 rounded cursor-pointer"
-                  />
-                </label>
-                <AudioUploader
-                  value={musicUrl}
-                  saved={musicHasFile && !musicUrl}
-                  onChange={(url) => {
-                    setMusicUrl(url);
-                    if (url) {
-                      setMusicEnabled(true);
-                      setMusicHasFile(true);
-                    }
-                  }}
-                  onClear={() => setMusicHasFile(false)}
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3">
+              <input
+                type="checkbox"
+                checked={showFamilyMotifs}
+                onChange={(e) => setShowFamilyMotifs(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-violet-600 rounded cursor-pointer"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Afficher les motifs des familles</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Sur Écran et Photos, ce sont deux cartes. Sur Faire-part, ils encadrent la page. Vous pouvez les cacher et les remettre : les photos restent.
+                </span>
+              </span>
+            </label>
+            {showFamilyMotifs && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                <SingleImageUploader
+                  label="Famille de l'homme"
+                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
+                  value={groomMotifImage}
+                  onChange={setGroomMotifImage}
+                />
+                <SingleImageUploader
+                  label="Famille de la femme"
+                  help="Le motif ou tissu de la famille. Vous pouvez le changer ou le retirer."
+                  value={brideMotifImage}
+                  onChange={setBrideMotifImage}
                 />
               </div>
+            )}
+          <Section
+            title="Photos de fond des cartes"
+            subtitle="Ajoutez une photo derrière chaque carte, ou cachez celles que vous ne voulez pas."
+            icon={<Sparkles className="w-4 h-4" />}
+          >
+            <div className="space-y-3">
+              {INVITATION_CARDS.map((card) => {
+                const visible = !hiddenCards.includes(card.id);
+                return (
+                  <div key={card.id} className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3 space-y-3">
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{card.label}</span>
+                      <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        {visible ? 'Affichée' : 'Cachée'}
+                        <input
+                          type="checkbox"
+                          checked={visible}
+                          onChange={(e) =>
+                            setHiddenCards((prev) =>
+                              e.target.checked ? prev.filter((id) => id !== card.id) : [...prev, card.id],
+                            )
+                          }
+                          className="w-4 h-4 accent-violet-600 rounded cursor-pointer"
+                        />
+                      </span>
+                    </label>
+                    {visible && (
+                      <SingleImageUploader
+                        label="Photo de fond"
+                        help="Un voile clair est posé dessus pour garder le texte lisible."
+                        value={cardPhotos[card.id] || ''}
+                        onChange={(v) =>
+                          setCardPhotos((prev) => {
+                            const next = { ...prev };
+                            if (v) next[card.id] = v;
+                            else delete next[card.id];
+                            return next;
+                          })
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+</>)}
             </div>
           </Section>
 
-          {/* ═══════ 4. PROGRAMME, TENUE & INFOS ═══════ */}
-          {advanced && (
           <Section
-            title="La journée"
-            subtitle="Le programme, la tenue, et ce qu’il faut savoir."
+            title="Informations complémentaires"
+            subtitle="Programme, tenue, boissons et informations pratiques."
             icon={<Calendar className="w-4 h-4" />}
           >
             <div className="space-y-5 pt-4">
@@ -2051,7 +1981,7 @@ function EditEventContent() {
                         setDrinks(next);
                       }}
                       placeholder="Champagne"
-                      className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="min-w-0 flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <input
                       value={drink.desc}
@@ -2061,7 +1991,7 @@ function EditEventContent() {
                         setDrinks(next);
                       }}
                       placeholder="Un mot court"
-                      className="flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="min-w-0 flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <button type="button" onClick={() => setDrinks(drinks.filter((_, i) => i !== index))} className="px-2 text-red-400">✕</button>
                   </div>
@@ -2118,28 +2048,98 @@ function EditEventContent() {
               </div>
             </div>
           </Section>
-          )}
 
-          {/* ═══════ 5. NOTRE HISTOIRE & CONTACT (OPTIONNEL) ═══════ */}
-          {advanced && (
-          <Section
-            title="Histoire, cadeau, contact"
-            subtitle="Ces parties n’apparaissent que si vous les remplissez."
-            icon={<Sparkles className="w-4 h-4" />}
-          >
+          <Section title="Galerie photos" subtitle="Les photos supplémentaires, dans l’ordre de votre choix." icon={<Camera className="w-4 h-4" />}>
             <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Montrer le livre d’or</span>
-                  <span className="block text-[10px] text-gray-400">Messages laissés par les invités. Décochez pour masquer la section.</span>
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Afficher la galerie
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={secGallery}
+                    onChange={(e) => setSecGallery(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={secGuestbook}
-                  onChange={(e) => setSecGuestbook(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                {secGallery && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field
+                        label="Petit texte de la galerie"
+                        value={galleryKicker}
+                        onChange={setGalleryKicker}
+                        placeholder="Ensemble"
+                      />
+                      <Field
+                        label="Titre de la galerie"
+                        value={galleryTitle}
+                        onChange={setGalleryTitle}
+                        placeholder="Nos photos"
+                      />
+                    </div>
+                    <Field
+                      label="Texte au-dessus des photos qui défilent"
+                      help="Laissez vide pour masquer cette ligne."
+                      value={galleryFlowText}
+                      onChange={setGalleryFlowText}
+                      placeholder="La suite de nos souvenirs"
+                    />
+                    <PhotoUploader
+                      onPhotosChange={setCoverPhotos}
+                      existingPhotos={coverPhotos}
+                      maxPhotos={12}
+                      label="Photos supplémentaires"
+                      onUseAsCover={(image) => { setHeroImage(image); setCoverPosition({ x: 50, y: 50 }); }}
+                      coverPhoto={heroImage}
+                    />
+                  </div>
+                )}
+              </div>
+
+
+            </div>
+          </Section>
+
+          <Section title="Musique" subtitle="Une musique pour accompagner votre invitation." icon={<Music className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                <label className="flex items-center justify-between gap-3 min-h-11">
+                  <span>
+                    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Une musique à l&apos;ouverture
+                    </span>
+                    <span className="block text-[10px] text-gray-400">
+                      Selon l’appareil, un appui sur le bouton de lecture peut être nécessaire.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={musicEnabled}
+                    onChange={(e) => setMusicEnabled(e.target.checked)}
+                    className="w-5 h-5 accent-violet-600 rounded cursor-pointer"
+                  />
+                </label>
+                <AudioUploader
+                  value={musicUrl}
+                  saved={musicHasFile && !musicUrl}
+                  onChange={(url) => {
+                    setMusicUrl(url);
+                    if (url) {
+                      setMusicEnabled(true);
+                      setMusicHasFile(true);
+                    }
+                  }}
+                  onClear={() => setMusicHasFile(false)}
                 />
               </div>
+
+            </div>
+          </Section>
+
+          <Section title="Notre histoire" subtitle="Un texte et une photo pour raconter votre histoire." icon={<Heart className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
               <Field
                 label="Votre histoire"
                 value={aboutStory1}
@@ -2153,6 +2153,12 @@ function EditEventContent() {
                 onChange={setAboutImage}
               />
 
+{aboutStory2 && <Field label="Suite de votre histoire" value={aboutStory2} onChange={setAboutStory2} rows={3} />}
+            </div>
+          </Section>
+
+          <Section title="Cadeaux et contact" subtitle="Liste de cadeaux et coordonnées." icon={<Mail className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
               <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-4">
                 <Field
                   label="Lien de la cagnotte ou de la liste"
@@ -2176,9 +2182,27 @@ function EditEventContent() {
                   />
                 </div>
               </div>
+
             </div>
           </Section>
-          )}
+
+          <Section title="Livre d’or" subtitle="Les messages laissés par vos invités." icon={<Mail className="w-4 h-4" />}>
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Montrer le livre d’or</span>
+                  <span className="block text-[10px] text-gray-400">Messages laissés par les invités. Décochez pour masquer la section.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={secGuestbook}
+                  onChange={(e) => setSecGuestbook(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                />
+              </div>
+
+            </div>
+          </Section>
 
           {/* Boutons d'action en bas */}
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2188,7 +2212,7 @@ function EditEventContent() {
               disabled={saving}
               className="py-3.5 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-2xl font-semibold text-sm disabled:opacity-50"
             >
-              {saving ? 'Enregistrement...' : 'Enregistrer le brouillon'}
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
             <button
               type="button"
@@ -2200,18 +2224,18 @@ function EditEventContent() {
             </button>
             <button
               type="button"
-              onClick={() => setConfirmPublish(true)}
+              onClick={() => void handleSave('publish')}
               disabled={saving}
               className="py-3.5 px-4 bg-violet-600 text-white rounded-2xl font-bold text-sm disabled:opacity-50"
             >
-              Publier
+              {event.is_published ? 'Mettre à jour et partager' : 'Publier et partager'}
             </button>
           </div>
         </main>
 
         {/* Colonne de droite : Aperçu en direct du modèle */}
         <aside
-          className={`lg:col-span-5 lg:sticky lg:top-20 ${
+          className={`min-w-0 lg:col-span-5 lg:sticky lg:top-20 ${
             showMobilePreview ? 'block' : 'hidden lg:block'
           }`}
         >
@@ -2283,24 +2307,14 @@ function EditEventContent() {
           </div>
         </div>
       )}
-      {confirmPublish && (
-        <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmPublish(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Publier maintenant ?</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-              {liveEvent.title}. {eventDate ? new Date(eventDate).toLocaleDateString('fr-FR') : ''} {location ? `· ${location}` : ''}.
-              Modèle : {invitationTemplate === 'fairepart' ? 'Faire-part' : invitationTemplate === 'photos' ? 'Photos' : 'Écran'}.
-            </p>
-            <p className="text-xs text-gray-500 mt-2">L’invitation sera accessible à toute personne ayant le lien. Vous pourrez la modifier ensuite.</p>
-            <div className="flex gap-2 mt-4">
-              <button type="button" onClick={() => setConfirmPublish(false)} className="flex-1 py-3 border rounded-xl text-sm">Annuler</button>
-              <button type="button" onClick={() => handleSave('publish')} disabled={saving} className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">
-                {saving ? 'Publication...' : 'Publier'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+      <ShareInvitationDialog
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        slug={liveEvent.slug}
+        title={liveEvent.title || 'Notre mariage'}
+        eventId={event.id}
+      />
     </div>
   );
 }

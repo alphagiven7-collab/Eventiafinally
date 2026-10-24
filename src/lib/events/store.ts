@@ -426,7 +426,7 @@ export async function publishInvitation(
     updated_at: now,
   };
   if (nextCover) eventRow.cover_image = nextCover;
-  else if (!hasPhoto) eventRow.cover_image = null;
+  else if (event.coverPhotoCleared || !hasPhoto) eventRow.cover_image = null;
 
   const eventError = await updateOrInsert(supabase, 'events', eventRow, 'id');
   if (eventError) return { error: explainWriteError(eventError), id };

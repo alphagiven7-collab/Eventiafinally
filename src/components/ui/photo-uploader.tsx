@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, X, Image as ImageIcon, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { compressImageFile, formatDataUrlSize } from '@/lib/utils/image-compression';
 
 interface PhotoUploaderProps {
@@ -9,6 +9,8 @@ interface PhotoUploaderProps {
   existingPhotos?: string[];
   maxPhotos?: number;
   label?: string;
+  onUseAsCover?: (photo: string) => void;
+  coverPhoto?: string;
 }
 
 export default function PhotoUploader({
@@ -16,18 +18,19 @@ export default function PhotoUploader({
   existingPhotos = [],
   maxPhotos = 20,
   label = 'Ajouter des photos',
+  onUseAsCover,
+  coverPhoto,
 }: PhotoUploaderProps) {
-  const [photos, setPhotos] = useState<string[]>(existingPhotos);
+  const photos = existingPhotos;
+  const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setPhotos(existingPhotos);
-  }, [existingPhotos]);
-
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
+      if (uploading) return;
+      setError('');
       const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(f.name));
       if (fileArray.length === 0) return;
       const remaining = maxPhotos - photos.length;
@@ -40,6 +43,7 @@ export default function PhotoUploader({
       setUploading(true);
       const newPhotos: string[] = [];
 
+      try {
       for (const file of selectedFiles) {
         const dataUrl = await compressImageFile(file, {
           maxWidthOrHeight: 900,
@@ -50,14 +54,15 @@ export default function PhotoUploader({
       }
 
       const updated = [...photos, ...newPhotos];
-      setPhotos(updated);
       onPhotosChange(updated);
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      } catch {
+        setError('Cette photo n’a pas pu être ajoutée. Réessayez avec un autre fichier.');
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [photos, maxPhotos, onPhotosChange]
+    [photos, maxPhotos, onPhotosChange, uploading]
   );
 
   const handleDrop = useCallback(
@@ -80,7 +85,14 @@ export default function PhotoUploader({
 
   const removePhoto = (index: number) => {
     const updated = photos.filter((_, i) => i !== index);
-    setPhotos(updated);
+    onPhotosChange(updated);
+  };
+
+  const movePhoto = (index: number, direction: number) => {
+    const target = index + direction;
+    if (target < 0 || target >= photos.length) return;
+    const updated = [...photos];
+    [updated[index], updated[target]] = [updated[target], updated[index]];
     onPhotosChange(updated);
   };
 
@@ -97,11 +109,17 @@ export default function PhotoUploader({
         )}
       </div>
 
+      {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
       <div
+        role="button"
+        tabIndex={uploading ? -1 : 0}
+        aria-label={label}
+        aria-disabled={uploading}
+        onKeyDown={(e) => { if (!uploading && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInputRef.current?.click(); } }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
         className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 ${
           dragOver
             ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/40 scale-[1.01]'
@@ -113,6 +131,7 @@ export default function PhotoUploader({
           type="file"
           accept="image/*"
           multiple
+          disabled={uploading}
           className="hidden"
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
@@ -142,51 +161,30 @@ export default function PhotoUploader({
       </div>
 
       {photos.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-          {photos.map((photo, index) => {
-            const sizeLabel = formatDataUrlSize(photo);
-            return (
-              <div
-                key={index}
-                className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
-              >
-                <img
-                  src={photo}
-                  alt={`Photo ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removePhoto(index);
-                  }}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-violet-700 text-white flex items-center justify-center transition shadow"
-                  aria-label={`Supprimer la photo ${index + 1}`}
-                >
-                  <X className="w-3.5 h-3.5" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {photos.map((photo, index) => (
+            <div key={`${index}-${photo.slice(-32)}`} className="min-w-0 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="relative aspect-square bg-gray-100 dark:bg-gray-800">
+                <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                <button type="button" disabled={uploading} onClick={() => removePhoto(index)} aria-label={`Supprimer la photo ${index + 1}`} className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white disabled:opacity-50">
+                  <X className="w-4 h-4" />
                 </button>
-                <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between gap-1 pointer-events-none">
-                  {index === 0 ? (
-                    <span className="px-1.5 py-0.5 bg-rose-600/90 text-white text-[9px] font-medium rounded-md">
-                      Principale
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  {sizeLabel && (
-                    <span className="px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded-md">
-                      {sizeLabel}
-                    </span>
-                  )}
-                </div>
+                <span className="absolute bottom-2 left-2 rounded bg-black/65 px-2 py-1 text-[10px] text-white">{index + 1}</span>
               </div>
-            );
-          })}
+              <div className="space-y-1 p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <button type="button" disabled={uploading || index === 0} onClick={() => movePhoto(index, -1)} aria-label={`Avancer la photo ${index + 1}`} className="flex h-10 w-10 items-center justify-center rounded-lg text-violet-600 disabled:opacity-30"><ArrowLeft className="h-4 w-4" /></button>
+                  <span className="text-[10px] text-gray-500">{formatDataUrlSize(photo)}</span>
+                  <button type="button" disabled={uploading || index === photos.length - 1} onClick={() => movePhoto(index, 1)} aria-label={`Reculer la photo ${index + 1}`} className="flex h-10 w-10 items-center justify-center rounded-lg text-violet-600 disabled:opacity-30"><ArrowRight className="h-4 w-4" /></button>
+                </div>
+                {onUseAsCover && <button type="button" disabled={uploading || photo === coverPhoto} onClick={() => onUseAsCover(photo)} className="min-h-10 w-full rounded-lg bg-violet-50 px-2 text-xs font-semibold text-violet-700 dark:bg-violet-950 dark:text-violet-200 disabled:opacity-60">{photo === coverPhoto ? 'Photo de couverture' : 'Utiliser comme couverture'}</button>}
+              </div>
+            </div>
+          ))}
           {photos.length < maxPhotos && (
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
               className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-500 hover:border-rose-400 hover:text-rose-500 transition-colors"
             >
               <ImageIcon className="w-5 h-5" />

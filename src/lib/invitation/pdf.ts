@@ -82,7 +82,7 @@ function inlineHero(root: HTMLElement) {
   if (!variable) return;
   hero.style.backgroundImage = `linear-gradient(180deg, rgba(15, 10, 20, 0.45) 0%, rgba(15, 10, 20, 0.78) 100%), ${variable}`;
   hero.style.backgroundSize = 'cover';
-  hero.style.backgroundPosition = 'center';
+  hero.style.backgroundPosition = getComputedStyle(root).getPropertyValue('--cover-position').trim() || '50% 50%';
 }
 
 

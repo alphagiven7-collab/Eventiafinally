@@ -77,7 +77,10 @@
           shortcut.style.cursor = '';
           shortcut.setAttribute('aria-controls', 'section-rsvp');
           var shortcutLabel = shortcut.querySelector('#reserve-deadline-text');
-          if (shortcutLabel) shortcutLabel.textContent = 'Répondre à l’invitation';
+          // Seuls les anciens états de réponse sont remplacés ; un texte choisi par les mariés reste.
+          if (shortcutLabel && /confirm|noté|instant|hors ligne|trop tard|réessayer/i.test(shortcutLabel.textContent || '')) {
+            shortcutLabel.textContent = 'Répondre à l’invitation';
+          }
         }
         setStatus('Invitation disponible hors ligne.');
       }

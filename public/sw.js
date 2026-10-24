@@ -3,7 +3,7 @@ const SHELL_URL = '/invitation-offline.html';
 
 async function putShell(cache) {
   // Réviser l’URL actualise le lecteur hors ligne sans effacer le lien mémorisé.
-  const response = await fetch(`${SHELL_URL}?v=rsvp-navigation-1`, { cache: 'reload' });
+  const response = await fetch(`${SHELL_URL}?v=rsvp-navigation-2`, { cache: 'reload' });
   if (!response.ok) throw new Error('shell');
   const body = await response.arrayBuffer();
   await cache.put(SHELL_URL, new Response(body, {

@@ -607,7 +607,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Oui, je viens';
   const qrDisplayMode = event.qrDisplayMode || 'after-confirmation';
-  setText('#reserve-deadline-text', 'Répondre à l’invitation');
+  setText('#reserve-deadline-text', event.reserveText?.trim() || 'Répondre à l’invitation');
   setText('#confirm-presence-label', btnText);
   if (event.declineText?.trim()) setText('#decline-presence-btn', event.declineText.trim());
   if (event.rsvpPrompt?.trim()) setText('#rsvp-prompt', event.rsvpPrompt.trim());

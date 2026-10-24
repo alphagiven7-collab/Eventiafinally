@@ -1567,13 +1567,13 @@ function EditEventContent() {
                 onChange={setRsvpDeadline}
                 type="date"
               />
-              <p className="text-xs text-gray-500">Les boutons de réponse sont prêts à l’emploi. La date limite est facultative.</p>
-              {advanced && (<>
+              <p className="text-xs text-gray-500">La date limite est facultative. Laissez les textes vides pour garder ceux par défaut.</p>
               <Field
                 label="Bouton pour confirmer"
                 value={reserveText}
                 onChange={setReserveText}
                 placeholder="Oui, je viens"
+                help="Ce texte apparaît sur le bouton du haut et sur celui du bas de l’invitation."
               />
               <Field
                 label="Bouton pour refuser"
@@ -1593,14 +1593,14 @@ function EditEventContent() {
                 onChange={setRsvpPrompt}
                 placeholder="Dites oui maintenant. Votre carte d'entrée apparaît juste après."
               />
+              {advanced && (
               <Field
                 label="La phrase pour la date limite"
                 value={rsvpDeadlineText}
                 onChange={setRsvpDeadlineText}
                 placeholder="Répondez avant le 15 mai"
               />
-
-              </>)}
+              )}
               <div className="space-y-2">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Affichage du QR</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

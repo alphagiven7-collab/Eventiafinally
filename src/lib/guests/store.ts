@@ -290,9 +290,18 @@ export type CheckInResult = {
 export async function checkInGuest(
   client: SupabaseClient,
   token: string,
-): Promise<{ guest?: CheckInResult; error?: string }> {
-  const { data, error } = await client.rpc('check_in_guest', { p_token: token });
-  if (error) return { error: explainGuestError(error.message) };
+  eventId: string,
+): Promise<{ guest?: CheckInResult; error?: string; wrongEvent?: boolean }> {
+  let { data, error } = await client.rpc('check_in_guest', { p_token: token, p_event_id: eventId });
+  // Avant la mise à jour de la base, seule l'ancienne fonction existe : la page a déjà vérifié le mariage.
+  if (error && /schema cache|could not find the function/i.test(error.message)) {
+    ({ data, error } = await client.rpc('check_in_guest', { p_token: token }));
+  }
+  if (error) {
+    if (error.message.includes('WRONG_EVENT')) return { wrongEvent: true };
+    if (error.message.includes('NOT_ALLOWED')) return { error: 'Seul le propriétaire du mariage peut accueillir les invités.' };
+    return { error: explainGuestError(error.message) };
+  }
   const row = (Array.isArray(data) ? data[0] : data) as {
     guest_name?: string;
     table_number?: string | null;

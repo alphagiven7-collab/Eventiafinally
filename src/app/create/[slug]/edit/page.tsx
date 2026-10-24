@@ -887,7 +887,7 @@ function EditEventContent() {
       setHeroBrightness(heroBrightnessOf(evt.heroBrightness));
       setTextRelief(evt.textRelief !== false);
       setTextReliefColor(evt.textReliefColor || '#1e293b');
-      setHiddenCards(evt.hiddenCards || []);
+      setHiddenCards((evt.hiddenCards || []).filter((id) => id !== 'rsvp'));
       setCardPhotos(evt.cardPhotos || {});
       setGroomMotifImage(evt.groomMotifImage || '');
       setBrideMotifImage(evt.brideMotifImage || '');
@@ -1897,7 +1897,7 @@ function EditEventContent() {
             icon={<Sparkles className="w-4 h-4" />}
           >
             <div className="space-y-3">
-              {INVITATION_CARDS.map((card) => {
+              {INVITATION_CARDS.filter((card) => card.id !== 'rsvp').map((card) => {
                 const visible = !hiddenCards.includes(card.id);
                 return (
                   <div key={card.id} className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-3 space-y-3">

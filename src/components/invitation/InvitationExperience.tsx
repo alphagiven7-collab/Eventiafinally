@@ -860,7 +860,8 @@ function applyCardControls(root: HTMLElement, event: EventWithSettings) {
   INVITATION_CARDS.forEach(({ id, selector }) => {
     const el = root.querySelector<HTMLElement>(selector);
     if (!el) return;
-    if (hidden.has(id)) el.setAttribute('data-card-hidden', 'true');
+    // La zone de réponse reste toujours visible : les invités en ont besoin pour confirmer.
+    if (id !== 'rsvp' && hidden.has(id)) el.setAttribute('data-card-hidden', 'true');
     else el.removeAttribute('data-card-hidden');
     const target = (id === 'message' ? el.querySelector<HTMLElement>('.invitation-card') : el.firstElementChild) as HTMLElement | null;
     if (!target) return;

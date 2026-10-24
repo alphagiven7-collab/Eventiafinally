@@ -1353,7 +1353,7 @@ function applyReadableColors(root: HTMLElement, dark: boolean) {
   const accent = root.dataset.baseAccent;
   if (!ink || !accent) return;
   const readableAccent = readableColor(accent, dark, 3);
-  root.style.setProperty('--primary-color', readableColor(ink, dark, 4.5));
+  root.style.setProperty('--primary-color', readableColor(ink, dark, dark ? 8 : 4.5));
   root.style.setProperty('--accent-color', readableAccent);
   root.style.setProperty('--icon-color', readableAccent);
 }

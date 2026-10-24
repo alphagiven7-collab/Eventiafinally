@@ -11,7 +11,7 @@
 
 ### Prérequis
 
-- Node.js 18+
+- Node.js 22.6+ (également requis pour les tests de connexion)
 - npm ou yarn
 - Un projet Supabase (gratuit sur [supabase.com](https://supabase.com))
 
@@ -38,6 +38,10 @@ npm run dev
 ```
 
 L'application sera disponible sur [http://localhost:3000](http://localhost:3000)
+
+### Vérifier la connexion
+
+`npm run test:auth` vérifie le retour de connexion, les liens expirés et les erreurs réseau avec des sessions simulées, sans identifiants Supabase.
 
 ## 📁 Structure du projet
 

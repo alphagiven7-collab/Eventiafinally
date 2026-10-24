@@ -52,9 +52,9 @@ export default function PricingPage() {
       <main className="max-w-3xl mx-auto px-4 py-8 pb-24 space-y-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Offres</p>
-          <h1 className="text-3xl font-extrabold">{unit} par invité</h1>
+          <h1 className="text-3xl font-extrabold">{unit} par invitation</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Les {TRIAL_INVITATIONS} invitations d&apos;essai s&apos;ajoutent au forfait. Un forfait de 50 invitations garde ses 50 invitations, et les {TRIAL_INVITATIONS} d&apos;essai en plus. Un couple ou une famille compte pour une seule invitation.
+            Les {TRIAL_INVITATIONS} invitations d&apos;essai s&apos;ajoutent au forfait choisi. Une invitation peut être destinée à une personne, un couple ou une famille.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function PricingPage() {
                 count === pack ? 'border-rose-400' : 'border-gray-200 dark:border-gray-700'
               }`}
             >
-              <p className="text-xs font-semibold">{pack} invités</p>
+              <p className="text-xs font-semibold">{pack} invitations</p>
               <p className="text-lg font-extrabold mt-1">{formatUsd(packTotalUsd(pack))}</p>
               <p className="text-[10px] text-gray-500 mt-1">+ {TRIAL_INVITATIONS} d&apos;essai</p>
             </button>
@@ -77,7 +77,7 @@ export default function PricingPage() {
 
         <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
           <label htmlFor="guest-count" className="block text-xs font-semibold text-gray-500 mb-2">
-            Nombre d&apos;invités du forfait
+            Nombre d&apos;invitations du forfait
           </label>
           <input
             id="guest-count"
@@ -95,11 +95,11 @@ export default function PricingPage() {
           <p className="text-4xl font-extrabold mt-1">{formatUsd(total)}</p>
           <p className="mt-2 pr-16 text-xs text-gray-500">
             {count} invitations payées + {TRIAL_INVITATIONS} d&apos;essai = {guestCapacity(count)} invitations.
-            Le paiement se confirme avec l&apos;admin sur WhatsApp.
+            Confirmez votre commande et le paiement avec notre équipe sur WhatsApp.
           </p>
           {missingNumber && (
             <p className="mt-3 text-sm text-rose-600">
-              Le numéro WhatsApp de l&apos;admin n&apos;est pas encore enregistré. Il se règle dans Profil.
+              Le contact WhatsApp est momentanément indisponible. Réessayez plus tard.
             </p>
           )}
           <button
@@ -108,11 +108,11 @@ export default function PricingPage() {
             className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white"
             style={{ backgroundColor: '#25D366' }}
           >
-            Payer {count} invités · {formatUsd(total)}
+            Commander sur WhatsApp · {formatUsd(total)}
           </button>
           <ul className="mt-4 space-y-2 pr-16 text-sm">
             {[
-              'RSVP, tables et carte d’entrée',
+              'Réponses des invités, tables et cartes d’entrée avec QR code',
               'Deux modèles d’invitation',
               'Brouillon, aperçu, puis publication',
             ].map((item) => (

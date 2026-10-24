@@ -15,10 +15,10 @@ import { CONTACT_MESSAGE, TEAM_WHATSAPP_DISPLAY, TEAM_WHATSAPP_URL } from '@/con
 const packs = [50, 100, 200];
 
 const supportSteps = [
-  { title: 'On échange', text: 'Vous nous parlez de votre mariage, de votre style et de vos invités.' },
-  { title: 'On prépare ensemble', text: 'Nous vous aidons à rédiger et personnaliser votre invitation.' },
-  { title: 'On envoie', text: 'Chaque invité reçoit son lien. Vous suivez les réponses en direct.' },
-  { title: 'On est là le jour J', text: 'Cartes d’entrée, liste des invités et assistance jusqu’à la fête.' },
+  { title: 'Personnalisation', text: 'Posez vos questions sur les textes, les photos et les modèles d’invitation.' },
+  { title: 'Forfaits', text: 'Choisissez le nombre d’invitations et confirmez le paiement avec notre équipe.' },
+  { title: 'Partage', text: 'Retrouvez comment envoyer les liens personnels à vos invités sur WhatsApp.' },
+  { title: 'Gestion des invités', text: 'Obtenez de l’aide pour les réponses, les tables et les cartes d’entrée.' },
 ];
 
 export default function HomePage() {
@@ -66,25 +66,25 @@ export default function HomePage() {
         <InstallApp />
         <section className="grid md:grid-cols-2 gap-6 items-center py-8 md:py-12">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Mariage ou fête</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Invitations de mariage en ligne</p>
             <h1 className="text-3xl md:text-4xl font-extrabold leading-tight mb-3">
-              Une invitation que les gens ont envie d’ouvrir.
+              Créez votre invitation de mariage et gérez vos invités.
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-              Écrivez le texte, ajoutez les photos, le jour et le lieu. Chaque invité reçoit son lien, dit s’il vient, et garde sa carte pour le jour de la fête. Vous commencez avec {TRIAL_INVITATIONS} invitations d’essai.
+              Eventia vous permet de personnaliser votre invitation, de partager un lien personnel avec chaque invité et de suivre les réponses depuis votre tableau de bord. Préparez aussi les tables et les cartes d’entrée avec QR code pour le jour du mariage.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href={user ? '/dashboard' : '/create/wedding'} className="inline-flex justify-center px-5 py-3 bg-violet-600 text-white rounded-2xl text-sm font-bold">
                 Créer mon invitation
               </Link>
               <Link href="/pricing" className="inline-flex justify-center px-5 py-3 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white shadow-md hover:brightness-105 rounded-2xl text-sm font-bold">
-                Passer une commande
+                Choisir un forfait
               </Link>
               <Link href="/e/mariage-sv4x" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
                 Voir un exemple
               </Link>
               <Link href="/exemples" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
-                Voir les invitations créées
+                Découvrir les invitations
               </Link>
             </div>
           </div>
@@ -92,12 +92,12 @@ export default function HomePage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-4">Trois étapes</h2>
+          <h2 className="text-lg font-bold mb-4">De la création à l’accueil des invités</h2>
           <div className="grid sm:grid-cols-3 gap-3">
             {[
-              { art: 'photos' as const, title: 'Mettez vos photos', text: 'Depuis votre téléphone ou votre ordinateur. Vous pouvez les changer.' },
-              { art: 'customize' as const, title: 'Écrivez l’invitation', text: 'Les prénoms, le jour, le lieu, et le mot que vous voulez dire.' },
-              { art: 'share' as const, title: 'Envoyez le lien', text: 'Chacun répond. S’il vient, sa carte d’entrée apparaît.' },
+              { art: 'photos' as const, title: 'Personnalisez votre invitation', text: 'Choisissez un modèle, ajoutez vos photos, vos textes, la date, les lieux et le programme. Vérifiez l’aperçu avant de publier.' },
+              { art: 'customize' as const, title: 'Invitez et suivez les réponses', text: 'Ajoutez vos invités et partagez leurs liens personnels sur WhatsApp. Retrouvez les confirmations et les refus dans votre espace.' },
+              { art: 'share' as const, title: 'Préparez le jour J', text: 'Attribuez les tables et utilisez les cartes d’entrée avec QR code pour vérifier les arrivées le jour du mariage.' },
             ].map((step) => (
               <article key={step.title} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
                 <StoryArt name={step.art} alt="" className="w-full h-36 object-contain mb-3" />
@@ -109,33 +109,32 @@ export default function HomePage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-2">Les prix</h2>
+          <h2 className="text-lg font-bold mb-2">Un forfait adapté à votre liste d’invités</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            {formatUsd(PRICE_PER_GUEST_USD)} par invité. Les {TRIAL_INVITATIONS} invitations d’essai sont en plus : on ne les retire pas du forfait.
+            Commencez avec {TRIAL_INVITATIONS} invitations d’essai. Ajoutez ensuite des invitations à {formatUsd(PRICE_PER_GUEST_USD)} l’unité. Une invitation peut être destinée à une personne, un couple ou une famille.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {packs.map((count) => (
               <article key={count} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-                <p className="text-sm font-bold">{count} invités</p>
+                <p className="text-sm font-bold">{count} invitations</p>
                 <p className="text-2xl font-extrabold text-rose-500 my-1">{formatUsd(packTotalUsd(count))}</p>
-                <p className="text-xs text-gray-500">Et {TRIAL_INVITATIONS} invitations d’essai en plus</p>
+                <p className="text-xs text-gray-500">+ {TRIAL_INVITATIONS} invitations d’essai</p>
               </article>
             ))}
           </div>
           <p className="text-xs text-gray-500 mt-3">
-            Plus de 200 invités ? Le prix s’affiche avant de payer : {formatUsd(PRICE_PER_GUEST_USD)} fois le nombre choisi.
+            Besoin d’un autre nombre d’invitations ? Calculez votre forfait sur la page des tarifs, puis confirmez le paiement avec notre équipe sur WhatsApp.
           </p>
-          <Link href="/pricing" className="inline-block mt-3 text-sm font-semibold text-violet-700">Voir les prix</Link>
-          <Link href="/pricing" className="inline-flex ml-4 mt-3 px-4 py-2 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white rounded-xl text-sm font-bold">Passer une commande</Link>
+          <Link href="/pricing" className="inline-flex mt-3 px-4 py-2 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white rounded-xl text-sm font-bold">Choisir un forfait</Link>
         </section>
 
         <section id="contact" className="mb-10 scroll-mt-20 overflow-hidden rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-6 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 md:p-8">
           <div className="grid gap-8 md:grid-cols-2 md:items-center">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-rose-500 mb-2">Nous contacter</p>
-              <h2 className="text-2xl font-extrabold leading-tight mb-3">Nous vous accompagnons jusqu’au jour du mariage.</h2>
+              <h2 className="text-2xl font-extrabold leading-tight mb-3">Besoin d’aide pour utiliser Eventia ?</h2>
               <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
-                Une question, une idée, un doute ? Écrivez-nous. Une personne de l’équipe vous répond et vous guide à chaque étape, de la première invitation à l’arrivée de vos invités.
+                Contactez notre équipe sur WhatsApp pour une question sur votre invitation, la gestion des invités ou le choix d’un forfait.
               </p>
               <a
                 href={`${TEAM_WHATSAPP_URL}?text=${encodeURIComponent(CONTACT_MESSAGE)}`}

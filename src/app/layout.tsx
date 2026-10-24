@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: 'Eventia - Créez vos invitations en ligne',
     template: '%s | Eventia',
   },
-  description: 'Plateforme de création d\'invitations numériques pour événements. Mariages, anniversaires, baby showers et plus encore.',
+  description: 'Créez votre invitation de mariage avec Eventia, partagez les liens personnels et gérez les réponses, les tables et les cartes d’entrée de vos invités.',
   keywords: ['invitation', 'événement', 'mariage', 'anniversaire', 'RSVP', 'WhatsApp'],
   authors: [{ name: 'Eventia' }],
   applicationName: 'Eventia',

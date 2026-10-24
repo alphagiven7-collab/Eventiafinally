@@ -53,6 +53,15 @@ async function guestLimitForInvitationSlug(slug: string): Promise<number | null 
 }
 
 export default function FreeWhatsAppButton() {
+  const pathname = usePathname();
+
+  // L’accueil possède son propre bouton de contact avec une bulle d’aide.
+  if (pathname === '/') return null;
+
+  return <ContextualWhatsAppButton key={pathname} />;
+}
+
+function ContextualWhatsAppButton() {
   const { user, loading } = useAuth();
   const phone = useAdminWhatsApp();
   const pathname = usePathname();
@@ -74,7 +83,6 @@ export default function FreeWhatsAppButton() {
     }
 
     if (!user || !isSupabaseReady()) {
-      setVisible(true);
       return;
     }
 
@@ -105,7 +113,8 @@ export default function FreeWhatsAppButton() {
     };
   }, [user, loading, pathname]);
 
-  if (!visible) return null;
+  const showContact = !loading && (visible || (!/^\/e\/[^/]+/.test(pathname) && (!user || !isSupabaseReady())));
+  if (!showContact) return null;
 
   return (
     <button

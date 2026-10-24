@@ -40,7 +40,7 @@ export default function ExamplesPage() {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-rose-500">Galerie</p>
         <h1 className="text-3xl font-extrabold leading-tight">Les invitations créées avec Eventia</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-          Des mariages réels, partagés par leurs auteurs. Ouvrez une carte pour voir l’invitation, en lecture seule.
+          Découvrez les invitations que leurs auteurs ont choisi de partager dans cette galerie. Ouvrez une carte pour consulter son contenu.
         </p>
 
         {loading && (
@@ -72,7 +72,7 @@ export default function ExamplesPage() {
                   )}
                   <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
                     <Eye className="h-3 w-3" />
-                    Lecture seule
+                    Voir l’invitation
                   </span>
                 </div>
                 <div className="space-y-1.5 p-4">

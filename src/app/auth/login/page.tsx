@@ -29,8 +29,7 @@ function LoginForm() {
       setLoading(false);
       return;
     }
-    router.push(nextPath);
-    router.refresh();
+    router.replace(nextPath);
   };
 
   const handleGoogleLogin = async () => {
@@ -44,7 +43,7 @@ function LoginForm() {
   };
 
   return (
-    <AuthFrame title="Connexion" text="Entrez pour retrouver vos invitations." art="login">
+    <AuthFrame title="Connexion" text="Connectez-vous pour gérer vos invitations et les réponses de vos invités." art="login">
         <div>
           {/* Google Sign-In */}
           <button

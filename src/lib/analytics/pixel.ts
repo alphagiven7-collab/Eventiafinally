@@ -6,9 +6,12 @@ declare global {
   }
 }
 
+// L'identifiant d'un pixel est public (visible dans le code de toute page). La variable d'environnement le remplace si besoin.
+const DEFAULT_PIXEL_ID = '292383073559162';
+
 export const PIXEL_ID = /^\d{5,20}$/.test(process.env.NEXT_PUBLIC_FB_PIXEL_ID || '')
   ? (process.env.NEXT_PUBLIC_FB_PIXEL_ID as string)
-  : '';
+  : DEFAULT_PIXEL_ID;
 
 function send(kind: 'track' | 'trackCustom', name: string, params?: Record<string, unknown>) {
   if (!PIXEL_ID || typeof window === 'undefined' || typeof window.fbq !== 'function') return;

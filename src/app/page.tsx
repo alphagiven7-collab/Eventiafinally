@@ -80,10 +80,7 @@ export default function HomePage() {
               <Link href="/pricing" className="inline-flex justify-center px-5 py-3 bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white shadow-md hover:brightness-105 rounded-2xl text-sm font-bold">
                 Choisir un forfait
               </Link>
-              <Link href="/e/mariage-sv4x" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
-                Voir un exemple
-              </Link>
-              <Link href="/exemples" className="inline-flex justify-center px-5 py-3 border border-violet-200 dark:border-gray-700 rounded-2xl text-sm font-semibold">
+              <Link href="/exemples" className="inline-flex justify-center px-5 py-3 bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md hover:brightness-105 rounded-2xl text-sm font-bold">
                 Découvrir les invitations
               </Link>
             </div>

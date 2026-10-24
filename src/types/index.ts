@@ -174,7 +174,10 @@ export interface HeroTextSettings {
   color?: HeroTextColor;
 }
 
+export type CardTheme = 'classic' | 'botanical' | 'deco' | 'envelope';
+
 export interface CardTextSettings {
+  theme?: CardTheme;
   style?: HeroTextStyle;
   messageStyle?: HeroTextStyle;
   size?: HeroTextSize;

@@ -121,6 +121,16 @@ function flattenModernColors(root: HTMLElement) {
   }
 }
 
+// Une illustration SVG est rendue comme une image à part : currentColor y serait noir sans cette couleur explicite.
+function inlineSvgColors(root: HTMLElement) {
+  const view = root.ownerDocument.defaultView;
+  if (!view) return;
+  root.querySelectorAll<SVGElement>('svg').forEach((svg) => {
+    const color = view.getComputedStyle(svg).color;
+    if (color) svg.style.color = color;
+  });
+}
+
 function assertGuest(root: HTMLElement, guest?: InvitationPdfGuest | null) {
   const name = guest?.name?.trim();
   if (name) {
@@ -227,6 +237,7 @@ export async function generateInvitationPdf(
     await settleImages(mounted.root);
     inlineHero(mounted.root);
     flattenModernColors(mounted.root);
+    inlineSvgColors(mounted.root);
     assertGuest(mounted.root, guest);
     viewport.style.overflow = 'hidden';
     iframe.style.height = '800px';

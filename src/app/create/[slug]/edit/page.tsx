@@ -34,12 +34,13 @@ import {
   HeroTextColor,
   HeroTextPosition,
   HeroTextSize,
+  CardTheme,
   HeroTextStyle,
   InvitationModel,
   ProgramItem,
   PracticalInfoItem,
 } from '@/types';
-import { buttonFromPair, cardTextOf, COLOR_HARMONIES, familyMotifsVisible, INVITATION_CARDS, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { buttonFromPair, cardTextOf, CARD_THEMES, COLOR_HARMONIES, familyMotifsVisible, INVITATION_CARDS, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
 import { coverPhotoOf, coverPositionOf } from '@/lib/invitation/cover';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
@@ -121,6 +122,46 @@ const TEXT_STYLE_OPTIONS = [
   ['script', 'Manuscrit'],
   ['signature', 'Signature'],
 ] as const;
+
+function CardThemeSwatch({ theme, ink, light }: { theme: CardTheme; ink: string; light: string }) {
+  const frame = { height: 64 } as const;
+  if (theme === 'deco') {
+    return (
+      <div className="relative overflow-hidden rounded-xl" style={{ ...frame, background: '#12141c' }}>
+        <div className="absolute inset-1.5 rounded-sm border" style={{ borderColor: '#d9b86c' }} />
+        <div className="absolute inset-2.5 rounded-sm border" style={{ borderColor: 'rgba(217,184,108,.5)' }} />
+        <div className="absolute inset-x-0 top-3.5 text-center text-[13px] font-semibold" style={{ color: '#e8c97a', fontFamily: 'Georgia, serif' }}>A · E</div>
+        <div className="absolute inset-x-6 bottom-4 h-1 rounded" style={{ background: 'rgba(244,236,216,.55)' }} />
+      </div>
+    );
+  }
+  if (theme === 'envelope') {
+    return (
+      <div className="relative overflow-hidden rounded-xl" style={{ ...frame, background: '#efe4d0' }}>
+        <div className="absolute inset-x-0 top-0 h-9" style={{ background: '#f8f1e3', clipPath: 'polygon(0 0,100% 0,50% 100%)' }} />
+        <div className="absolute left-1/2 top-6 h-5 w-5 -translate-x-1/2 rounded-full" style={{ background: '#8a2f2f', boxShadow: '0 1px 3px rgba(0,0,0,.35)' }} />
+      </div>
+    );
+  }
+  if (theme === 'botanical') {
+    return (
+      <div className="relative overflow-hidden rounded-xl" style={{ ...frame, background: `radial-gradient(circle at 0 0, ${light}55, transparent 60%), #fffaf0` }}>
+        <svg viewBox="0 0 120 64" className="absolute inset-0 h-full w-full" fill="none" stroke={ink} strokeWidth="1" strokeLinecap="round">
+          <path d="M4 4C20 20 34 28 56 30" opacity=".7" />
+          <path d="M14 12c4-6 10-6 12-2-4 4-8 5-12 2zM26 20c4-6 10-6 12-2-4 4-8 5-12 2zM38 26c4-6 10-6 12-2-4 4-8 5-12 2z" fill={light} fillOpacity=".5" />
+          <path d="M116 60C100 44 86 36 64 34" opacity=".7" />
+          <path d="M106 52c-4 6-10 6-12 2 4-4 8-5 12-2zM94 44c-4 6-10 6-12 2 4-4 8-5 12-2z" fill={light} fillOpacity=".5" />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <div className="relative overflow-hidden rounded-xl border" style={{ ...frame, background: '#fffdfa', borderColor: `${ink}33` }}>
+      <div className="absolute inset-1.5 rounded-lg border" style={{ borderColor: `${ink}33` }} />
+      <div className="absolute inset-x-0 top-4 mx-auto h-px w-10" style={{ background: light }} />
+    </div>
+  );
+}
 
 function ChoiceRow<T extends string>({
   label,
@@ -673,6 +714,7 @@ function EditEventContent() {
   const [inviteSecondary, setInviteSecondary] = useState('');
   const [cardKicker, setCardKicker] = useState('On vous invite');
   const [cardGreeting, setCardGreeting] = useState('Bonjour');
+  const [cardTheme, setCardTheme] = useState<CardTheme>('classic');
   const [cardStyle, setCardStyle] = useState<HeroTextStyle>('classic');
   const [cardMessageStyle, setCardMessageStyle] = useState<HeroTextStyle>('classic');
   const [cardSize, setCardSize] = useState<HeroTextSize>('normal');
@@ -835,6 +877,7 @@ function EditEventContent() {
       setCardKicker(evt.cardKicker === undefined ? 'On vous invite' : evt.cardKicker);
       setCardGreeting(evt.cardGreeting === undefined ? 'Bonjour' : evt.cardGreeting);
       const card = cardTextOf(evt.cardText);
+      setCardTheme(card.theme);
       setCardStyle(card.style);
       setCardMessageStyle(card.messageStyle);
       setCardSize(card.size);
@@ -938,6 +981,7 @@ function EditEventContent() {
       cardKicker,
       cardGreeting,
       cardText: {
+        theme: cardTheme,
         style: cardStyle,
         messageStyle: cardMessageStyle,
         size: cardSize,
@@ -1044,6 +1088,7 @@ function EditEventContent() {
     inviteSecondary,
     cardKicker,
     cardGreeting,
+    cardTheme,
     cardStyle,
     cardMessageStyle,
     cardSize,
@@ -1750,6 +1795,37 @@ function EditEventContent() {
                 </div>
               </div>
 
+
+<div className="space-y-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Thème de la carte du message</p>
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    La présentation de la carte principale. Les couleurs de votre palette sont reprises automatiquement.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {CARD_THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setCardTheme(theme.id)}
+                      aria-pressed={cardTheme === theme.id}
+                      className={`rounded-2xl border p-2 text-left transition ${
+                        cardTheme === theme.id
+                          ? 'border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
+                    >
+                      <CardThemeSwatch theme={theme.id} ink={primaryColor} light={accentColor} />
+                      <span className="mt-2 block text-xs font-bold text-gray-900 dark:text-gray-100">{theme.label}</span>
+                      <span className="mt-0.5 block text-[10px] leading-snug text-gray-500 dark:text-gray-400">{theme.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                {invitationTemplate === 'fairepart' && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">Le modèle « Faire-part » garde sa carte d’origine. Choisissez un autre modèle pour voir ces thèmes.</p>
+                )}
+              </div>
 
 {advanced && (<>
               <ChoiceRow

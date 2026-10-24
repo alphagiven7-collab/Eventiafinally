@@ -11,7 +11,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { INVITATION_CARDS, cardTextOf, cssColor, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
+import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -134,6 +134,7 @@ export default function InvitationExperience({
           guestStatus: tokenForOffline && (guestStatus === 'confirmed' || guestStatus === 'declined') ? guestStatus : undefined,
         });
         const clone = root.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('.invite-sheet').forEach((sheet) => sheet.setAttribute('data-envelope', 'open'));
         clone.querySelectorAll('audio, source').forEach((node) => node.remove());
         const styleEl = shadow.querySelector('style');
         await storeOfflineView(saved.key, {
@@ -408,6 +409,14 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
       if (rightNameEl) rightNameEl.style.display = 'none';
     }
   }
+
+  applyCardTheme(root, template === 'fairepart' ? 'classic' : card.theme, {
+    left: leftName || rightName || '',
+    right: leftName && rightName ? rightName : '',
+    guest: guestName?.trim() || '',
+    slug: event.slug,
+    capture: root.classList.contains('pdf-capture'),
+  });
 
   const kickerEl = $('#card-kicker');
   const kickerText = event.cardKicker === undefined ? 'On vous invite' : event.cardKicker.trim();
@@ -853,6 +862,158 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   if (endMark && main) main.appendChild(endMark);
   const offlineBar = root.querySelector('#offline-invitation-bar');
   if (offlineBar && main) main.appendChild(offlineBar);
+}
+
+// Illustrations vectorielles générées par le code : la branche est calculée le long d'une courbe, feuille après feuille.
+function buildBranchSvg(): string {
+  const [x0, y0, cx, cy, x1, y1] = [6, 6, 14, 96, 140, 130];
+  const point = (t: number) => {
+    const u = 1 - t;
+    return {
+      x: u * u * x0 + 2 * u * t * cx + t * t * x1,
+      y: u * u * y0 + 2 * u * t * cy + t * t * y1,
+      angle: (Math.atan2(2 * u * (cy - y0) + 2 * t * (y1 - cy), 2 * u * (cx - x0) + 2 * t * (x1 - cx)) * 180) / Math.PI,
+    };
+  };
+  const leaf = 'M0 0C4-6 14-6 20 0 14 6 4 6 0 0Z';
+  const place = (t: number, turn: number, scale: number) => {
+    const p = point(t);
+    return `<path transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${(p.angle + turn).toFixed(1)}) scale(${scale.toFixed(2)})" d="${leaf}"/>`;
+  };
+  let leaves = '';
+  [0.13, 0.25, 0.37, 0.49, 0.61, 0.73, 0.85].forEach((t, index) => {
+    const scale = 0.95 - index * 0.06;
+    leaves += place(t, -56, scale) + place(t + 0.04, 56, scale * 0.92);
+  });
+  leaves += place(0.99, 0, 0.7);
+  const berry = (t: number, offset: number) => {
+    const p = point(t);
+    return `<circle cx="${(p.x + offset).toFixed(1)}" cy="${(p.y - offset).toFixed(1)}" r="2.3"/>`;
+  };
+  const berries = berry(0.31, 7) + berry(0.55, 8) + berry(0.79, 7);
+  return `<svg viewBox="0 0 150 140" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M${x0} ${y0}Q${cx} ${cy} ${x1} ${y1}" stroke-width="1.2"/><g fill="currentColor" fill-opacity=".2" stroke-width=".8">${leaves}</g><g fill="currentColor" stroke="none" opacity=".55">${berries}</g></svg>`;
+}
+
+const BRANCH_SVG = buildBranchSvg();
+
+const DECO_FAN_SVG = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M0 16A16 16 0 0 0 16 0M0 28A28 28 0 0 0 28 0M0 40A40 40 0 0 0 40 0"/><path d="M0 54A54 54 0 0 0 54 0" opacity=".6"/><path d="M0 0L36 36M0 0L50 18M0 0L18 50" opacity=".5"/><circle cx="5" cy="5" r="1.6" fill="currentColor" stroke="none"/></svg>';
+
+function monogramSvg(left: string, right: string): string {
+  const first = (left.trim()[0] || '').toUpperCase();
+  const second = (right.trim()[0] || '').toUpperCase();
+  const letters = first && second
+    ? `<text x="39" y="72" text-anchor="end" font-size="30">${first}</text><path d="M60 54l3.5 6-3.5 6-3.5-6z" fill="currentColor" stroke="none"/><text x="81" y="72" text-anchor="start" font-size="30">${second}</text>`
+    : `<text x="60" y="72" text-anchor="middle" font-size="32">${first || second}</text>`;
+  return `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="60" cy="60" r="47" stroke-width="1.2"/><circle cx="60" cy="60" r="42" stroke-width=".6" opacity=".6"/><g fill="currentColor" stroke="none" font-family="'Playfair Display', Georgia, serif" font-weight="600">${letters}</g></svg>`;
+}
+
+function sealSvg(left: string, right: string): string {
+  const points: string[] = [];
+  for (let step = 0; step < 90; step += 1) {
+    const theta = (step / 90) * Math.PI * 2;
+    const radius = 43 + 2.6 * Math.sin(theta * 7 + 0.6) + 1.6 * Math.sin(theta * 13 + 1.7);
+    points.push(`${(50 + radius * Math.cos(theta)).toFixed(1)},${(50 + radius * Math.sin(theta)).toFixed(1)}`);
+  }
+  const first = (left.trim()[0] || '').toUpperCase();
+  const second = (right.trim()[0] || '').toUpperCase();
+  const initials = first && second ? `${first}&amp;${second}` : first || second;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="${points.join(' ')}" fill="currentColor"/><polygon points="${points.join(' ')}" fill="#000" opacity=".12" transform="translate(1.5 2)"/><circle cx="50" cy="50" r="31" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="1.4"/><ellipse cx="38" cy="32" rx="16" ry="8" fill="#fff" opacity=".14" transform="rotate(-28 38 32)"/><text x="50" y="${initials.length > 2 ? 59 : 61}" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="700" font-size="${initials.length > 2 ? 22 : 28}" fill="#fff" fill-opacity=".92">${initials}</text></svg>`;
+}
+
+function applyCardTheme(
+  root: HTMLElement,
+  theme: string,
+  names: { left: string; right: string; guest: string; slug: string; capture: boolean },
+) {
+  const article = root.querySelector<HTMLElement>('.invitation-card');
+  const sheet = root.querySelector<HTMLElement>('.invite-sheet');
+  if (!article || !sheet) return;
+  article.querySelectorAll(':scope > .card-theme-deco, .card-monogram').forEach((node) => node.remove());
+  sheet.querySelectorAll(':scope > .card-envelope').forEach((node) => node.remove());
+  article.classList.remove('letter-rise');
+  sheet.removeAttribute('data-envelope');
+  article.setAttribute('data-theme', theme);
+  ['--deco-bg', '--deco-bg-2', '--deco-gold-1', '--deco-gold-2', '--deco-gold-soft', '--deco-ivory', '--seal-color', '--env-paper', '--env-paper-2', '--env-ink'].forEach((name) => article.style.removeProperty(name));
+  if (theme === 'classic') return;
+
+  const ink = root.dataset.baseInk || '#1e293b';
+  const accent = root.dataset.baseAccent || '#c4a574';
+  const deco = document.createElement('div');
+  deco.className = 'card-theme-deco';
+  deco.setAttribute('aria-hidden', 'true');
+
+  if (theme === 'botanical') {
+    deco.innerHTML = ['tl', 'tr', 'bl', 'br'].map((corner) => `<div class="bot-branch bot-branch--${corner}">${BRANCH_SVG}</div>`).join('');
+    article.prepend(deco);
+    return;
+  }
+
+  if (theme === 'deco') {
+    const gold = mixHex('#e6c878', accent, 0.9);
+    article.style.setProperty('--deco-bg', mixHex('#0b0d13', ink, 0.88));
+    article.style.setProperty('--deco-bg-2', mixHex('#171a24', ink, 0.84));
+    article.style.setProperty('--deco-gold-1', gold);
+    article.style.setProperty('--deco-gold-2', mixHex('#b08a3a', accent, 0.9));
+    article.style.setProperty('--deco-gold-soft', cssColorSoft(gold, '#d9b86c', 0.45));
+    article.style.setProperty('--deco-ivory', '#f4ecd8');
+    deco.innerHTML = ['tl', 'tr', 'bl', 'br'].map((corner) => `<div class="deco-fan deco-fan--${corner}">${DECO_FAN_SVG}</div>`).join('');
+    article.prepend(deco);
+    const inner = article.querySelector('.invitation-card-inner');
+    if (inner) {
+      const monogram = document.createElement('div');
+      monogram.className = 'card-monogram';
+      monogram.setAttribute('aria-hidden', 'true');
+      monogram.innerHTML = monogramSvg(names.left, names.right);
+      inner.prepend(monogram);
+    }
+    return;
+  }
+
+  // Enveloppe & sceau
+  const seal = mixHex('#4a1215', accent, 0.7);
+  article.style.setProperty('--seal-color', seal);
+  article.style.setProperty('--env-paper', mixHex('#f4eadb', accent, 0.97));
+  article.style.setProperty('--env-paper-2', mixHex('#e9dcc3', accent, 0.95));
+  article.style.setProperty('--env-ink', readableColor(ink, false, 7));
+  sheet.style.setProperty('--seal-color', seal);
+  sheet.style.setProperty('--env-paper', mixHex('#f4eadb', accent, 0.97));
+  sheet.style.setProperty('--env-paper-2', mixHex('#e9dcc3', accent, 0.95));
+  sheet.style.setProperty('--env-ink', readableColor(ink, false, 7));
+  deco.innerHTML = `<div class="mini-seal">${sealSvg(names.left, names.right)}</div>`;
+  article.prepend(deco);
+
+  const storageKey = `eventia-envelope:${names.slug}`;
+  let alreadyOpen = names.capture;
+  try { alreadyOpen = alreadyOpen || window.sessionStorage.getItem(storageKey) === '1'; } catch { /* stockage indisponible */ }
+  if (alreadyOpen) {
+    sheet.setAttribute('data-envelope', 'open');
+    return;
+  }
+  sheet.setAttribute('data-envelope', 'closed');
+  const coupleLabel = [names.left, names.right].filter(Boolean).join(' & ');
+  const overlay = document.createElement('div');
+  overlay.className = 'card-envelope';
+  overlay.innerHTML = `<div class="env-body"><div class="env-back"></div><div class="env-front"></div><div class="env-flap"></div><p class="env-to">${coupleLabel ? '<span class="env-names"></span>' : ''}${names.guest ? '<span class="env-for"></span>' : ''}</p><button type="button" class="env-seal" aria-label="Ouvrir l’invitation">${sealSvg(names.left, names.right)}</button></div><p class="env-hint">Touchez le sceau pour ouvrir</p>`;
+  const namesEl = overlay.querySelector('.env-names');
+  if (namesEl) namesEl.textContent = coupleLabel;
+  const forEl = overlay.querySelector('.env-for');
+  if (forEl) forEl.textContent = `Pour ${names.guest}`;
+  sheet.insertBefore(overlay, article);
+
+  let opening = false;
+  const open = () => {
+    if (opening) return;
+    opening = true;
+    overlay.classList.add('is-opening');
+    try { window.sessionStorage.setItem(storageKey, '1'); } catch { /* stockage indisponible */ }
+    const finish = () => {
+      sheet.setAttribute('data-envelope', 'open');
+      article.classList.add('letter-rise');
+    };
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) finish();
+    else window.setTimeout(finish, 950);
+  };
+  overlay.querySelector('.env-body')?.addEventListener('click', open);
 }
 
 function applyCardControls(root: HTMLElement, event: EventWithSettings) {
@@ -1932,7 +2093,7 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied .card-photo-bg::after {
       background: linear-gradient(180deg, rgba(15,23,42,0.82), rgba(15,23,42,0.7) 50%, rgba(15,23,42,0.86));
     }
-    .invitation-experience-root .has-card-photo > :not(.card-photo-bg):not(.invitation-card-floral):not(.invitation-card-corner) { position: relative; z-index: 1; }
+    .invitation-experience-root .has-card-photo > :not(.card-photo-bg):not(.invitation-card-floral):not(.invitation-card-corner):not(.card-theme-deco) { position: relative; z-index: 1; }
     .invitation-experience-root .invitation-card--floral .card-ornament { display: block; margin: 0 auto 0.9rem; width: 9rem; height: 1rem; color: var(--accent-color, #c4a574); opacity: 0.9; }
     .invitation-experience-root .invitation-card--floral::after {
       content: ""; position: absolute; inset: 14px; border: 1px dashed var(--ink-line, rgba(30,41,59,0.18));
@@ -3381,6 +3542,158 @@ function getOriginalCSS(): string {
     }
     @media (max-width: 360px) {
       .invitation-experience-root .invitation-card-inner { padding: 32px 23px; }
+    }
+
+    /* ── Thèmes de la carte du message ── */
+    .invitation-experience-root article.invitation-card:not([data-theme="classic"]) { position: relative; overflow: hidden; }
+    .invitation-experience-root article.invitation-card:not([data-theme="classic"]) .invitation-card-floral,
+    .invitation-experience-root article.invitation-card:not([data-theme="classic"]) .invitation-card-corner,
+    .invitation-experience-root article.invitation-card:not([data-theme="classic"]) .card-ornament { display: none !important; }
+    .invitation-experience-root article.invitation-card:not([data-theme="classic"]) .invitation-card-inner { position: relative; z-index: 2; }
+    .invitation-experience-root .card-theme-deco { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+    /* Jardin botanique */
+    .invitation-experience-root:not(.dark-mode-applied) article.invitation-card[data-theme="botanical"][data-theme="botanical"] {
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        radial-gradient(130% 90% at 0% 0%, var(--wash-light, rgba(196,165,116,.22)), transparent 62%),
+        radial-gradient(120% 80% at 100% 100%, var(--wash-ink, rgba(30,41,59,.12)), transparent 60%),
+        linear-gradient(165deg, #fffefb, #fbf5e9 60%, #fffdf8) !important;
+      border-color: var(--ink-line, #d8c9b0) !important;
+      border-radius: 30px 30px 10px 10px !important;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="botanical"][data-theme="botanical"]::before {
+      inset: 12px; border-radius: 22px 22px 5px 5px !important;
+    }
+    .invitation-experience-root .bot-branch { position: absolute; width: 31%; max-width: 124px; color: var(--primary-color, #1e293b); opacity: .62; }
+    .invitation-experience-root .bot-branch svg { display: block; width: 100%; height: auto; }
+    .invitation-experience-root .bot-branch--tl { top: -8px; left: -8px; }
+    .invitation-experience-root .bot-branch--br { bottom: -8px; right: -8px; transform: rotate(180deg); }
+    .invitation-experience-root .bot-branch--tr { top: -3px; right: -3px; transform: scaleX(-1); width: 18%; opacity: .4; }
+    .invitation-experience-root .bot-branch--bl { bottom: -3px; left: -3px; transform: scaleY(-1); width: 21%; opacity: .4; }
+    .invitation-experience-root.dark-mode-applied .bot-branch { color: var(--accent-color, #e7d7c1); opacity: .55; }
+    .invitation-experience-root article.invitation-card[data-theme="botanical"] .invitation-card-inner { padding-top: 44px; padding-bottom: 44px; }
+
+    /* Art déco doré */
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] {
+      background:
+        radial-gradient(120% 60% at 50% 0%, rgba(255,255,255,.08), transparent 60%),
+        linear-gradient(170deg, var(--deco-bg-2, #171a24), var(--deco-bg, #0b0d13)) !important;
+      border: 1px solid var(--deco-gold-1, #e2c070) !important;
+      border-radius: 4px !important;
+      box-shadow: 0 22px 46px rgba(0,0,0,.34), inset 0 0 0 1px rgba(0,0,0,.45) !important;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"]::before {
+      display: block !important; content: ""; position: absolute; inset: 8px; z-index: 1;
+      border: 1px solid var(--deco-gold-2, #a8812f) !important; border-radius: 2px !important; background: transparent !important;
+      pointer-events: none;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"]::after {
+      display: block !important; content: ""; position: absolute; inset: 14px; z-index: 1;
+      border: 1px solid var(--deco-gold-soft, rgba(226,192,112,.45)); pointer-events: none;
+    }
+    .invitation-experience-root .deco-fan { position: absolute; width: 54px; height: 54px; color: var(--deco-gold-1, #e2c070); }
+    .invitation-experience-root .deco-fan svg { display: block; width: 100%; height: 100%; }
+    .invitation-experience-root .deco-fan--tl { top: 6px; left: 6px; }
+    .invitation-experience-root .deco-fan--tr { top: 6px; right: 6px; transform: scaleX(-1); }
+    .invitation-experience-root .deco-fan--bl { bottom: 6px; left: 6px; transform: scaleY(-1); }
+    .invitation-experience-root .deco-fan--br { bottom: 6px; right: 6px; transform: scale(-1, -1); }
+    .invitation-experience-root .card-monogram { width: 74px; height: 74px; margin: 0 auto 10px; color: var(--deco-gold-1, #e2c070); }
+    .invitation-experience-root .card-monogram svg { display: block; width: 100%; height: 100%; }
+    .invitation-experience-root article.invitation-card[data-theme="deco"] .invitation-card-inner { padding: 40px 34px 44px; }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-card-overline,
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-couple-join,
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-guest-name,
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .guest-table-line { color: var(--deco-gold-1, #e2c070) !important; }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-greeting,
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-body-text,
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-body-text.invite-calligraphy { color: var(--deco-ivory, #f4ecd8) !important; }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invite-couple-name {
+      background: linear-gradient(180deg, var(--deco-gold-1, #e2c070), var(--deco-gold-2, #a8812f) 55%, var(--deco-gold-1, #e2c070));
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .invitation-card-inner::after { background: var(--deco-gold-1, #e2c070); opacity: .7; }
+    .invitation-experience-root article.invitation-card[data-theme="deco"][data-theme="deco"] .card-photo-bg::after {
+      background: linear-gradient(180deg, rgba(12,14,20,.84), rgba(12,14,20,.74) 50%, rgba(12,14,20,.88)) !important;
+    }
+    .invitation-experience-root.pdf-capture article.invitation-card[data-theme="deco"] .invite-couple-name {
+      background: none !important; -webkit-text-fill-color: currentColor; color: var(--deco-gold-1, #e2c070) !important;
+    }
+
+    /* Enveloppe & sceau */
+    .invitation-experience-root .invite-sheet[data-envelope="closed"] .invitation-card { display: none !important; }
+    .invitation-experience-root .invite-sheet[data-envelope="open"] .card-envelope { display: none; }
+    .invitation-experience-root .card-envelope { max-width: 360px; margin: 10px auto 0; text-align: center; }
+    .invitation-experience-root .card-envelope .env-body {
+      position: relative; height: 250px; perspective: 900px; cursor: pointer;
+      filter: drop-shadow(0 20px 22px rgba(48, 35, 22, .24));
+    }
+    .invitation-experience-root .card-envelope .env-back,
+    .invitation-experience-root .card-envelope .env-front { position: absolute; inset: 0; border-radius: 8px; }
+    .invitation-experience-root .card-envelope .env-back { background: linear-gradient(160deg, var(--env-paper-2, #e8dac0), var(--env-paper, #f3e9d6)); }
+    .invitation-experience-root .card-envelope .env-front {
+      background: linear-gradient(200deg, var(--env-paper, #f3e9d6), var(--env-paper-2, #e8dac0));
+      clip-path: polygon(0 0, 50% 57%, 100% 0, 100% 100%, 0 100%);
+    }
+    .invitation-experience-root .card-envelope .env-front::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(to bottom right, transparent 49.6%, rgba(90,66,36,.18) 50%, transparent 50.4%) 0 0/50% 100% no-repeat,
+        linear-gradient(to bottom left, transparent 49.6%, rgba(90,66,36,.18) 50%, transparent 50.4%) 100% 0/50% 100% no-repeat;
+    }
+    .invitation-experience-root .card-envelope .env-flap {
+      position: absolute; left: 0; right: 0; top: 0; height: 57%; z-index: 3;
+      background: linear-gradient(180deg, var(--env-paper, #f3e9d6), var(--env-paper-2, #e8dac0));
+      clip-path: polygon(0 0, 100% 0, 50% 100%);
+      transform-origin: top center; transition: transform .7s cubic-bezier(.4, .1, .2, 1), z-index 0s .35s;
+    }
+    .invitation-experience-root .card-envelope .env-to {
+      position: absolute; left: 14px; right: 14px; bottom: 16px; z-index: 2; margin: 0;
+      color: var(--env-ink, #3b2f26); line-height: 1.25;
+    }
+    .invitation-experience-root .card-envelope .env-names { display: block; font-family: "Great Vibes", "Playfair Display", cursive; font-size: 28px; }
+    .invitation-experience-root .card-envelope .env-for { display: block; margin-top: 2px; font-family: "Montserrat", sans-serif; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; opacity: .75; }
+    .invitation-experience-root .card-envelope .env-seal {
+      position: absolute; left: 50%; top: 57%; z-index: 4; width: 68px; height: 68px; padding: 0; border: 0; background: none;
+      transform: translate(-50%, -50%); color: var(--seal-color, #6b1f22); cursor: pointer;
+      filter: drop-shadow(0 4px 5px rgba(0,0,0,.38)); animation: envSealPulse 2.4s ease-in-out infinite;
+      transition: transform .45s ease, opacity .45s ease;
+    }
+    .invitation-experience-root .card-envelope .env-seal svg { display: block; width: 100%; height: 100%; }
+    .invitation-experience-root .card-envelope .env-hint {
+      margin: 14px 0 0; font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--primary-color, #1e293b); opacity: .8; font-family: "Montserrat", sans-serif;
+    }
+    .invitation-experience-root .card-envelope.is-opening .env-flap { transform: rotateX(180deg); z-index: 0; }
+    .invitation-experience-root .card-envelope.is-opening .env-seal { animation: none; transform: translate(-50%, -50%) scale(.55); opacity: 0; }
+    .invitation-experience-root .card-envelope.is-opening .env-hint { opacity: 0; transition: opacity .3s ease; }
+    @keyframes envSealPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.07); } }
+    @keyframes envLetterRise { from { opacity: 0; transform: translateY(34px) scale(.97); } to { opacity: 1; transform: none; } }
+    .invitation-experience-root article.invitation-card.letter-rise { animation: envLetterRise .85s cubic-bezier(.2, .7, .2, 1) both; }
+    .invitation-experience-root:not(.dark-mode-applied) article.invitation-card[data-theme="envelope"][data-theme="envelope"] {
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #fffef9, #fbf6ea) !important;
+      border: 1px solid var(--ink-line, #d8c9b0) !important; border-radius: 6px !important;
+      box-shadow: 0 22px 44px rgba(48, 35, 22, .18) !important; overflow: visible;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="envelope"][data-theme="envelope"]::before {
+      inset: 9px; border-radius: 3px !important;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="envelope"][data-theme="envelope"]::after {
+      display: block !important; content: ""; position: absolute; inset: 13px; border: 1px solid var(--ink-line, #d8c9b0);
+      opacity: .55; pointer-events: none; z-index: 0;
+    }
+    .invitation-experience-root article.invitation-card[data-theme="envelope"] .mini-seal {
+      position: absolute; top: -24px; left: 50%; width: 52px; height: 52px; transform: translateX(-50%);
+      color: var(--seal-color, #6b1f22); filter: drop-shadow(0 3px 4px rgba(0,0,0,.3));
+    }
+    .invitation-experience-root article.invitation-card[data-theme="envelope"] .mini-seal svg { display: block; width: 100%; height: 100%; }
+    .invitation-experience-root article.invitation-card[data-theme="envelope"] .invitation-card-inner { padding-top: 50px; }
+    @media (prefers-reduced-motion: reduce) {
+      .invitation-experience-root .card-envelope .env-seal { animation: none; }
+      .invitation-experience-root .card-envelope .env-flap { transition: none; }
+      .invitation-experience-root article.invitation-card.letter-rise { animation: none; }
     }
 
   `;

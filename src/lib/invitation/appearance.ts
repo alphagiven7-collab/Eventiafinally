@@ -2,6 +2,7 @@ import {
   CardTextAlign,
   CardTextSettings,
   CardTextWeight,
+  CardTheme,
   HeroTextColor,
   HeroTextPosition,
   HeroTextSettings,
@@ -71,10 +72,22 @@ export function cardTextWeightOf(value?: string): CardTextWeight {
   return value === 'fine' || value === 'strong' ? value : 'clear';
 }
 
+export const CARD_THEMES: readonly { id: CardTheme; label: string; hint: string }[] = [
+  { id: 'classic', label: 'Classique', hint: 'Cadre fin et ornement discret.' },
+  { id: 'botanical', label: 'Jardin botanique', hint: 'Branches dessinées, lavis aquarelle, papier texturé.' },
+  { id: 'deco', label: 'Art déco doré', hint: 'Cadre à double filet, éventails d’or, monogramme.' },
+  { id: 'envelope', label: 'Enveloppe & sceau', hint: 'La carte s’ouvre depuis une enveloppe scellée.' },
+] as const;
+
+export function cardThemeOf(value?: string): CardTheme {
+  return CARD_THEMES.some((theme) => theme.id === value) ? (value as CardTheme) : 'classic';
+}
+
 export function cardTextOf(value?: CardTextSettings): Required<CardTextSettings> {
   const style = textStyleOf(value?.style);
   const align: CardTextAlign = value?.align === 'left' ? 'left' : 'center';
   return {
+    theme: cardThemeOf(value?.theme),
     style,
     messageStyle: value?.messageStyle ? textStyleOf(value.messageStyle) : style,
     size: textSizeOf(value?.size),

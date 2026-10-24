@@ -2,7 +2,8 @@ const SHELL_CACHE = 'eventia-v2-shell';
 const SHELL_URL = '/invitation-offline.html';
 
 async function putShell(cache) {
-  const response = await fetch(SHELL_URL, { cache: 'reload' });
+  // Réviser l’URL actualise le lecteur hors ligne sans effacer le lien mémorisé.
+  const response = await fetch(`${SHELL_URL}?v=rsvp-navigation-1`, { cache: 'reload' });
   if (!response.ok) throw new Error('shell');
   const body = await response.arrayBuffer();
   await cache.put(SHELL_URL, new Response(body, {

@@ -618,7 +618,7 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Oui, je viens';
   const qrDisplayMode = event.qrDisplayMode || 'after-confirmation';
-  setText('#reserve-deadline-text', btnText);
+  setText('#reserve-deadline-text', 'Répondre à l’invitation');
   setText('#confirm-presence-label', btnText);
   if (event.declineText?.trim()) setText('#decline-presence-btn', event.declineText.trim());
   if (event.rsvpPrompt?.trim()) setText('#rsvp-prompt', event.rsvpPrompt.trim());
@@ -1155,10 +1155,6 @@ function initRsvp(
         const lbl = confirmBtn.querySelector('#confirm-presence-label');
         if (lbl) lbl.textContent = confirmedLabel;
       }
-      if (reserveBtn) {
-        const topLbl = reserveBtn.querySelector('#reserve-deadline-text');
-        if (topLbl) topLbl.textContent = confirmedLabel;
-      }
       const shouldReveal = qrDisplayMode === 'immediate' || revealPass;
       if (shouldReveal && token) void showCheckinQr();
       else hideCheckinQr();
@@ -1185,9 +1181,7 @@ function initRsvp(
   }
 
   const paintAnswer = (text: string) => {
-    const top = reserveBtn?.querySelector('#reserve-deadline-text');
     const bottom = confirmBtn?.querySelector('#confirm-presence-label');
-    if (top) top.textContent = text;
     if (bottom) bottom.textContent = text;
   };
 
@@ -1269,10 +1263,9 @@ function initRsvp(
   };
 
   const onReserveTopClick = () => {
-    if (rsvpSection) {
-      rsvpSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    void respond('confirmed', reserveBtn);
+    const target = confirmBtn || rsvpSection;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    confirmBtn?.focus({ preventScroll: true });
   };
   const onConfirm = () => {
     void respond('confirmed', confirmBtn);
@@ -1282,7 +1275,7 @@ function initRsvp(
   };
 
   if (responsesClosed) {
-    [confirmBtn, reserveBtn, declineBtn].forEach((button) => {
+    [confirmBtn, declineBtn].forEach((button) => {
       if (!button) return;
       button.disabled = true;
       button.style.opacity = '0.55';
@@ -3401,8 +3394,8 @@ function getOriginalHTML(): string {
             <p id="program-section-title" style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.16em;margin-bottom:8px;text-align:center;">Au programme</p>
             <div id="program-timeline" style="display:flex;flex-direction:column;gap:2px;text-align:left;margin-bottom:10px;"></div>
           </div>
-          <button id="reserve-deadline-btn" type="button" class="btn-rsvp" style="width:100%;border-radius:12px;padding:12px 14px;min-height:2.75rem;">
-            <span id="reserve-deadline-text" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.16em;">Oui, je viens</span>
+          <button id="reserve-deadline-btn" type="button" aria-controls="section-rsvp" class="btn-rsvp" style="width:100%;border-radius:12px;padding:12px 14px;min-height:2.75rem;">
+            <span id="reserve-deadline-text" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.16em;">Répondre à l’invitation</span>
           </button>
         </div>
       </section>

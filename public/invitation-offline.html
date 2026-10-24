@@ -69,6 +69,16 @@
         holder.innerHTML = record.viewHtml;
         shadow.append(style);
         while (holder.firstChild) shadow.append(holder.firstChild);
+        // Les anciennes copies peuvent avoir enregistré ce bouton comme une réponse.
+        var shortcut = shadow.querySelector('#reserve-deadline-btn');
+        if (shortcut) {
+          shortcut.disabled = false;
+          shortcut.style.opacity = '';
+          shortcut.style.cursor = '';
+          shortcut.setAttribute('aria-controls', 'section-rsvp');
+          var shortcutLabel = shortcut.querySelector('#reserve-deadline-text');
+          if (shortcutLabel) shortcutLabel.textContent = 'Répondre à l’invitation';
+        }
         setStatus('Invitation disponible hors ligne.');
       }
 
@@ -105,6 +115,14 @@
         }
         if (!button) return;
         event.preventDefault();
+        if (button.id === 'reserve-deadline-btn') {
+          var target = host.shadowRoot.querySelector('#confirm-presence-btn') || host.shadowRoot.querySelector('#section-rsvp');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.focus({ preventScroll: true });
+          }
+          return;
+        }
         rememberPending(button, slugFromLocation(), new URLSearchParams(location.search).get('token') || '');
       });
 

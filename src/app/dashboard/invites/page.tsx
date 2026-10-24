@@ -1,5 +1,6 @@
 'use client';
 
+import { trackPixelCustom } from '@/lib/analytics/pixel';
 import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
@@ -257,6 +258,7 @@ function GuestManagementContent() {
       return;
     }
     setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, is_published: true } : event));
+    trackPixelCustom('InvitationPublished');
     addToast('success', 'Invitation publiée. Ajoutez votre invité pour lui envoyer son lien.');
     setActiveTab('guests');
     setOpenTool('add');

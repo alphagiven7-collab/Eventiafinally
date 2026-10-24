@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { newDraftSlug, writeCreationDraft } from '@/lib/drafts/local-draft';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
+import { trackPixel } from '@/lib/analytics/pixel';
 import { useToast } from '@/components/ui';
 import { EventWithSettings } from '@/types';
 import { isSupabaseReady } from '@/config/supabase';
@@ -111,6 +112,7 @@ function CreateEventContent() {
       };
       await writeCreationDraft({ slug: localSlug, event: draftEvent, savedAt: new Date().toISOString() });
       addToast('success', 'Aperçu prêt. Le compte sera demandé seulement pour enregistrer ou publier.');
+      trackPixel('Lead', { content_name: 'invitation_creee' });
       router.push(`/create/${localSlug}/edit`);
       return;
     }
@@ -187,6 +189,7 @@ function CreateEventContent() {
       return;
     }
 
+    trackPixel('Lead', { content_name: 'invitation_creee' });
     addToast('success', 'Brouillon créé. Personnalisez la carte, puis publiez quand elle est prête.');
     router.push(`/create/${slug}/edit`);
   };

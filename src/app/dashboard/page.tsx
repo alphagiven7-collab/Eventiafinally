@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui';
+import { trackPixel, trackPixelCustom, trackPixelOnce } from '@/lib/analytics/pixel';
 import { ShareInvitationDialog } from '@/components/share/ShareInvitationDialog';
 import { useAuth } from '@/providers/auth-provider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -210,6 +211,17 @@ export default function DashboardPage() {
     }
     addToast('success', next ? 'Invitation ajoutée à la galerie.' : 'Invitation retirée de la galerie.');
   };
+  // Un mariage dont les places ont été débloquées compte comme un achat, une seule fois par navigateur.
+  useEffect(() => {
+    events.forEach((event) => {
+      const extra = (event.guestLimit ?? TRIAL_INVITATIONS) - TRIAL_INVITATIONS;
+      if (extra <= 0) return;
+      trackPixelOnce(`unlocked:${event.id}:${event.guestLimit}`, () => {
+        trackPixel('Purchase', { value: Math.round(extra * PRICE_PER_GUEST_USD * 100) / 100, currency: 'USD', content_name: 'places_debloquees' });
+        trackPixelCustom('PlacesUnlocked', { places: extra });
+      });
+    });
+  }, [events]);
   const [publishingId, setPublishingId] = useState('');
   const publishFromList = async (event: EventWithSettings) => {
     if (!user?.id || !isSupabaseReady()) return;
@@ -226,6 +238,7 @@ export default function DashboardPage() {
       const result = await publishInvitation(client, { ...full, user_id: user.id, is_published: true });
       if (result.error) { addToast('error', result.error); return; }
       setEvents((current) => current.map((item) => item.id === event.id ? { ...item, is_published: true } : item));
+      trackPixelCustom('InvitationPublished');
       addToast('success', 'Invitation publiée.');
       setShareTarget({ ...event, is_published: true });
     } catch {

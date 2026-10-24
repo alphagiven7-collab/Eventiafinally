@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui';
 import { useAuth, SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import PhotoUploader from '@/components/ui/photo-uploader';
+import { trackPixelCustom } from '@/lib/analytics/pixel';
 import { ShareInvitationDialog } from '@/components/share/ShareInvitationDialog';
 import InvitationExperience from '@/components/invitation/InvitationExperience';
 import { compressImageFile, formatDataUrlSize, shareJpegDataUrl, shrinkDataUrl } from '@/lib/utils/image-compression';
@@ -1283,6 +1284,7 @@ function EditEventContent() {
 
       setEvent(prepared);
       if (mode === 'publish') {
+        trackPixelCustom('InvitationPublished');
         addToast('success', 'Invitation publiée.');
         setShareOpen(true);
         return true;

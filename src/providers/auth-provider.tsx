@@ -1,5 +1,6 @@
 'use client';
 
+import { trackPixel } from '@/lib/analytics/pixel';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
@@ -98,6 +99,7 @@ export function useAuthActions() {
       const signedIn = await supabase.auth.signInWithPassword({ email, password });
       if (signedIn.error) return { error: translateAuthError(signedIn.error.message), needsConfirmation: false };
     }
+    trackPixel('CompleteRegistration');
     return { error: null, needsConfirmation: false };
   };
 

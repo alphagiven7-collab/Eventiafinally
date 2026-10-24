@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Card, Dropdown, Input, Modal, Segmented, Select, Switch, Table, Tag, Typography, message } from 'antd';
+import { App, Button, Card, Dropdown, Input, Segmented, Select, Switch, Table, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   AppstoreOutlined,
@@ -19,7 +19,7 @@ import {
 } from '@ant-design/icons';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
-import { publishInvitation, setGalleryVisibility } from '@/lib/events/store';
+import { fetchGalleryFlagsForEvents, publishInvitation, setGalleryVisibility } from '@/lib/events/store';
 import { useAuth } from '@/providers/auth-provider';
 import { emptyGuestTotals, loadGuestTotalsByEvent, type GuestTotals } from '@/lib/admin/session';
 import type { EventWithSettings } from '@/types';
@@ -62,6 +62,7 @@ function statusOf(event: EventRow): Filter {
 }
 
 function EventsView() {
+  const { message, modal } = App.useApp();
   const router = useRouter();
   const params = useSearchParams();
   const { user } = useAuth();
@@ -84,17 +85,17 @@ function EventsView() {
   const load = async () => {
     if (!isSupabaseReady()) return;
     const supabase = createClient();
-    const withGallery = 'id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, show_in_gallery, created_at';
-    const withoutGallery = 'id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, created_at';
-    let eventResult: { data: unknown[] | null; error: unknown } = await supabase.from('events').select(withGallery).order('created_at', { ascending: false });
-    if (eventResult.error) {
-      eventResult = await supabase.from('events').select(withoutGallery).order('created_at', { ascending: false });
-    }
+    const eventResult = await supabase
+      .from('events')
+      .select('id, user_id, slug, title, event_date, location, is_published, is_blocked, guest_limit, created_at')
+      .order('created_at', { ascending: false });
     const [accountResult, guestTotals] = await Promise.all([
       supabase.from('users').select('id, email, full_name').order('created_at', { ascending: false }),
       loadGuestTotalsByEvent(),
     ]);
-    setEvents((eventResult.data || []) as EventRow[]);
+    const rows = (eventResult.data || []) as EventRow[];
+    const flags = await fetchGalleryFlagsForEvents(supabase, rows.map((row) => row.id));
+    setEvents(rows.map((row) => ({ ...row, show_in_gallery: flags[row.id] === true })));
     setAccounts((accountResult.data || []) as Account[]);
     setTotals(guestTotals);
     setLoading(false);
@@ -147,7 +148,8 @@ function EventsView() {
     const { error } = await action();
     setBusy(false);
     if (error) {
-      message.error('Action refusée. Vérifiez vos droits d’administrateur.');
+      const reason = error.message && error.message !== 'empty' ? ` (${error.message})` : '';
+      message.error(`Action refusée. Vérifiez vos droits d’administrateur.${reason}`);
       return;
     }
     message.success(success);
@@ -217,18 +219,24 @@ function EventsView() {
   };
 
   const removeEvent = (event: EventRow) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Supprimer ce mariage ?',
       content: `${event.title || 'Invitation'}, ses invités et ses réponses seront retirés.`,
       okText: 'Supprimer',
       cancelText: 'Annuler',
       okButtonProps: { danger: true },
       onOk: () => run(async () => {
-        const rpc = await createClient().rpc('admin_delete_event', { p_event_id: event.id });
+        const client = createClient();
+        const rpc = await client.rpc('admin_delete_event', { p_event_id: event.id });
         if (!rpc.error) return { error: null };
-        if (!/function|schema cache|admin_delete_event/i.test(rpc.error.message)) return { error: rpc.error };
-        const direct = await createClient().from('events').delete().eq('id', event.id).select('id');
-        if (direct.error || !direct.data?.length) return { error: direct.error || { message: 'empty' } };
+        // Sans la fonction d'administration, on retire les données liées une par une, puis le mariage.
+        for (const table of ['rsvps', 'guests', 'event_settings'] as const) {
+          const cleared = await client.from(table).delete().eq('event_id', event.id);
+          if (cleared.error) return { error: cleared.error };
+        }
+        const direct = await client.from('events').delete().eq('id', event.id).select('id');
+        if (direct.error) return { error: direct.error };
+        if (!direct.data?.length) return { error: { message: rpc.error.message } };
         return { error: null };
       }, 'Mariage supprimé.'),
     });

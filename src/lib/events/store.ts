@@ -502,28 +502,43 @@ export type GalleryItem = {
   cover_image: string | null;
 };
 
+// Le choix de la galerie est rangé dans les réglages déjà enregistrés de l'invitation : aucune colonne à ajouter.
 export async function listGalleryInvitations(supabase: DbClient): Promise<GalleryItem[]> {
   const { data, error } = await supabase
-    .from('events')
-    .select('id, slug, title, subtitle, event_date, location, cover_image')
-    .eq('is_published', true)
-    .eq('show_in_gallery', true)
-    .order('updated_at', { ascending: false })
+    .from('event_settings')
+    .select('event_id, events!inner(id, slug, title, subtitle, event_date, location, cover_image, is_published, updated_at)')
+    .eq('payload->>showInGallery', 'true')
+    .eq('events.is_published', true)
     .limit(60);
   if (error || !data) return [];
-  return data as GalleryItem[];
+  type Row = { events: (GalleryItem & { updated_at?: string }) | (GalleryItem & { updated_at?: string })[] | null };
+  return (data as unknown as Row[])
+    .map((row) => (Array.isArray(row.events) ? row.events[0] : row.events))
+    .filter((item): item is GalleryItem & { updated_at?: string } => Boolean(item?.slug))
+    .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+    .map(({ id, slug, title, subtitle, event_date, location, cover_image }) => ({ id, slug, title, subtitle, event_date, location, cover_image }));
+}
+
+export async function fetchGalleryFlagsForEvents(
+  supabase: DbClient,
+  eventIds: string[],
+): Promise<Record<string, boolean>> {
+  if (eventIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from('event_settings')
+    .select('event_id, flag:payload->>showInGallery')
+    .in('event_id', eventIds);
+  if (error || !data) return {};
+  return Object.fromEntries((data as unknown as { event_id: string; flag: string | null }[]).map((row) => [row.event_id, row.flag === 'true']));
 }
 
 export async function fetchGalleryFlags(
   supabase: DbClient,
   userId: string,
 ): Promise<Record<string, boolean>> {
-  const { data, error } = await supabase
-    .from('events')
-    .select('id, show_in_gallery')
-    .eq('user_id', userId);
+  const { data, error } = await supabase.from('events').select('id').eq('user_id', userId);
   if (error || !data) return {};
-  return Object.fromEntries((data as { id: string; show_in_gallery: boolean | null }[]).map((row) => [row.id, Boolean(row.show_in_gallery)]));
+  return fetchGalleryFlagsForEvents(supabase, (data as { id: string }[]).map((row) => row.id));
 }
 
 export async function setGalleryVisibility(
@@ -531,10 +546,15 @@ export async function setGalleryVisibility(
   eventId: string,
   visible: boolean,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('events').update({ show_in_gallery: visible }).eq('id', eventId);
-  if (!error) return { error: null };
-  if (/show_in_gallery|column|schema cache/i.test(error.message)) {
-    return { error: 'La galerie n’est pas encore disponible.' };
-  }
-  return { error: error.message };
+  const { data, error } = await supabase.from('event_settings').select('payload').eq('event_id', eventId).maybeSingle();
+  if (error) return { error: 'Le choix n’a pas pu être enregistré. Réessayez.' };
+  if (!data) return { error: 'Enregistrez d’abord l’invitation depuis la personnalisation.' };
+  const payload = { ...((data as { payload?: Record<string, unknown> | null }).payload ?? {}), showInGallery: visible };
+  const { data: updated, error: updateError } = await supabase
+    .from('event_settings')
+    .update({ payload })
+    .eq('event_id', eventId)
+    .select('event_id');
+  if (updateError || !updated?.length) return { error: 'Le choix n’a pas pu être enregistré. Réessayez.' };
+  return { error: null };
 }

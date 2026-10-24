@@ -1,7 +1,7 @@
 'use client';
 
 import { useShow } from '@refinedev/core';
-import { Button, Card, Input, InputNumber, Space, Typography, message } from 'antd';
+import { App, Button, Card, Input, InputNumber, Space, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -20,6 +20,7 @@ type EventRecord = {
 };
 
 export default function UnlockEventPage() {
+  const { message } = App.useApp();
   const { result, query } = useShow<EventRecord>({ resource: 'events' });
   const [count, setCount] = useState<number>(50);
   const [note, setNote] = useState('');

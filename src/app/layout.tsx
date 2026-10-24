@@ -7,6 +7,8 @@ import { I18nProvider } from '@/providers/i18n-provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { PWAActivator } from '@/providers/pwa-activator';
 import FreeWhatsAppButton from '@/components/account/FreeWhatsAppButton';
+import MetaPixel from '@/components/analytics/MetaPixel';
+import { PIXEL_ID, pixelBootstrap } from '@/lib/analytics/pixel';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://eventiafinally.vercel.app'),
@@ -72,6 +74,7 @@ export default function RootLayout({
           }}
         />
         <link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" />
+        {PIXEL_ID && <script dangerouslySetInnerHTML={{ __html: pixelBootstrap(PIXEL_ID) }} />}
       </head>
       <body className="h-full antialiased flex flex-col bg-gray-50 dark:bg-gray-900">
         <I18nProvider>
@@ -79,6 +82,7 @@ export default function RootLayout({
             <SupabaseProvider>
               <ThemeProvider>
                 <PWAActivator />
+                <MetaPixel />
                 <FreeWhatsAppButton />
                 {children}
               </ThemeProvider>

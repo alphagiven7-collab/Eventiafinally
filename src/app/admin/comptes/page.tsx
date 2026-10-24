@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar, Card, Input, Segmented, Select, Table, Tag, Typography, message } from 'antd';
+import { App, Avatar, Card, Input, Segmented, Select, Table, Tag, Typography } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseReady } from '@/config/supabase';
@@ -18,6 +18,7 @@ type Account = {
 type RoleFilter = 'tous' | 'organizer' | 'super_admin';
 
 export default function AccountsPage() {
+  const { message } = App.useApp();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(isSupabaseReady());

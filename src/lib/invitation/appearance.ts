@@ -142,6 +142,36 @@ export function cssColorSoft(value: string | undefined, fallback: string, alpha 
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function luminanceOf(hex: string): number {
+  const channel = (start: number) => {
+    const value = Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+export function contrastRatio(first: string, second: string): number {
+  const a = luminanceOf(first);
+  const b = luminanceOf(second);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/** Rapproche une couleur du noir (fond clair) ou du blanc (fond sombre) jusqu'à ce qu'elle se lise. */
+export function readableColor(color: string, dark: boolean, minRatio = 4.5): string {
+  const base = cssColor(color, '#1e293b');
+  const surface = dark ? '#111827' : '#faf6ee';
+  if (contrastRatio(base, surface) >= minRatio) return base;
+  const target = dark ? 255 : 0;
+  const channels = [1, 3, 5].map((start) => Number.parseInt(base.slice(start, start + 2), 16));
+  for (let step = 1; step <= 20; step += 1) {
+    const share = step / 20;
+    const mixed = channels.map((value) => Math.round(value + (target - value) * share));
+    const hex = `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+    if (contrastRatio(hex, surface) >= minRatio) return hex;
+  }
+  return dark ? '#ffffff' : '#000000';
+}
+
 export const INVITATION_CARDS: { id: string; label: string; selector: string }[] = [
   { id: 'message', label: "Carte d'invitation (message)", selector: '.invite-sheet' },
   { id: 'day', label: 'Le jour et le lieu', selector: '#section-when-where' },

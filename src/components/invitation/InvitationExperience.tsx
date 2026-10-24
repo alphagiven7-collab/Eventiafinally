@@ -11,7 +11,7 @@ import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
-import { INVITATION_CARDS, cardTextOf, cssColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
+import { INVITATION_CARDS, cardTextOf, cssColor, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -327,10 +327,10 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
   const hero = heroTextOf(event.heroText);
   const card = cardTextOf(event.cardText);
   const light = heroLightOf(event.heroBrightness);
-  root.style.setProperty('--primary-color', primaryColor);
-  root.style.setProperty('--accent-color', accentColor);
+  root.dataset.baseInk = primaryColor;
+  root.dataset.baseAccent = accentColor;
+  applyReadableColors(root, false);
   root.style.setProperty('--rsvp-color', rsvpColor);
-  root.style.setProperty('--icon-color', accentColor);
   root.style.setProperty('--dress-color', dressColor);
   root.dataset.template = template;
   root.dataset.motifs = motifsOn ? 'on' : 'off';
@@ -1347,6 +1347,17 @@ function applyDocumentTheme(isDark: boolean) {
   document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
 }
 
+// Les couleurs choisies par les mariés restent, mais leur version « texte » est ajustée pour se lire en mode clair comme sombre.
+function applyReadableColors(root: HTMLElement, dark: boolean) {
+  const ink = root.dataset.baseInk;
+  const accent = root.dataset.baseAccent;
+  if (!ink || !accent) return;
+  const readableAccent = readableColor(accent, dark, 3);
+  root.style.setProperty('--primary-color', readableColor(ink, dark, 4.5));
+  root.style.setProperty('--accent-color', readableAccent);
+  root.style.setProperty('--icon-color', readableAccent);
+}
+
 function initThemeToggle(root: HTMLElement) {
   const toggle = root.querySelector('#theme-toggle-input') as HTMLInputElement | null;
   const thumb = root.querySelector('.theme-thumb') as HTMLElement | null;
@@ -1358,6 +1369,7 @@ function initThemeToggle(root: HTMLElement) {
   const paintInvitation = (isDark: boolean) => {
     toggle.checked = isDark;
     root.classList.toggle('dark-mode-applied', isDark);
+    applyReadableColors(root, isDark);
     if (thumb) {
       thumb.style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
       thumb.style.background = '#2563eb';
@@ -2026,6 +2038,7 @@ function getOriginalCSS(): string {
       box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.35);
     }
     .invitation-experience-root .btn-rsvp:active { transform: scale(0.99); }
+    .invitation-experience-root.dark-mode-applied .btn-rsvp { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28); }
     .invitation-experience-root .gallery-kicker {
       margin: 0 0 4px;
       font-size: 10px;
@@ -3320,11 +3333,11 @@ function getOriginalCSS(): string {
       color: var(--primary-color, #7b6244); opacity: .65;
     }
     .invitation-experience-root .invitation-card .invite-card-overline {
-      margin: 0 0 20px; letter-spacing: .2em; line-height: 1.6;
+      margin: 0 0 14px; letter-spacing: .2em; line-height: 1.6;
       color: #776856 !important; font-size: 10px;
     }
     .invitation-experience-root .invitation-card .invite-couple-row {
-      flex-direction: column; flex-wrap: wrap; gap: 4px; margin: 0 0 24px;
+      flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 10px; margin: 0 0 16px;
     }
     .invitation-experience-root .invitation-card .invite-couple-name {
       max-width: 100%; min-width: 0; overflow-wrap: anywhere; line-height: 1.2;

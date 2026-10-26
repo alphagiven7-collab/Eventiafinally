@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['sharp', 'puppeteer-core', '@sparticuz/chromium'],
+  outputFileTracingIncludes: {
+    '/api/invitations/[slug]/pdf': [
+      './node_modules/@sparticuz/chromium/bin/**/*',
+      './node_modules/@sparticuz/chromium/build/**/*',
+    ],
+  },
   compress: true,
   poweredByHeader: false,
   images: {

@@ -4,6 +4,7 @@ import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/
 
 export type InvitationPdfGuest = {
   id?: string;
+  token?: string;
   name?: string;
   table?: string;
 };
@@ -41,13 +42,17 @@ export function downloadBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-export async function downloadInvitationWebPdf(slug: string) {
+export async function fetchInvitationWebPdf(
+  slug: string,
+  guest?: InvitationPdfGuest | null,
+): Promise<{ blob: Blob; filename: string }> {
   const url = new URL(`/api/invitations/${encodeURIComponent(slug)}/pdf`, window.location.origin);
   const current = new URL(window.location.href);
   for (const key of ['token', 'guest']) {
     const value = current.searchParams.get(key);
     if (value) url.searchParams.set(key, value);
   }
+  if (guest?.token) url.searchParams.set('token', guest.token);
   let dark = document.documentElement.classList.contains('dark');
   try {
     dark = dark || localStorage.getItem('invitia_theme') === 'dark' || localStorage.getItem('theme') === 'dark';
@@ -57,10 +62,18 @@ export async function downloadInvitationWebPdf(slug: string) {
   url.searchParams.set('theme', dark ? 'dark' : 'light');
 
   const response = await fetch(url);
-  if (!response.ok) throw new Error('Le PDF n’a pas pu être généré.');
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(payload?.error || 'Le PDF n’a pas pu être généré.');
+  }
   const disposition = response.headers.get('content-disposition') || '';
   const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `${slug}.pdf`;
-  downloadBlob(await response.blob(), filename);
+  return { blob: await response.blob(), filename };
+}
+
+export async function downloadInvitationWebPdf(slug: string) {
+  const result = await fetchInvitationWebPdf(slug);
+  downloadBlob(result.blob, result.filename);
 }
 
 function canvasHeightLimit() {
@@ -333,11 +346,15 @@ export async function generateInvitationsZip(
     const guest = guests[index];
     const label = guest.name?.trim() || `Invité ${index + 1}`;
     try {
-      const result = await generateInvitationPdf(event, {
+      const guestInput = {
         id: guest.id,
+        token: guest.token,
         name: guest.name?.trim() || '',
         table: guest.table,
-      });
+      };
+      const result = event.is_published && event.slug
+        ? await fetchInvitationWebPdf(event.slug, guestInput)
+        : await generateInvitationPdf(event, guestInput);
       const filename = invitationPdfFilename(event.title || 'Evenement', guest.name, used);
       zip.file(filename, result.blob);
       made += 1;

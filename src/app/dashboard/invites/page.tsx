@@ -466,6 +466,7 @@ function GuestManagementContent() {
         selected,
         loaded.guests.map((guest) => ({
           id: guest.id,
+          token: guest.token,
           name: guest.name,
           table: guest.table_number,
         })),

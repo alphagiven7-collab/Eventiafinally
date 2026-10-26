@@ -74,11 +74,23 @@ export async function GET(
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
       const main = root?.querySelector<HTMLElement>('#main-view');
-      const images = root ? Array.from(root.querySelectorAll('img')) : [];
-      return Boolean(
-        main && main.scrollHeight > 200 && images.every((image) => image.complete),
-      );
+      return Boolean(main && main.scrollHeight > 200);
     }, { timeout: 30000 });
+    await page.evaluate(() => {
+      const host = document.querySelector<HTMLElement>('.invitation-experience-host');
+      const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
+      if (!root) return;
+      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'));
+      return Promise.race([
+        Promise.all(images.map((image) => image.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => resolve(), { once: true });
+          }))),
+        new Promise<void>((resolve) => setTimeout(resolve, 12000)),
+      ]);
+    });
     await page.evaluate(async () => {
       await document.fonts.ready;
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
@@ -124,7 +136,8 @@ export async function GET(
     });
   } catch (error) {
     console.error('Invitation PDF generation failed:', error);
-    return NextResponse.json({ error: 'Le PDF n’a pas pu être généré.' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Erreur Chromium inconnue.';
+    return NextResponse.json({ error: `Génération PDF impossible : ${message}` }, { status: 500 });
   } finally {
     await browser?.close();
   }

@@ -57,10 +57,20 @@ async function settleImages(root: ParentNode) {
   await Promise.all(images.map((img) => {
     const source = img.getAttribute('src');
     if (!source) return Promise.resolve();
-    if (!source.startsWith('data:')) img.crossOrigin = 'anonymous';
+    img.loading = 'eager';
+    img.decoding = 'sync';
+    if (!source.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+      img.src = source;
+    }
     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
     return new Promise<void>((resolve) => {
-      const done = () => resolve();
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
       window.setTimeout(done, IMAGE_WAIT_MS);
@@ -217,6 +227,15 @@ export async function generateInvitationPdf(
   doc.write(`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"></head><body style="margin:0;background:#fafafa;width:${INVITATION_WIDTH}px;"><div id="pdf-slice-window" style="width:${INVITATION_WIDTH}px;overflow:hidden;background:#fafafa;"><div id="pdf-slice-mover"></div></div></body></html>`);
   doc.close();
 
+  const stylesheet = doc.querySelector('link[rel="stylesheet"]');
+  if (stylesheet) {
+    await new Promise<void>((resolve) => {
+      stylesheet.addEventListener('load', () => resolve(), { once: true });
+      stylesheet.addEventListener('error', () => resolve(), { once: true });
+      window.setTimeout(resolve, FONT_WAIT_MS);
+    });
+  }
+
   const mover = doc.getElementById('pdf-slice-mover');
   const viewport = doc.getElementById('pdf-slice-window');
   if (!mover || !viewport) {
@@ -257,9 +276,9 @@ export async function generateInvitationPdf(
     });
     let cursor = 0;
     for (const slice of slices) {
-      const image = slice.canvas.toDataURL('image/jpeg', 0.84);
+      const image = slice.canvas.toDataURL('image/png');
       const height = slice.cssHeight * fit;
-      pdf.addImage(image, 'JPEG', 0, cursor, pageWidth, height, undefined, 'FAST');
+      pdf.addImage(image, 'PNG', 0, cursor, pageWidth, height, undefined, 'FAST');
       cursor += height;
       slice.canvas.width = 1;
       slice.canvas.height = 1;

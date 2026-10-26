@@ -1108,8 +1108,8 @@ function fillGallery(grid: HTMLElement, photos: string[]) {
     const img = document.createElement('img');
     img.src = src;
     img.alt = `Photo ${index + 1}`;
-    img.loading = 'lazy';
-    img.decoding = 'async';
+    img.loading = grid.closest('.pdf-capture') ? 'eager' : 'lazy';
+    img.decoding = grid.closest('.pdf-capture') ? 'sync' : 'async';
     tile.append(img);
     return tile;
   };
@@ -1752,6 +1752,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   btn.style.fontWeight = '700';
 
   let cancelled = false;
+  let userInteracted = false;
   const onPlay = () => { if (btn.isConnected) btn.textContent = 'Couper'; };
   const onPause = () => { if (audio.paused && btn.isConnected) btn.textContent = 'Musique'; };
 
@@ -1770,6 +1771,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
     pageMusic.trackKey = key;
     pageMusic.source = src;
     audio.src = src;
+    audio.load();
     tryPlay();
   };
 
@@ -1786,6 +1788,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   }
 
   const onFirstGesture = (gesture: Event) => {
+    userInteracted = true;
     if (gesture.composedPath().includes(btn)) return;
     if (!audio.paused) {
       document.removeEventListener('pointerdown', onFirstGesture);
@@ -1801,6 +1804,7 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   };
   const onClick = (click: Event) => {
     click.stopPropagation();
+    userInteracted = true;
     document.removeEventListener('pointerdown', onFirstGesture);
     if (audio.paused) tryPlay();
     else {
@@ -1813,6 +1817,9 @@ function initMusic(root: HTMLElement, event: EventWithSettings) {
   btn.addEventListener('click', onClick);
   audio.addEventListener('play', onPlay);
   audio.addEventListener('pause', onPause);
+  audio.addEventListener('canplay', () => {
+    if (userInteracted && audio.paused) tryPlay();
+  }, { once: false });
 
   return () => {
     cancelled = true;
@@ -4026,6 +4033,13 @@ export function mountInvitationForCapture(
     .invitation-experience-root.pdf-capture * {
       animation: none !important;
       transition: none !important;
+      content-visibility: visible !important;
+      contain-intrinsic-size: none !important;
+    }
+    .invitation-experience-root.pdf-capture .gallery-tile img,
+    .invitation-experience-root.pdf-capture .dress-marquee-track img {
+      object-fit: contain !important;
+      background: #f3f4f6;
     }
     .invitation-experience-root.pdf-capture #main-view {
       width: 448px !important;
@@ -4043,6 +4057,27 @@ export function mountInvitationForCapture(
     .invitation-experience-root.pdf-capture[data-template="fairepart"] .hero-bg {
       height: 220px !important;
       min-height: 180px !important;
+    }
+    .invitation-experience-root.pdf-capture .gallery-flow {
+      overflow: visible !important;
+      -webkit-mask-image: none !important;
+      mask-image: none !important;
+    }
+    .invitation-experience-root.pdf-capture .gallery-flow-track {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      width: auto !important;
+      transform: none !important;
+      animation: none !important;
+    }
+    .invitation-experience-root.pdf-capture .gallery-flow-group {
+      display: contents !important;
+    }
+    .invitation-experience-root.pdf-capture .gallery-flow-tile {
+      width: 100% !important;
+      height: 104px !important;
+      min-width: 0 !important;
+      box-shadow: none !important;
     }
   `;
   const root = document.createElement('div');

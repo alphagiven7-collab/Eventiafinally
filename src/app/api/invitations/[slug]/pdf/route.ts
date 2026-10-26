@@ -92,6 +92,13 @@ export async function GET(
       ]);
     });
     await page.evaluate(async () => {
+      await page.addStyleTag({
+        content: `
+          @page { size: 448px auto !important; margin: 0 !important; }
+          html, body { margin: 0 !important; padding: 0 !important; width: 448px !important; min-width: 448px !important; background: #fafafa !important; }
+          .invitation-experience-host { display: block !important; width: 448px !important; max-width: 448px !important; margin: 0 !important; padding: 0 !important; }
+        `,
+      });
       await document.fonts.ready;
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');

@@ -84,12 +84,16 @@ export default function InvitationExperience({
       printBtn.disabled = true;
       printBtn.style.opacity = '0.65';
       try {
-        const { generateInvitationPdf, downloadBlob } = await import('@/lib/invitation/pdf');
-        const result = await generateInvitationPdf(event, {
-          name: guestName,
-          table: guestTable,
-        });
-        downloadBlob(result.blob, result.filename);
+        const { downloadInvitationWebPdf, generateInvitationPdf, downloadBlob } = await import('@/lib/invitation/pdf');
+        if (isCurrentInvitation(window.location.href, event.slug)) {
+          await downloadInvitationWebPdf(event.slug);
+        } else {
+          const result = await generateInvitationPdf(event, {
+            name: guestName,
+            table: guestTable,
+          });
+          downloadBlob(result.blob, result.filename);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Le PDF n’a pas pu être créé.';
         showPdfNotice(root, message);

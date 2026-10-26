@@ -41,6 +41,28 @@ export function downloadBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+export async function downloadInvitationWebPdf(slug: string) {
+  const url = new URL(`/api/invitations/${encodeURIComponent(slug)}/pdf`, window.location.origin);
+  const current = new URL(window.location.href);
+  for (const key of ['token', 'guest']) {
+    const value = current.searchParams.get(key);
+    if (value) url.searchParams.set(key, value);
+  }
+  let dark = document.documentElement.classList.contains('dark');
+  try {
+    dark = dark || localStorage.getItem('invitia_theme') === 'dark' || localStorage.getItem('theme') === 'dark';
+  } catch {
+    /* stockage indisponible */
+  }
+  url.searchParams.set('theme', dark ? 'dark' : 'light');
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Le PDF n’a pas pu être généré.');
+  const disposition = response.headers.get('content-disposition') || '';
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `${slug}.pdf`;
+  downloadBlob(await response.blob(), filename);
+}
+
 function canvasHeightLimit() {
   const coarse = window.matchMedia?.('(pointer: coarse)').matches;
   return coarse ? 4096 : 8192;

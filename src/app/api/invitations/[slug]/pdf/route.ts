@@ -50,6 +50,7 @@ export async function GET(
       headless: true,
     });
     const page = await browser.newPage();
+    await page.setViewport({ width: INVITATION_WIDTH, height: 900, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument((savedTheme) => {
       localStorage.setItem('invitia_theme', savedTheme);
       localStorage.setItem('theme', savedTheme);
@@ -93,23 +94,26 @@ export async function GET(
     });
     await page.addStyleTag({
       content: `
-        @page { size: 448px auto !important; margin: 0 !important; }
-        html, body { margin: 0 !important; padding: 0 !important; width: 448px !important; min-width: 448px !important; background: #fafafa !important; }
-        .invitation-experience-host { display: block !important; width: 448px !important; max-width: 448px !important; margin: 0 !important; padding: 0 !important; }
+        @page { size: ${INVITATION_WIDTH}px auto !important; margin: 0 !important; }
+        html, body { margin: 0 !important; padding: 0 !important; width: ${INVITATION_WIDTH}px !important; min-width: ${INVITATION_WIDTH}px !important; background: #fafafa !important; }
+        .invitation-experience-host { display: block !important; width: ${INVITATION_WIDTH}px !important; max-width: ${INVITATION_WIDTH}px !important; margin: 0 !important; padding: 0 !important; }
       `,
     });
-    await page.evaluate(async () => {
+    const widths = await page.evaluate(async (invitationWidth) => {
       await document.fonts.ready;
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
-      if (!root) return;
+      const main = root?.querySelector<HTMLElement>('#main-view');
+      if (!host || !root || !main) {
+        throw new Error('Le conteneur de l’invitation est introuvable.');
+      }
       root.classList.toggle('pdf-capture', true);
       const style = document.createElement('style');
       style.textContent = `
-        @page { size: 448px auto; margin: 0; }
-        html, body { margin: 0 !important; padding: 0 !important; width: 448px !important; background: #fafafa !important; }
+        @page { size: ${invitationWidth}px auto; margin: 0; }
+        html, body { margin: 0 !important; padding: 0 !important; width: ${invitationWidth}px !important; background: #fafafa !important; }
         #app-floating-tools, #offline-invitation-bar, audio, .inv-modal, #welcome-gate, .gallery-lightbox { display: none !important; }
-        #main-view { width: 448px !important; max-width: 448px !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; overflow: visible !important; }
+        #main-view { width: ${invitationWidth}px !important; max-width: ${invitationWidth}px !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; overflow: visible !important; }
         section[id], img { content-visibility: visible !important; contain-intrinsic-size: none !important; }
         .gallery-tile img, .dress-marquee-track img { object-fit: contain !important; background: #f3f4f6 !important; }
         .gallery-flow, .dress-marquee-wrapper { overflow: visible !important; }
@@ -117,7 +121,22 @@ export async function GET(
         section, .surface-card, .invitation-card, .gallery-mosaic, .dress-code-card { break-inside: avoid; }
       `;
       root.append(style);
-    });
+      for (const element of [host, root, main]) {
+        element.style.setProperty('box-sizing', 'border-box', 'important');
+        element.style.setProperty('width', `${invitationWidth}px`, 'important');
+        element.style.setProperty('min-width', `${invitationWidth}px`, 'important');
+        element.style.setProperty('max-width', `${invitationWidth}px`, 'important');
+      }
+      main.style.setProperty('margin', '0', 'important');
+      return {
+        host: host.getBoundingClientRect().width,
+        root: root.getBoundingClientRect().width,
+        main: main.getBoundingClientRect().width,
+      };
+    }, INVITATION_WIDTH);
+    if (Object.values(widths).some((width) => Math.abs(width - INVITATION_WIDTH) > 0.5)) {
+      throw new Error(`Largeur d’invitation incorrecte : ${JSON.stringify(widths)} px au lieu de ${INVITATION_WIDTH} px.`);
+    }
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
     const title = await page.title();

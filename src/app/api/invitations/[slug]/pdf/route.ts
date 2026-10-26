@@ -1,12 +1,11 @@
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { NextResponse } from 'next/server';
+import { invitationPdfCaptureCss, invitationPdfPageCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-const INVITATION_WIDTH = 448;
 
 function safeFilename(value: string) {
   return value
@@ -45,12 +44,12 @@ export async function GET(
   try {
     browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: { width: INVITATION_WIDTH, height: 900, deviceScaleFactor: 1 },
+      defaultViewport: { width: INVITATION_PDF_WIDTH, height: 900, deviceScaleFactor: 1 },
       executablePath: await executablePath(),
       headless: true,
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: INVITATION_WIDTH, height: 900, deviceScaleFactor: 1 });
+    await page.setViewport({ width: INVITATION_PDF_WIDTH, height: 900, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument((savedTheme) => {
       localStorage.setItem('invitia_theme', savedTheme);
       localStorage.setItem('theme', savedTheme);
@@ -93,13 +92,9 @@ export async function GET(
       ]);
     });
     await page.addStyleTag({
-      content: `
-        @page { size: ${INVITATION_WIDTH}px auto !important; margin: 0 !important; }
-        html, body { margin: 0 !important; padding: 0 !important; width: ${INVITATION_WIDTH}px !important; min-width: ${INVITATION_WIDTH}px !important; background: #fafafa !important; }
-        .invitation-experience-host { display: block !important; width: ${INVITATION_WIDTH}px !important; max-width: ${INVITATION_WIDTH}px !important; margin: 0 !important; padding: 0 !important; }
-      `,
+      content: invitationPdfPageCss(INVITATION_PDF_WIDTH),
     });
-    const widths = await page.evaluate(async (invitationWidth) => {
+    const widths = await page.evaluate(async ({ invitationWidth, captureCss }) => {
       await document.fonts.ready;
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
@@ -109,26 +104,7 @@ export async function GET(
       }
       root.classList.toggle('pdf-capture', true);
       const style = document.createElement('style');
-      style.textContent = `
-        @page { size: ${invitationWidth}px auto; margin: 0; }
-        html, body { margin: 0 !important; padding: 0 !important; width: ${invitationWidth}px !important; background: #fafafa !important; }
-        #app-floating-tools, #offline-invitation-bar, audio, .inv-modal, #welcome-gate, .gallery-lightbox { display: none !important; }
-        #main-view { width: ${invitationWidth}px !important; max-width: ${invitationWidth}px !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; overflow: visible !important; }
-        section[id], img { content-visibility: visible !important; contain-intrinsic-size: none !important; }
-        .gallery-tile img, .dress-marquee-track img { object-fit: contain !important; background: #f3f4f6 !important; }
-        .gallery-flow { overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
-        .gallery-flow-track {
-          display: grid !important;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          width: auto !important;
-          transform: none !important;
-          animation: none !important;
-        }
-        .gallery-flow-group { display: contents !important; }
-        .gallery-flow-tile { width: 100% !important; height: 104px !important; min-width: 0 !important; box-shadow: none !important; }
-        .dress-marquee-track { animation: none !important; transform: none !important; }
-        section, .surface-card, .invitation-card, .gallery-mosaic, .dress-code-card { break-inside: avoid; }
-      `;
+      style.textContent = captureCss;
       root.append(style);
       for (const element of [host, root, main]) {
         element.style.setProperty('box-sizing', 'border-box', 'important');
@@ -144,9 +120,12 @@ export async function GET(
         documentScroll: document.documentElement.scrollWidth,
         mainScroll: main.scrollWidth,
       };
-    }, INVITATION_WIDTH);
-    if (Object.values(widths).some((width) => Math.abs(width - INVITATION_WIDTH) > 0.5)) {
-      throw new Error(`Dimensions d’invitation incorrectes : ${JSON.stringify(widths)} px; page et contenu attendus à ${INVITATION_WIDTH} px.`);
+    }, {
+      invitationWidth: INVITATION_PDF_WIDTH,
+      captureCss: invitationPdfCaptureCss(INVITATION_PDF_WIDTH),
+    });
+    if (Object.values(widths).some((width) => Math.abs(width - INVITATION_PDF_WIDTH) > 0.5)) {
+      throw new Error(`Dimensions d’invitation incorrectes : ${JSON.stringify(widths)} px; page et contenu attendus à ${INVITATION_PDF_WIDTH} px.`);
     }
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
@@ -168,7 +147,7 @@ export async function GET(
       return contentHeight;
     });
     const pdf = await page.pdf({
-      width: `${INVITATION_WIDTH}px`,
+      width: `${INVITATION_PDF_WIDTH}px`,
       height: `${height}px`,
       printBackground: true,
       preferCSSPageSize: false,

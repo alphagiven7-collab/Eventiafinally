@@ -1660,7 +1660,7 @@ function EditEventContent() {
                         : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
                     }`}
                   >
-                    Afficher tout de suite
+                    Afficher sans confirmation
                   </button>
                   <button
                     type="button"
@@ -1674,6 +1674,9 @@ function EditEventContent() {
                     Afficher après confirmation
                   </button>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Le QR peut être affiché avant la réponse sans enregistrer de RSVP. Un refus masque toujours la carte.
+                </p>
               </div>
             </div>
           </Section>

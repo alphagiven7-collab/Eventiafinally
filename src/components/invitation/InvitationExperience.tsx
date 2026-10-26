@@ -10,6 +10,8 @@ import { listGuestbook, saveGuestDrinks, submitGuestRsvp } from '@/lib/guests/st
 import { fetchEventMusic } from '@/lib/events/store';
 import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '@/lib/guests/checkin-qr';
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
+import { invitationPdfCaptureCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
+import { shouldShowCheckinQr } from '@/lib/invitation/rsvp-qr';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 
@@ -619,7 +621,6 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   // Texte du bouton RSVP
   const btnText = event.reserveText || 'Oui, je viens';
-  const qrDisplayMode = event.qrDisplayMode || 'after-confirmation';
   setText('#reserve-deadline-text', event.reserveText?.trim() || 'Répondre à l’invitation');
   setText('#confirm-presence-label', btnText);
   if (event.declineText?.trim()) setText('#decline-presence-btn', event.declineText.trim());
@@ -1310,7 +1311,7 @@ function initRsvp(
         const lbl = confirmBtn.querySelector('#confirm-presence-label');
         if (lbl) lbl.textContent = confirmedLabel;
       }
-      const shouldReveal = qrDisplayMode === 'immediate' || revealPass;
+      const shouldReveal = shouldShowCheckinQr(qrDisplayMode, status, revealPass);
       if (shouldReveal && token) void showCheckinQr();
       else hideCheckinQr();
     } else if (status === 'declined') {
@@ -1324,15 +1325,21 @@ function initRsvp(
     alreadyAnswered = true;
     applyVisualState(guestStatus, guestStatus === 'confirmed');
   } else if (guestStatus === 'pending') {
-    hideCheckinQr();
+    if (shouldShowCheckinQr(qrDisplayMode, guestStatus)) void showCheckinQr();
+    else hideCheckinQr();
   } else if (rememberAnswer && typeof navigator !== 'undefined' && navigator.onLine === false && token) {
+    let savedLocal: string | null = null;
     try {
-      const savedLocal = localStorage.getItem(localKey);
-      if (savedLocal === 'confirmed' || savedLocal === 'declined') {
-        alreadyAnswered = true;
-        applyVisualState(savedLocal, savedLocal === 'confirmed');
-      }
+      savedLocal = localStorage.getItem(localKey);
     } catch {}
+    if (savedLocal === 'confirmed' || savedLocal === 'declined') {
+      alreadyAnswered = true;
+      applyVisualState(savedLocal, savedLocal === 'confirmed');
+    } else if (shouldShowCheckinQr(qrDisplayMode, undefined)) {
+      void showCheckinQr();
+    }
+  } else if (shouldShowCheckinQr(qrDisplayMode, undefined)) {
+    void showCheckinQr();
   }
 
   const paintAnswer = (text: string) => {
@@ -4026,64 +4033,7 @@ export function mountInvitationForCapture(
 ) {
   host.replaceChildren();
   const style = document.createElement('style');
-  style.textContent = `${getOriginalCSS()}
-    .invitation-experience-root.pdf-capture #app-floating-tools,
-    .invitation-experience-root.pdf-capture #offline-invitation-bar,
-    .invitation-experience-root.pdf-capture audio,
-    .invitation-experience-root.pdf-capture .inv-modal,
-    .invitation-experience-root.pdf-capture #welcome-gate,
-    .invitation-experience-root.pdf-capture .gallery-lightbox { display: none !important; }
-    .invitation-experience-root.pdf-capture,
-    .invitation-experience-root.pdf-capture * {
-      animation: none !important;
-      transition: none !important;
-      content-visibility: visible !important;
-      contain-intrinsic-size: none !important;
-    }
-    .invitation-experience-root.pdf-capture .gallery-tile img,
-    .invitation-experience-root.pdf-capture .dress-marquee-track img {
-      object-fit: contain !important;
-      background: #f3f4f6;
-    }
-    .invitation-experience-root.pdf-capture #main-view {
-      width: 448px !important;
-      max-width: 448px !important;
-      min-height: 0 !important;
-      height: auto !important;
-      overflow: visible !important;
-      box-shadow: none !important;
-      margin: 0 !important;
-    }
-    .invitation-experience-root.pdf-capture .hero-bg {
-      height: 500px !important;
-      min-height: 500px !important;
-    }
-    .invitation-experience-root.pdf-capture[data-template="fairepart"] .hero-bg {
-      height: 220px !important;
-      min-height: 180px !important;
-    }
-    .invitation-experience-root.pdf-capture .gallery-flow {
-      overflow: visible !important;
-      -webkit-mask-image: none !important;
-      mask-image: none !important;
-    }
-    .invitation-experience-root.pdf-capture .gallery-flow-track {
-      display: grid !important;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      width: auto !important;
-      transform: none !important;
-      animation: none !important;
-    }
-    .invitation-experience-root.pdf-capture .gallery-flow-group {
-      display: contents !important;
-    }
-    .invitation-experience-root.pdf-capture .gallery-flow-tile {
-      width: 100% !important;
-      height: 104px !important;
-      min-width: 0 !important;
-      box-shadow: none !important;
-    }
-  `;
+  style.textContent = `${getOriginalCSS()}${invitationPdfCaptureCss(INVITATION_PDF_WIDTH)}`;
   const root = document.createElement('div');
   root.className = 'invitation-experience-root pdf-capture';
   root.innerHTML = getOriginalHTML();

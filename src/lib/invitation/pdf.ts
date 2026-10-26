@@ -1,5 +1,6 @@
 import { EventWithSettings } from '@/types';
 import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
+import { INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
 import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
 
 export type InvitationPdfGuest = {
@@ -14,7 +15,6 @@ export type InvitationPdfFailure = {
   reason: string;
 };
 
-const INVITATION_WIDTH = 448;
 const MAX_PDF_EDGE = 14000;
 const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
@@ -223,9 +223,9 @@ async function captureSlices(main: HTMLElement) {
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#fafafa',
-        width: INVITATION_WIDTH,
+        width: INVITATION_PDF_WIDTH,
         height: cssHeight,
-        windowWidth: INVITATION_WIDTH,
+        windowWidth: INVITATION_PDF_WIDTH,
         windowHeight: cssHeight,
         scrollX: 0,
         scrollY: 0,
@@ -251,7 +251,7 @@ export async function generateInvitationPdf(
 ): Promise<{ blob: Blob; filename: string }> {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.cssText = `position:fixed;left:0;top:0;transform:translateX(-160vw);width:${INVITATION_WIDTH}px;height:800px;border:0;background:#fafafa;`;
+  iframe.style.cssText = `position:fixed;left:0;top:0;transform:translateX(-160vw);width:${INVITATION_PDF_WIDTH}px;height:800px;border:0;background:#fafafa;`;
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument;
   if (!doc) {
@@ -259,7 +259,7 @@ export async function generateInvitationPdf(
     throw new Error('Le navigateur n’a pas pu préparer le PDF.');
   }
   doc.open();
-  doc.write(`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"></head><body style="margin:0;background:#fafafa;width:${INVITATION_WIDTH}px;"><div id="pdf-slice-window" style="width:${INVITATION_WIDTH}px;overflow:hidden;background:#fafafa;"><div id="pdf-slice-mover"></div></div></body></html>`);
+  doc.write(`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"></head><body style="margin:0;background:#fafafa;width:${INVITATION_PDF_WIDTH}px;"><div id="pdf-slice-window" style="width:${INVITATION_PDF_WIDTH}px;overflow:hidden;background:#fafafa;"><div id="pdf-slice-mover"></div></div></body></html>`);
   doc.close();
 
   const stylesheet = doc.querySelector('link[rel="stylesheet"]');
@@ -299,7 +299,7 @@ export async function generateInvitationPdf(
 
     const { slices, total } = await captureSlices(mounted.main);
     const fit = total > MAX_PDF_EDGE ? MAX_PDF_EDGE / total : 1;
-    const pageWidth = INVITATION_WIDTH * fit;
+    const pageWidth = INVITATION_PDF_WIDTH * fit;
     const pageHeight = total * fit;
     const { jsPDF } = await import('jspdf');
     const pdf = new jsPDF({

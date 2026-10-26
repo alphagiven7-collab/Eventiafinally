@@ -56,6 +56,20 @@ export async function GET(
     }, theme);
     await page.goto(invitationUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.emulateMediaType('screen');
+    await page.evaluate(() => {
+      const host = document.querySelector<HTMLElement>('.invitation-experience-host');
+      const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
+      if (!root) return;
+      root.classList.add('pdf-capture');
+      root.querySelectorAll<HTMLImageElement>('img').forEach((image) => {
+        image.loading = 'eager';
+        image.decoding = 'sync';
+      });
+      root.querySelectorAll<HTMLElement>('*').forEach((element) => {
+        element.style.contentVisibility = 'visible';
+        element.style.containIntrinsicSize = 'auto';
+      });
+    });
     await page.waitForFunction(() => {
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');

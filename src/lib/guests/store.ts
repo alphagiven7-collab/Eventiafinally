@@ -48,6 +48,8 @@ export type GuestDraft = {
 export const CHECKIN_PREFIX = 'invitia:checkin:';
 
 const MIGRATION_HINT = 'Service momentanément indisponible. Réessayez plus tard.';
+const FAMILY_SIDE_MIGRATION_HINT =
+  'Le classement familial n’est pas activé dans la base. Appliquez supabase/migrations/020_guest_family_side.sql, puis rechargez la page.';
 
 export function checkinPayload(token: string): string {
   return `${CHECKIN_PREFIX}${token}`;
@@ -75,6 +77,12 @@ export function explainGuestError(message: string): string {
   if (message.includes('FREE_GUEST_LIMIT')) return freeGuestLimitMessage();
   if (/not assigned yet|GUEST_NOT_FOUND/i.test(message)) return 'Ce lien ne correspond à aucun invité.';
   if (message.includes('EVENT_NOT_PUBLISHED')) return 'Cette invitation n’est pas encore ouverte.';
+  if (
+    /family_side|guests_family_side_check/i.test(message) &&
+    /column|schema cache|constraint|check/i.test(message)
+  ) {
+    return FAMILY_SIDE_MIGRATION_HINT;
+  }
   if (/row-level security|permission denied/i.test(message)) {
     return 'La confirmation n’a pas été autorisée. Réessayez plus tard.';
   }

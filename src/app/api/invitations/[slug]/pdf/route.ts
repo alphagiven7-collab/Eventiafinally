@@ -114,7 +114,7 @@ export async function GET(
             image.addEventListener('load', () => resolve(), { once: true });
             image.addEventListener('error', () => resolve(), { once: true });
           }))),
-        new Promise<void>((resolve) => setTimeout(resolve, 12000)),
+        new Promise<void>((resolve) => setTimeout(resolve, 4000)),
       ]);
     });
     timings.images = performance.now() - stageStarted;

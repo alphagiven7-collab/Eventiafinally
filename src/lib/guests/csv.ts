@@ -1,4 +1,5 @@
 import type { GuestDraft } from './store';
+import type { GuestFamilySide } from '@/types';
 
 export type CsvRow = { line: number; cells: string[] };
 
@@ -57,12 +58,13 @@ export function parseCsv(text: string): CsvRow[] {
   return rows;
 }
 
-type Field = 'name' | 'phone' | 'group' | 'email' | 'table' | 'adults' | 'children';
+type Field = 'name' | 'phone' | 'group' | 'familySide' | 'email' | 'table' | 'adults' | 'children';
 
 const HEADERS: Record<Field, string[]> = {
   name: ['nom', 'name', 'invite', 'invité', 'prenom', 'prénom', 'nom complet'],
   phone: ['telephone', 'téléphone', 'tel', 'tél', 'phone', 'mobile', 'whatsapp'],
   group: ['groupe', 'group', 'famille'],
+  familySide: ['cote_famille', 'cote famille', 'côté famille', 'camp familial', 'famille du marié', 'famille de la mariée'],
   email: ['email', 'e-mail', 'mail', 'courriel'],
   table: ['table', 'numero de table', 'numéro de table', 'table_number'],
   adults: ['adultes', 'adults'],
@@ -108,6 +110,12 @@ export function parseGuestCsv(text: string, existingNames: string[] = []): Parse
     const n = Number.parseInt(value || '', 10);
     return Number.isFinite(n) && n >= 0 ? n : undefined;
   };
+  const familySide = (value?: string): GuestFamilySide | undefined => {
+    const side = normalize(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (['marie', 'epoux', 'homme', 'groom', 'famille du marie'].includes(side)) return 'groom';
+    if (['mariee', 'epouse', 'femme', 'bride', 'famille de la mariee'].includes(side)) return 'bride';
+    return undefined;
+  };
 
   dataRows.forEach(({ line, cells }) => {
     const name = pick(cells, 'name') || '';
@@ -125,6 +133,7 @@ export function parseGuestCsv(text: string, existingNames: string[] = []): Parse
       name,
       phone: pick(cells, 'phone'),
       group: pick(cells, 'group'),
+      familySide: familySide(pick(cells, 'familySide')),
       email: pick(cells, 'email'),
       tableNumber: pick(cells, 'table'),
       adults: count(pick(cells, 'adults')),

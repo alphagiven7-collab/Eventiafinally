@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS guests (
   phone TEXT,
   email TEXT,
   group_name TEXT,
+  family_side TEXT CHECK (family_side IN ('groom', 'bride')),
   adults INTEGER DEFAULT 1,
   children INTEGER DEFAULT 0,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'declined')),

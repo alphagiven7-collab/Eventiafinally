@@ -13,6 +13,7 @@ export type RsvpStatus = 'pending' | 'confirmed' | 'declined';
 
 // Guest Status
 export type GuestStatus = 'pending' | 'confirmed' | 'declined';
+export type GuestFamilySide = 'groom' | 'bride';
 
 // User Role
 export type UserRole = 'organizer' | 'super_admin' | 'staff';
@@ -63,6 +64,7 @@ export interface Guest {
   phone?: string;
   email?: string;
   group?: string;
+  family_side?: GuestFamilySide;
   status: GuestStatus;
   adults: number;
   children: number;

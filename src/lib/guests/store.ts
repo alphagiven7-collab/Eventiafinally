@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { freeGuestLimitMessage, guestCapacity } from '@/constants/pricing';
 import { isUuid } from '@/lib/events/store';
-import { Guest, GuestStatus } from '@/types';
+import { Guest, GuestFamilySide, GuestStatus } from '@/types';
 
 type GuestRow = {
   id: string;
@@ -10,6 +10,7 @@ type GuestRow = {
   phone: string | null;
   email: string | null;
   group_name: string | null;
+  family_side?: GuestFamilySide | null;
   adults: number | null;
   children: number | null;
   status: GuestStatus;
@@ -38,6 +39,7 @@ export type GuestDraft = {
   phone?: string;
   email?: string;
   group?: string;
+  familySide?: GuestFamilySide;
   adults?: number;
   children?: number;
   tableNumber?: string;
@@ -91,6 +93,7 @@ export function toGuest(row: GuestRow): Guest {
     phone: row.phone ?? undefined,
     email: row.email ?? undefined,
     group: row.group_name ?? undefined,
+    family_side: row.family_side ?? undefined,
     status: row.status,
     adults: row.adults ?? 1,
     children: row.children ?? 0,
@@ -118,6 +121,7 @@ function draftRow(eventId: string, draft: GuestDraft) {
     phone: draft.phone?.trim() || null,
     email: draft.email?.trim() || null,
     group_name: draft.group?.trim() || null,
+    family_side: draft.familySide ?? null,
     adults: draft.adults ?? 1,
     children: draft.children ?? 0,
     table_number: draft.tableNumber?.trim() || null,
@@ -230,6 +234,7 @@ export async function updateGuest(
       phone: guest.phone?.trim() || null,
       email: guest.email?.trim() || null,
       group_name: guest.group?.trim() || null,
+      family_side: guest.family_side ?? null,
       status: guest.status,
       adults: guest.adults ?? 1,
       children: guest.children ?? 0,

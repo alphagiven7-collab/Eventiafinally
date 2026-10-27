@@ -53,7 +53,13 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [needsPermission, setNeedsPermission] = useState(false);
-  const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; pending: number }>>({});
+  const [guestCounts, setGuestCounts] = useState<Record<string, {
+    total: number;
+    confirmed: number;
+    pending: number;
+    tableCount: number;
+    tableGuests: { name: string; count: number }[];
+  }>>({});
   const organizerUnlocked = useOrganizerUnlocked();
   const [offerHidden, setOfferHidden] = useState(() =>
     typeof window !== 'undefined' && localStorage.getItem('eventia_offer_hidden') === '1');
@@ -93,17 +99,58 @@ export default function DashboardPage() {
       }
       const ids = rows.map((row) => row.id);
       if (ids.length > 0) {
-        const { data } = await createClient()
-          .from('guests')
-          .select('event_id, status')
-          .in('event_id', ids);
-        const next: Record<string, { total: number; confirmed: number; pending: number }> = {};
-        for (const row of data || []) {
-          const bucket = next[row.event_id] || { total: 0, confirmed: 0, pending: 0 };
+        const client = createClient();
+        const [{ data: guestRows, error: guestError }, { data: settingsRows, error: settingsError }] = await Promise.all([
+          client.from('guests').select('event_id, status, table_number').in('event_id', ids),
+          client.from('event_settings').select('event_id, payload').in('event_id', ids),
+        ]);
+        if (guestError) throw guestError;
+        if (settingsError) throw settingsError;
+
+        const tablesByEvent = new Map<string, Set<string>>();
+        for (const row of settingsRows || []) {
+          const payload = row.payload as { tables?: unknown } | null;
+          const names = new Set<string>();
+          if (Array.isArray(payload?.tables)) {
+            for (const table of payload.tables) {
+              if (table && typeof table === 'object' && 'name' in table && typeof table.name === 'string' && table.name.trim()) {
+                names.add(table.name.trim());
+              }
+            }
+          }
+          tablesByEvent.set(row.event_id, names);
+        }
+
+        const next: Record<string, {
+          total: number;
+          confirmed: number;
+          pending: number;
+          tableCount: number;
+          tableGuests: { name: string; count: number }[];
+        }> = {};
+        for (const row of guestRows || []) {
+          const bucket = next[row.event_id] || { total: 0, confirmed: 0, pending: 0, tableCount: 0, tableGuests: [] };
           bucket.total += 1;
           if (row.status === 'confirmed') bucket.confirmed += 1;
           else if (row.status !== 'declined') bucket.pending += 1;
+          if (typeof row.table_number === 'string' && row.table_number.trim()) {
+            const tableName = row.table_number.trim();
+            const table = bucket.tableGuests.find((item) => item.name === tableName);
+            if (table) table.count += 1;
+            else bucket.tableGuests.push({ name: tableName, count: 1 });
+          }
           next[row.event_id] = bucket;
+        }
+        for (const event of rows) {
+          const bucket = next[event.id] || { total: 0, confirmed: 0, pending: 0, tableCount: 0, tableGuests: [] };
+          const names = tablesByEvent.get(event.id) || new Set<string>();
+          for (const table of bucket.tableGuests) names.add(table.name);
+          bucket.tableCount = names.size;
+          bucket.tableGuests = [...names].map((name) => ({
+            name,
+            count: bucket.tableGuests.find((table) => table.name === name)?.count || 0,
+          })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+          next[event.id] = bucket;
         }
         setGuestCounts(next);
       } else {
@@ -111,10 +158,11 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error('Erreur chargement Supabase:', err);
+      addToast('error', 'Les invités ou les tables n’ont pas pu être chargés.');
       setEvents([]);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, addToast]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -444,6 +492,22 @@ export default function DashboardPage() {
                       <span className="text-lg font-extrabold text-amber-600 dark:text-amber-300">{counts?.pending ?? 0}</span>
                       <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">En attente</span>
                     </div>
+                  </div>
+                  <div className="mt-2 rounded-xl border border-gray-100 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                    <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                      {counts?.tableCount ?? 0} table{(counts?.tableCount ?? 0) === 1 ? '' : 's'}
+                    </p>
+                    {(counts?.tableGuests.length ?? 0) > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {counts?.tableGuests.map((table) => (
+                          <span key={table.name} className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
+                            {table.name} · {table.count} invité{table.count === 1 ? '' : 's'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-[10px] text-gray-400">Aucun invité placé</p>
+                    )}
                   </div>
                   {event.is_published ? (
                     <button

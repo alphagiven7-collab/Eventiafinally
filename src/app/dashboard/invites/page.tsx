@@ -71,6 +71,8 @@ function GuestManagementContent() {
   const [newPhone, setNewPhone] = useState('');
   const [newTable, setNewTable] = useState('');
   const [newFamilySide, setNewFamilySide] = useState<GuestFamilySide | ''>('');
+  const [importFamilySide, setImportFamilySide] = useState<GuestFamilySide | ''>('');
+  const [csvSource, setCsvSource] = useState('');
   const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
@@ -224,7 +226,7 @@ function GuestManagementContent() {
   const duplicateGroups = (() => {
     const grouped = new Map<string, Guest[]>();
     for (const guest of guests) {
-      const key = normalizeGuestName(guest.name);
+      const key = `${guest.family_side || 'unassigned'}:${normalizeGuestName(guest.name)}`;
       if (!key) continue;
       const list = grouped.get(key) ?? [];
       list.push(guest);
@@ -420,9 +422,25 @@ function GuestManagementContent() {
     e.target.value = '';
     if (!file) return;
     const text = await file.text();
-    const { ready, bad, duplicates } = parseGuestCsv(text, guests.map((guest) => guest.name));
+    setCsvSource(text);
+    const { ready, bad, duplicates } = parseGuestCsv(
+      text,
+      guests.map((guest) => ({ name: guest.name, family_side: guest.family_side })),
+      importFamilySide || undefined,
+    );
     if (ready.length + bad.length + duplicates.length === 0) return;
     setCsvPreview({ ready, bad, duplicates });
+  };
+
+  const changeImportFamilySide = (familySide: GuestFamilySide | '') => {
+    setImportFamilySide(familySide);
+    if (!csvSource) return;
+    const { ready, bad, duplicates } = parseGuestCsv(
+      csvSource,
+      guests.map((guest) => ({ name: guest.name, family_side: guest.family_side })),
+      familySide || undefined,
+    );
+    setCsvPreview(ready.length + bad.length + duplicates.length > 0 ? { ready, bad, duplicates } : null);
   };
 
   const confirmCsvImport = async () => {
@@ -442,6 +460,8 @@ function GuestManagementContent() {
       addToast('success', `${result.guests.length} invités enregistrés.`);
     }
     setCsvPreview(null);
+    setCsvSource('');
+    setImportFamilySide('');
   };
 
   // Export CSV
@@ -824,7 +844,22 @@ function GuestManagementContent() {
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, famille, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». La colonne « famille » est facultative. Les séparateurs , et ; sont acceptés.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Choisissez le côté par défaut pour toute la liste, ou renseignez <code>cote_famille</code> dans le CSV pour préciser le côté de chaque invité. Les doublons sont comparés uniquement au sein du même côté.</p>
+                {isWedding && (
+                  <label className="mb-3 flex items-center justify-between gap-3 text-xs font-medium text-gray-700 dark:text-gray-200">
+                    Côté de la liste importée
+                    <select
+                      value={importFamilySide}
+                      onChange={(event) => changeImportFamilySide(event.target.value as GuestFamilySide | '')}
+                      className="min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-700"
+                    >
+                      <option value="">Utiliser le CSV / laisser non classé</option>
+                      <option value="groom">Toute la liste · Famille du marié</option>
+                      <option value="bride">Toute la liste · Famille de la mariée</option>
+                    </select>
+                  </label>
+                )}
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, famille, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». La colonne « famille » désigne le nom de famille/groupe. Les séparateurs , et ; sont acceptés.</p>
                 <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
@@ -844,7 +879,7 @@ function GuestManagementContent() {
                     )}
                     <div className="flex gap-2">
                       <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
-                      <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
+                      <button type="button" onClick={() => { setCsvPreview(null); setCsvSource(''); }} className="px-3 py-2 border rounded-lg">Annuler</button>
                     </div>
                   </div>
                 )}
@@ -920,7 +955,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Noms en double</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Une fiche est gardée, de préférence celle qui a déjà une table ou un téléphone. Les autres sont retirées.
+                  Un nom n’est considéré en double qu’au sein du même côté familial. Une fiche est gardée, de préférence celle qui a déjà une table ou un téléphone.
                 </p>
                 {duplicateGroups.length === 0 ? (
                   <p className="text-xs text-gray-600 dark:text-gray-300">Aucun doublon.</p>
@@ -928,7 +963,7 @@ function GuestManagementContent() {
                   <div className="space-y-2">
                     {duplicateGroups.map((group) => (
                       <p key={group[0].id} className="text-xs text-gray-800 dark:text-gray-100">
-                        {group[0].name} · {group.length} fiches, {group.length - 1} à retirer
+                        {group[0].name} · {group[0].family_side ? familyLabel(group[0].family_side) : 'Côté non précisé'} · {group.length} fiches, {group.length - 1} à retirer
                       </p>
                     ))}
                     <button

@@ -90,7 +90,11 @@ export type ParsedGuests = {
   duplicates: string[];
 };
 
-export function parseGuestCsv(text: string, existingNames: string[] = []): ParsedGuests {
+export function parseGuestCsv(
+  text: string,
+  existingGuests: (string | { name: string; family_side?: GuestFamilySide })[] = [],
+  defaultFamilySide?: GuestFamilySide,
+): ParsedGuests {
   const rows = parseCsv(text);
   const ready: GuestDraft[] = [];
   const bad: ParsedGuests['bad'] = [];
@@ -100,7 +104,11 @@ export function parseGuestCsv(text: string, existingNames: string[] = []): Parse
   const header = mapHeader(rows[0].cells);
   const map: Partial<Record<Field, number>> = header ?? { name: 0, phone: 1, group: 2, email: 3 };
   const dataRows = header ? rows.slice(1) : rows;
-  const known = new Set(existingNames.map(normalize));
+  const known = new Set(existingGuests.map((guest) => {
+    const name = typeof guest === 'string' ? guest : guest.name;
+    const side = typeof guest === 'string' ? undefined : guest.family_side;
+    return `${side || 'unassigned'}:${normalize(name)}`;
+  }));
   const seen = new Set<string>();
   const pick = (cells: string[], field: Field) => {
     const index = map[field];
@@ -123,9 +131,11 @@ export function parseGuestCsv(text: string, existingNames: string[] = []): Parse
       bad.push({ line, text: cells.join(' | '), reason: 'Nom manquant' });
       return;
     }
-    const key = normalize(name);
+    const assignedSide = familySide(pick(cells, 'familySide')) || defaultFamilySide;
+    const key = `${assignedSide || 'unassigned'}:${normalize(name)}`;
     if (known.has(key) || seen.has(key)) {
-      duplicates.push(`${name} (ligne ${line})`);
+      const sideLabel = assignedSide === 'groom' ? 'famille du marié' : assignedSide === 'bride' ? 'famille de la mariée' : 'côté non précisé';
+      duplicates.push(`${name} · ${sideLabel} (ligne ${line})`);
       return;
     }
     seen.add(key);
@@ -133,7 +143,7 @@ export function parseGuestCsv(text: string, existingNames: string[] = []): Parse
       name,
       phone: pick(cells, 'phone'),
       group: pick(cells, 'group'),
-      familySide: familySide(pick(cells, 'familySide')),
+      familySide: assignedSide,
       email: pick(cells, 'email'),
       tableNumber: pick(cells, 'table'),
       adults: count(pick(cells, 'adults')),

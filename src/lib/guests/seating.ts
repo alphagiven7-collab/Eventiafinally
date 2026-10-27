@@ -1,3 +1,5 @@
+import type { GuestFamilySide } from '@/types';
+
 export function normalizeGuestName(name: string): string {
   return name
     .trim()
@@ -23,6 +25,7 @@ type DuplicateGuest = {
   id: string;
   name: string;
   phone?: string;
+  family_side?: GuestFamilySide;
   table_number?: string;
   created_at?: string;
 };
@@ -30,7 +33,7 @@ type DuplicateGuest = {
 export function duplicateIdsToRemove(guests: DuplicateGuest[]): string[] {
   const groups = new Map<string, DuplicateGuest[]>();
   for (const guest of guests) {
-    const key = normalizeGuestName(guest.name);
+    const key = `${guest.family_side || 'unassigned'}:${normalizeGuestName(guest.name)}`;
     if (!key) continue;
     const list = groups.get(key) ?? [];
     list.push(guest);

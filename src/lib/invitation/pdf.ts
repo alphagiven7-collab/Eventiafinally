@@ -11,6 +11,7 @@ export type InvitationPdfGuest = {
 };
 
 export type InvitationPdfFailure = {
+  id?: string;
   name: string;
   reason: string;
 };
@@ -373,7 +374,7 @@ export async function generateInvitationsZip(
   event: EventWithSettings,
   guests: InvitationPdfGuest[],
   onProgress?: (done: number, total: number) => void,
-): Promise<{ blob: Blob; filename: string; failures: InvitationPdfFailure[] }> {
+): Promise<{ blob: Blob; filename: string; failures: InvitationPdfFailure[]; included: number; total: number }> {
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const used = new Map<string, number>();
@@ -407,6 +408,7 @@ export async function generateInvitationsZip(
         made += 1;
       } catch (error) {
         failures[index] = {
+          id: guest.id,
           name: label,
           reason: error instanceof Error ? error.message : 'La génération a échoué.',
         };
@@ -421,10 +423,22 @@ export async function generateInvitationsZip(
   );
   const reportedFailures = failures.filter((failure): failure is InvitationPdfFailure => Boolean(failure));
 
-  if (reportedFailures.length > 0 || made !== guests.length) {
-    return { blob: new Blob(), filename: invitationsZipFilename(event.title || 'Evenement'), failures: reportedFailures };
+  if (made === 0) {
+    return {
+      blob: new Blob(),
+      filename: invitationsZipFilename(event.title || 'Evenement'),
+      failures: reportedFailures,
+      included: 0,
+      total,
+    };
   }
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
-  return { blob, filename: invitationsZipFilename(event.title || 'Evenement'), failures: reportedFailures };
+  return {
+    blob,
+    filename: invitationsZipFilename(event.title || 'Evenement'),
+    failures: reportedFailures,
+    included: made,
+    total,
+  };
 }

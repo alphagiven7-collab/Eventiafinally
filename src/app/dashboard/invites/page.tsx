@@ -76,7 +76,8 @@ function GuestManagementContent() {
   const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
-  const [zipFailures, setZipFailures] = useState<{ name: string; reason: string }[]>([]);
+  const [zipFailures, setZipFailures] = useState<{ id?: string; name: string; reason: string }[]>([]);
+  const [zipIncludedCount, setZipIncludedCount] = useState<number | null>(null);
   const zipLock = useRef(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [tableName, setTableName] = useState('');
@@ -493,7 +494,11 @@ function GuestManagementContent() {
     addToast('success', 'Export JSON téléchargé');
   };
 
-  const exportAllPdfs = async (familyScope = familyFilter, selectedOnly = false) => {
+  const exportAllPdfs = async (
+    familyScope = familyFilter,
+    selectedOnly = false,
+    retryGuestIds?: string[],
+  ) => {
     if (zipLock.current) return;
     const selected = events.find((event) => event.id === selectedEventId);
     if (!user?.id || !selected) {
@@ -511,6 +516,7 @@ function GuestManagementContent() {
     zipLock.current = true;
     setPdfOpen(true);
     setZipFailures([]);
+    setZipIncludedCount(null);
     setZipProgress({ done: 0, total: familyFilteredGuests.length });
     try {
       const loaded = await listAllEventGuests(createClient(), selected.id);
@@ -519,7 +525,9 @@ function GuestManagementContent() {
         return;
       }
       const selectedIds = new Set(selectedGuestIds);
+      const retryIds = retryGuestIds ? new Set(retryGuestIds) : null;
       const scopedGuests = loaded.guests.filter((guest) => {
+        if (retryIds && !retryIds.has(guest.id)) return false;
         if (selectedOnly && !selectedIds.has(guest.id)) return false;
         if (!isWedding || familyScope === 'all') return true;
         if (familyScope === 'unassigned') return !guest.family_side;
@@ -541,16 +549,27 @@ function GuestManagementContent() {
         })),
         (done, total) => setZipProgress({ done, total }),
       );
+      setZipFailures(result.failures);
+      setZipIncludedCount(result.included);
       if (result.failures.length > 0) {
-        setZipFailures(result.failures);
-        addToast('error', `${result.failures.length} PDF n’ont pas pu être créés. L’archive n’a pas été téléchargée.`);
+        if (result.included === 0) {
+          addToast('error', `Aucun PDF n’a pu être créé. ${result.failures.length} échec(s).`);
+          return;
+        }
+        addToast(
+          'warning',
+          `${result.included} PDF prêt(s) dans le ZIP. ${result.failures.length} invité(s) n’ont pas pu être inclus.`,
+        );
+      } else {
+        addToast('success', `${result.included} PDF réunis dans le fichier ZIP.`);
+      }
+      if (result.included === 0) {
         return;
       }
       const familySuffix = isWedding && familyScope !== 'all'
         ? `_${familyScope === 'unassigned' ? 'A_classer' : familyScope === 'groom' ? 'Famille_du_marie' : 'Famille_de_la_mariee'}`
         : selectedOnly ? '_Selection' : '';
       downloadBlob(result.blob, result.filename.replace(/\.zip$/i, `${familySuffix}.zip`));
-      addToast('success', `${scopedGuests.length} PDF réunis dans le fichier ZIP.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'L’export PDF a échoué.';
       addToast('error', message);
@@ -595,7 +614,11 @@ function GuestManagementContent() {
       </button>
       {zipFailures.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-2">
-          <p className="font-semibold">Ces invitations n’ont pas été créées. L’archive n’a pas été téléchargée.</p>
+          <p className="font-semibold">
+            {zipIncludedCount
+              ? `L’archive contient ${zipIncludedCount} PDF. Les invitations suivantes n’ont pas pu être incluses :`
+              : 'Aucun PDF n’a pu être créé pour cette archive :'}
+          </p>
           <ul className="space-y-1">
             {zipFailures.map((failure) => (
               <li key={`${failure.name}-${failure.reason}`}>{failure.name} : {failure.reason}</li>
@@ -603,11 +626,16 @@ function GuestManagementContent() {
           </ul>
           <button
             type="button"
-            onClick={() => void exportAllPdfs()}
+            onClick={() => void exportAllPdfs(
+              'all',
+              false,
+              zipFailures.flatMap((failure) => failure.id ? [failure.id] : []),
+            )}
             disabled={Boolean(zipProgress)}
             className="min-h-10 px-3 rounded-lg bg-red-700 text-white font-semibold"
+            hidden={!zipFailures.some((failure) => failure.id)}
           >
-            Relancer l’export
+            Réessayer les invitations en échec
           </button>
         </div>
       )}

@@ -175,7 +175,11 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
 
   const photoImages = Array.from(root.querySelectorAll<HTMLImageElement>(
     'img:not(#checkin-qr):not(#gps-image):not(#map-image):not(#paper-motif-left):not(#paper-motif-right)',
-  ));
+  )).filter((image) => {
+    const bounds = image.getBoundingClientRect();
+    const style = getStyle(image);
+    return bounds.width > 0 && bounds.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  });
   const matteColors = new Map(
     photoImages.map((image) => {
       let ancestor = image.parentElement;
@@ -191,9 +195,15 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
     }),
   );
 
-  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('*')).filter((element) =>
-    getStyle(element).backgroundImage.includes('url('),
-  );
+  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('*')).filter((element) => {
+    const style = getStyle(element);
+    const bounds = element.getBoundingClientRect();
+    return style.backgroundImage.includes('url(') &&
+      bounds.width > 0 &&
+      bounds.height > 0 &&
+      style.display !== 'none' &&
+      style.visibility !== 'hidden';
+  });
   const urlPattern = /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g;
   const sourceTasks = new Map<string, PhotoSourceTask>();
   const addSourceTarget = (
@@ -209,7 +219,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
 
   photoImages.forEach((image) => {
     const source = image.currentSrc || image.src;
-    if (!source || image.naturalWidth === 0) return;
+    if (!source) return;
     const bounds = image.getBoundingClientRect();
     const fit = getStyle(image).objectFit === 'cover' ? 'cover' : 'contain';
     addSourceTarget(source, matteColors.get(source), {
@@ -248,7 +258,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
 
   await Promise.all(photoImages.map(async (image) => {
     const source = image.currentSrc || image.src;
-    if (!source || image.naturalWidth === 0) return;
+    if (!source) return;
     const cacheKey = `${source}\n${matteColors.get(source) || 'preserve-alpha'}`;
     const optimizedUrl = await optimizedSources.get(cacheKey);
     if (!optimizedUrl) return;

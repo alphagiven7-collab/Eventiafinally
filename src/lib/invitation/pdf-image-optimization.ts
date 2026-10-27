@@ -14,6 +14,8 @@ export type InvitationPhotoDisplayTarget = {
   fit: 'cover' | 'contain';
 };
 
+export const INVITATION_PDF_PHOTO_PIXEL_RATIO = 1.25;
+
 type PhotoSourceTask = {
   source: string;
   matteColor?: string;
@@ -24,7 +26,7 @@ export function invitationPhotoOutputSize(
   sourceWidth: number,
   sourceHeight: number,
   displayTargets: InvitationPhotoDisplayTarget[],
-  pixelRatio = 2,
+  pixelRatio = INVITATION_PDF_PHOTO_PIXEL_RATIO,
 ) {
   if (
     sourceWidth <= 0 ||
@@ -49,7 +51,10 @@ export function invitationPhotoOutputSize(
   };
 }
 
-export async function optimizeInvitationPhotos(root: HTMLElement): Promise<InvitationPhotoOptimizationResult> {
+export async function optimizeInvitationPhotos(
+  root: HTMLElement,
+  pixelRatio: number,
+): Promise<InvitationPhotoOptimizationResult> {
   const view = root.ownerDocument.defaultView;
   if (!view) throw new Error('Le navigateur ne peut pas lire les styles de l’invitation.');
   const getStyle = (element: Element) => view.getComputedStyle(element);
@@ -59,8 +64,8 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
     displayTargets: InvitationPhotoDisplayTarget[],
   ) => {
     const scale = Math.min(1, Math.max(...displayTargets.map((target) => {
-      const targetWidth = Math.max(1, target.width * 2);
-      const targetHeight = Math.max(1, target.height * 2);
+      const targetWidth = Math.max(1, target.width * pixelRatio);
+      const targetHeight = Math.max(1, target.height * pixelRatio);
       return target.fit === 'cover'
         ? Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight)
         : Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
@@ -70,10 +75,10 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
       height: Math.max(1, Math.round(sourceHeight * scale)),
     };
   };
-  const JPEG_QUALITY = 0.82;
-  const WEBP_QUALITY = 0.88;
+  const JPEG_QUALITY = 0.8;
+  const WEBP_QUALITY = 0.84;
   const MIN_SOURCE_BYTES = 64 * 1024;
-  const MIN_SAVING_RATIO = 0.98;
+  const MAX_OUTPUT_RATIO = 1;
   const MAX_IMAGE_PIXELS = 16_000_000;
   const result: InvitationPhotoOptimizationResult = {
     optimizedImages: 0,
@@ -152,7 +157,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
         if (!compressed) throw new Error('La compression de cette photo a échoué.');
         if (
           (hasTransparency && compressed.type !== 'image/webp') ||
-          compressed.size > original.size * MIN_SAVING_RATIO
+          compressed.size >= original.size * MAX_OUTPUT_RATIO
         ) {
           result.skipped += 1;
           return null;

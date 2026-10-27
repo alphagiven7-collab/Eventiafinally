@@ -1,7 +1,10 @@
 import { EventWithSettings } from '@/types';
 import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
 import { INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
-import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
+import {
+  INVITATION_PDF_PHOTO_PIXEL_RATIO,
+  optimizeInvitationPhotos,
+} from '@/lib/invitation/pdf-image-optimization';
 import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
 
 export type InvitationPdfGuest = {
@@ -319,7 +322,10 @@ export async function generateInvitationPdf(
     inlineHero(mounted.root);
     flattenModernColors(mounted.root);
     inlineSvgColors(mounted.root);
-    const photoOptimization = await optimizeInvitationPhotos(mounted.root);
+    const photoOptimization = await optimizeInvitationPhotos(
+      mounted.root,
+      INVITATION_PDF_PHOTO_PIXEL_RATIO,
+    );
     photoObjectUrls.push(...photoOptimization.objectUrls);
     if (photoOptimization.failed > 0) {
       console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {

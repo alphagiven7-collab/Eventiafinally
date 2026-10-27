@@ -2,7 +2,10 @@ import chromium from '@sparticuz/chromium';
 import puppeteer, { type Page } from 'puppeteer-core';
 import { NextResponse } from 'next/server';
 import { invitationPdfCaptureCss, invitationPdfPageCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
-import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
+import {
+  INVITATION_PDF_PHOTO_PIXEL_RATIO,
+  optimizeInvitationPhotos,
+} from '@/lib/invitation/pdf-image-optimization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -129,7 +132,11 @@ export async function GET(
       if (!root) throw new Error('Le conteneur de l’invitation est introuvable.');
       return root;
     });
-    const imageOptimization = await page.evaluate(optimizeInvitationPhotos, invitationRoot);
+    const imageOptimization = await page.evaluate(
+      optimizeInvitationPhotos,
+      invitationRoot,
+      INVITATION_PDF_PHOTO_PIXEL_RATIO,
+    );
     await invitationRoot.dispose();
     if (imageOptimization.failed > 0) {
       console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {
@@ -213,6 +220,7 @@ export async function GET(
         'Cache-Control': 'no-store',
         'X-PDF-Photos-Optimized': String(imageOptimization.optimizedImages + imageOptimization.optimizedBackgrounds),
         'X-PDF-Photos-Skipped': String(imageOptimization.skipped),
+        'X-PDF-Photo-Pixel-Ratio': String(INVITATION_PDF_PHOTO_PIXEL_RATIO),
         'X-PDF-Photo-Bytes-Saved': String(Math.max(0, imageOptimization.originalBytes - imageOptimization.optimizedBytes)),
         'X-PDF-Photo-Optimization-Failed': String(imageOptimization.failed),
         'Server-Timing': [

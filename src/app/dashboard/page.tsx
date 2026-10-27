@@ -13,7 +13,7 @@ import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { deleteInvitation, fetchGalleryFlags, fetchInvitationBySlug, listInvitations, setGalleryVisibility, ownedEventCount, publishInvitation } from '@/lib/events/store';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
-import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, MessageCircle, Heart } from 'lucide-react';
+import { Trash2, Eye, Edit3, Plus, Calendar, MapPin, MessageCircle, Heart, ChevronDown } from 'lucide-react';
 import { StoryArt } from '@/components/brand/StoryArt';
 import { formatUsd, FREE_EVENT_LIMIT, GUEST_PACKS, packTotalUsd, PRICE_PER_GUEST_USD, TRIAL_INVITATIONS } from '@/constants/pricing';
 import EventPermission from '@/components/account/EventPermission';
@@ -60,6 +60,7 @@ export default function DashboardPage() {
     tableCount: number;
     tableGuests: { name: string; count: number }[];
   }>>({});
+  const [expandedTableSummaries, setExpandedTableSummaries] = useState<Record<string, boolean>>({});
   const organizerUnlocked = useOrganizerUnlocked();
   const [offerHidden, setOfferHidden] = useState(() =>
     typeof window !== 'undefined' && localStorage.getItem('eventia_offer_hidden') === '1');
@@ -453,6 +454,7 @@ export default function DashboardPage() {
               {events.map((event) => {
                 const status = eventStatus(event);
                 const counts = guestCounts[event.id];
+                const tableSummaryExpanded = Boolean(expandedTableSummaries[event.id]);
                 return (
                 <div
                   key={event.id}
@@ -493,20 +495,32 @@ export default function DashboardPage() {
                       <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">En attente</span>
                     </div>
                   </div>
-                  <div className="mt-2 rounded-xl border border-gray-100 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
-                      {counts?.tableCount ?? 0} table{(counts?.tableCount ?? 0) === 1 ? '' : 's'}
-                    </p>
-                    {(counts?.tableGuests.length ?? 0) > 0 ? (
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {counts?.tableGuests.map((table) => (
+                  <div className="mt-2 rounded-xl border border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <button
+                      type="button"
+                      aria-expanded={tableSummaryExpanded}
+                      aria-controls={`table-summary-${event.id}`}
+                      onClick={() => setExpandedTableSummaries((current) => ({
+                        ...current,
+                        [event.id]: !current[event.id],
+                      }))}
+                      className="flex min-h-10 w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                    >
+                      <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                        {counts?.tableCount ?? 0} table{(counts?.tableCount ?? 0) === 1 ? '' : 's'}
+                      </span>
+                      <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${tableSummaryExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    {tableSummaryExpanded && (
+                      <div id={`table-summary-${event.id}`} className="flex flex-wrap gap-1.5 border-t border-gray-100 px-3 py-2 dark:border-gray-700">
+                        {(counts?.tableGuests.length ?? 0) > 0 ? counts?.tableGuests.map((table) => (
                           <span key={table.name} className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
                             {table.name} · {table.count} invité{table.count === 1 ? '' : 's'}
                           </span>
-                        ))}
+                        )) : (
+                          <p className="text-[10px] text-gray-400">Aucun invité placé</p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="mt-1 text-[10px] text-gray-400">Aucun invité placé</p>
                     )}
                   </div>
                   {event.is_published ? (

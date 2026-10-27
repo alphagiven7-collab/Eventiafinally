@@ -21,7 +21,7 @@ const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
 const SLICE_TIMEOUT_MS = 40000;
 const PDF_ZIP_CONCURRENCY = 3;
-const PDF_SLICE_JPEG_QUALITY = 0.97;
+const PDF_SLICE_JPEG_QUALITY = 0.9;
 
 type QrOverlay = {
   dataUrl: string;
@@ -112,7 +112,7 @@ function canvasHeightLimit() {
 }
 
 function captureScale(limit: number) {
-  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1.25 : 1.75;
+  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1 : 1.25;
   const maxScale = Math.max(1, Math.floor((limit - 32) / 900));
   return Math.min(preferred, maxScale);
 }

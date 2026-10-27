@@ -9,8 +9,8 @@ export type InvitationPhotoOptimizationResult = {
 };
 
 export async function optimizeInvitationPhotos(root: HTMLElement): Promise<InvitationPhotoOptimizationResult> {
-  const JPEG_QUALITY = 0.92;
-  const WEBP_QUALITY = 0.94;
+  const JPEG_QUALITY = 0.86;
+  const WEBP_QUALITY = 0.9;
   const MIN_SOURCE_BYTES = 64 * 1024;
   const MIN_SAVING_RATIO = 0.98;
   const MAX_IMAGE_PIXELS = 16_000_000;

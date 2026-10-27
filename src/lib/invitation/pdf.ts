@@ -1,6 +1,7 @@
 import { EventWithSettings } from '@/types';
 import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
 import { INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
+import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
 import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
 
 export type InvitationPdfGuest = {
@@ -282,6 +283,7 @@ export async function generateInvitationPdf(
     name: guest?.name,
     table: guest?.table,
   });
+  let photoOptimization: Awaited<ReturnType<typeof optimizeInvitationPhotos>> | null = null;
 
   try {
     mounted.root.querySelectorAll('iframe, video').forEach((node) => node.remove());
@@ -290,6 +292,12 @@ export async function generateInvitationPdf(
     iframe.style.height = '4000px';
     await settleImages(mounted.root);
     inlineHero(mounted.root);
+    photoOptimization = await optimizeInvitationPhotos(mounted.root);
+    if (photoOptimization.failed > 0) {
+      console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {
+        failed: photoOptimization.failed,
+      });
+    }
     flattenModernColors(mounted.root);
     inlineSvgColors(mounted.root);
     assertGuest(mounted.root, guest);
@@ -324,6 +332,7 @@ export async function generateInvitationPdf(
     const filename = invitationPdfFilename(event.title || 'Evenement', guest?.name, new Map());
     return { blob: pdf.output('blob'), filename };
   } finally {
+    photoOptimization?.objectUrls.forEach((url) => URL.revokeObjectURL(url));
     mounted.destroy();
     iframe.remove();
   }

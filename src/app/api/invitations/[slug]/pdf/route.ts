@@ -2,6 +2,7 @@ import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { NextResponse } from 'next/server';
 import { invitationPdfCaptureCss, invitationPdfPageCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
+import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,6 +92,20 @@ export async function GET(
         new Promise<void>((resolve) => setTimeout(resolve, 12000)),
       ]);
     });
+    const invitationRoot = await page.evaluateHandle(() => {
+      const host = document.querySelector<HTMLElement>('.invitation-experience-host');
+      const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
+      if (!root) throw new Error('Le conteneur de l’invitation est introuvable.');
+      return root;
+    });
+    const imageOptimization = await page.evaluate(optimizeInvitationPhotos, invitationRoot);
+    await invitationRoot.dispose();
+    if (imageOptimization.failed > 0) {
+      console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {
+        slug,
+        failed: imageOptimization.failed,
+      });
+    }
     await page.addStyleTag({
       content: invitationPdfPageCss(INVITATION_PDF_WIDTH),
     });
@@ -153,6 +168,9 @@ export async function GET(
       preferCSSPageSize: false,
       margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
     });
+    if (imageOptimization.objectUrls.length > 0) {
+      await page.evaluate((urls) => urls.forEach((url) => URL.revokeObjectURL(url)), imageOptimization.objectUrls);
+    }
     const filename = `${safeFilename(title.replace(/\s*[|\-–—].*$/, '').trim())}.pdf`;
     return new NextResponse(Buffer.from(pdf), {
       headers: {

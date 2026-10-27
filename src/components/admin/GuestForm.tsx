@@ -85,13 +85,13 @@ export default function GuestForm({ guest, onSubmit, onClose }: GuestFormProps) 
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Groupe / Famille
+              Famille
             </label>
             <input
               type="text"
               value={formData.group}
               onChange={(e) => setFormData({ ...formData, group: e.target.value })}
-              placeholder="Famille, Amis, Collègues..."
+              placeholder="Ex. Famille Dupont"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
             />
           </div>

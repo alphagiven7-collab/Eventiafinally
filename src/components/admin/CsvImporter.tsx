@@ -34,7 +34,7 @@ export default function CsvImporter({ onImport, onClose }: CsvImporterProps) {
         name: values[headers.indexOf('nom')] || values[headers.indexOf('name')] || '',
         phone: values[headers.indexOf('téléphone')] || values[headers.indexOf('phone')] || '',
         email: values[headers.indexOf('email')] || '',
-        group: values[headers.indexOf('groupe')] || values[headers.indexOf('group')] || '',
+        group: values[headers.indexOf('famille')] || values[headers.indexOf('groupe')] || values[headers.indexOf('family')] || values[headers.indexOf('group')] || '',
         status: 'pending',
         adults: parseInt(values[headers.indexOf('adultes')] || values[headers.indexOf('adults')]) || 1,
         children: parseInt(values[headers.indexOf('enfants')] || values[headers.indexOf('children')]) || 0,
@@ -99,10 +99,10 @@ export default function CsvImporter({ onImport, onClose }: CsvImporterProps) {
               Votre fichier CSV doit contenir les colonnes suivantes :
             </p>
             <code className="text-xs bg-white p-2 rounded block">
-              nom,téléphone,email,groupe,adultes,enfants,table
+              nom,téléphone,email,famille,adultes,enfants,table
             </code>
             <p className="text-xs text-blue-600 mt-2">
-              Exemple : Jean Dupont,+33612345678,jean@email.com,Famille,2,1,Table 5
+              Exemple : Jean Dupont,+33612345678,jean@email.com,Famille Dupont,2,1,Table 5
             </p>
           </div>
 

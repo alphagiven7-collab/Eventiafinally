@@ -89,7 +89,7 @@ export default function GuestTable({ guests, onEdit, onDelete, onStatusChange }:
                   <div>
                     <p className="font-medium text-gray-900">{guest.name}</p>
                     {guest.group && (
-                      <p className="text-xs text-gray-500">{guest.group}</p>
+                      <p className="text-xs text-gray-500">Famille : {guest.group}</p>
                     )}
                   </div>
                 </td>

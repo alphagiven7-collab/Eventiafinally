@@ -10,7 +10,7 @@ interface ExportButtonsProps {
 
 export default function ExportButtons({ guests, event }: ExportButtonsProps) {
   const exportToCSV = () => {
-    const headers = ['Nom', 'Téléphone', 'Email', 'Groupe', 'Adultes', 'Enfants', 'Statut', 'Table'];
+    const headers = ['Nom', 'Téléphone', 'Email', 'Famille', 'Adultes', 'Enfants', 'Statut', 'Table'];
     const csvContent = [
       headers.join(','),
       ...guests.map(g => [

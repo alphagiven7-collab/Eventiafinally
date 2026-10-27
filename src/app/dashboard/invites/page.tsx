@@ -55,6 +55,8 @@ function GuestManagementContent() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
   const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
+  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
+  const [bulkFamilySide, setBulkFamilySide] = useState<GuestFamilySide | ''>('');
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,6 +152,10 @@ function GuestManagementContent() {
     loadGuests();
     return () => { cancelled = true; };
   }, [selectedEventId, addToast]);
+
+  useEffect(() => {
+    setSelectedGuestIds([]);
+  }, [selectedEventId]);
 
   // Stats
   const stats = {
@@ -440,7 +446,7 @@ function GuestManagementContent() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const header = 'nom,telephone,groupe,cote_famille,email,statut,adultes,enfants,boissons\n';
+    const header = 'nom,telephone,famille,cote_famille,email,statut,adultes,enfants,boissons\n';
     const catalog = selectedEvent?.drinks || [];
     const rows = guests.map(g =>
       `"${g.name}","${g.phone || ''}","${g.group || ''}","${g.family_side ? familyLabel(g.family_side) : ''}","${g.email || ''}","${g.status}",${g.adults || 1},${g.children || 0},"${drinkLabel(g, catalog)}"`
@@ -467,7 +473,7 @@ function GuestManagementContent() {
     addToast('success', 'Export JSON téléchargé');
   };
 
-  const exportAllPdfs = async (familyScope = familyFilter) => {
+  const exportAllPdfs = async (familyScope = familyFilter, selectedOnly = false) => {
     if (zipLock.current) return;
     const selected = events.find((event) => event.id === selectedEventId);
     if (!user?.id || !selected) {
@@ -492,13 +498,15 @@ function GuestManagementContent() {
         addToast('error', loaded.error);
         return;
       }
+      const selectedIds = new Set(selectedGuestIds);
       const scopedGuests = loaded.guests.filter((guest) => {
+        if (selectedOnly && !selectedIds.has(guest.id)) return false;
         if (!isWedding || familyScope === 'all') return true;
         if (familyScope === 'unassigned') return !guest.family_side;
         return guest.family_side === familyScope;
       });
       if (scopedGuests.length === 0) {
-        addToast('error', 'Aucun invité dans cette famille.');
+        addToast('error', selectedOnly ? 'Aucun invité sélectionné.' : 'Aucun invité dans cette famille.');
         return;
       }
       setZipProgress({ done: 0, total: scopedGuests.length });
@@ -518,7 +526,10 @@ function GuestManagementContent() {
         addToast('error', `${result.failures.length} PDF n’ont pas pu être créés. L’archive n’a pas été téléchargée.`);
         return;
       }
-      downloadBlob(result.blob, result.filename);
+      const familySuffix = isWedding && familyScope !== 'all'
+        ? `_${familyScope === 'unassigned' ? 'A_classer' : familyScope === 'groom' ? 'Famille_du_marie' : 'Famille_de_la_mariee'}`
+        : selectedOnly ? '_Selection' : '';
+      downloadBlob(result.blob, result.filename.replace(/\.zip$/i, `${familySuffix}.zip`));
       addToast('success', `${scopedGuests.length} PDF réunis dans le fichier ZIP.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'L’export PDF a échoué.';
@@ -536,7 +547,7 @@ function GuestManagementContent() {
         <span className="flex items-center gap-2">{zipProgress && <span role="status" className="text-xs">{zipProgress.done} / {zipProgress.total}</span>}<ChevronDown className={`h-4 w-4 transition ${pdfOpen ? 'rotate-180' : ''}`} /></span>
       </button>
       <div id="invitation-pdf-downloads" hidden={!pdfOpen} className="space-y-3 pt-2">
-      {activeTab === 'exports' && isWedding && (
+      {(activeTab === 'exports' || activeTab === 'guests') && isWedding && (
         <label className="flex items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-300">
           Famille à exporter
           <select
@@ -583,6 +594,38 @@ function GuestManagementContent() {
       </div>
     </div>
   );
+
+  const toggleGuestSelection = (guestId: string) => {
+    setSelectedGuestIds((current) => current.includes(guestId)
+      ? current.filter((id) => id !== guestId)
+      : [...current, guestId]);
+  };
+
+  const toggleVisibleGuestSelection = () => {
+    const visibleIds = filteredGuests.map((guest) => guest.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedGuestIds.includes(id));
+    setSelectedGuestIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
+  };
+
+  const assignFamilyToSelection = async () => {
+    if (!bulkFamilySide || selectedGuestIds.length === 0) return;
+    if (!isSupabaseReady()) {
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    const selected = guests.filter((guest) => selectedGuestIds.includes(guest.id));
+    const results = await Promise.all(selected.map((guest) => updateGuest(createClient(), {
+      ...guest,
+      family_side: bulkFamilySide,
+    })));
+    const saved = new Map(results.flatMap((result) => result.guest ? [[result.guest.id, result.guest] as const] : []));
+    setGuests((current) => current.map((guest) => saved.get(guest.id) || guest));
+    const failed = results.filter((result) => result.error || !result.guest).length;
+    if (failed) addToast('error', `${selected.length - failed} invité(s) classé(s), ${failed} échec(s).`);
+    else addToast('success', `${selected.length} invité(s) classé(s) dans ${familyLabel(bulkFamilySide)}.`);
+  };
 
   const statusLabel = (s: GuestStatus) => {
     if (s === 'confirmed') return '✅ Confirmé';
@@ -781,7 +824,7 @@ function GuestManagementContent() {
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, groupe, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». Seul le nom est obligatoire. Les séparateurs , et ; sont acceptés.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, famille, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». La colonne « famille » est facultative. Les séparateurs , et ; sont acceptés.</p>
                 <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
@@ -948,6 +991,66 @@ function GuestManagementContent() {
               </select>
             </div>
 
+            {filteredGuests.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                <label className="flex min-h-10 items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    checked={filteredGuests.every((guest) => selectedGuestIds.includes(guest.id))}
+                    onChange={toggleVisibleGuestSelection}
+                    className="h-4 w-4 accent-violet-600"
+                    aria-label="Sélectionner tous les invités affichés"
+                  />
+                  Sélectionner la liste affichée
+                </label>
+                {selectedGuestIds.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+                      {selectedGuestIds.length} sélectionné(s)
+                    </span>
+                    {isWedding && (
+                      <>
+                        <select
+                          aria-label="Famille à attribuer aux invités sélectionnés"
+                          value={bulkFamilySide}
+                          onChange={(event) => setBulkFamilySide(event.target.value as GuestFamilySide | '')}
+                          className="min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        >
+                          <option value="">Classer dans…</option>
+                          <option value="groom">Famille du marié</option>
+                          <option value="bride">Famille de la mariée</option>
+                        </select>
+                        {bulkFamilySide && (
+                          <button
+                            type="button"
+                            onClick={() => void assignFamilyToSelection()}
+                            className="min-h-10 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white"
+                          >
+                            Attribuer
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void exportAllPdfs('all', true)}
+                      disabled={Boolean(zipProgress) || !detailsReady}
+                      className="min-h-10 rounded-lg bg-gray-900 px-3 text-xs font-semibold text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+                    >
+                      Télécharger la sélection
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGuestIds([])}
+                      className="min-h-10 rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-600 dark:border-gray-600 dark:text-gray-300"
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tableau */}
             {filteredGuests.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-10 text-center">
@@ -961,13 +1064,22 @@ function GuestManagementContent() {
                       {filteredGuests.map(g => (
                         <article key={g.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
                             <div className="flex items-start justify-between gap-3">
-                            <div>
+                            <div className="flex min-w-0 items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedGuestIds.includes(g.id)}
+                              onChange={() => toggleGuestSelection(g.id)}
+                              aria-label={`Sélectionner ${g.name}`}
+                              className="mt-1 h-4 w-4 shrink-0 accent-violet-600"
+                            />
+                            <div className="min-w-0">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
+                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · Famille : ${g.group}` : ''}</p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                             {drinkLabel(g, selectedEvent?.drinks || []) && (
                               <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
                             )}
+                            </div>
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
@@ -1152,7 +1264,7 @@ function GuestManagementContent() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Famille</label>
                 <input value={editingGuest.group || ''} onChange={(e) => setEditingGuest({ ...editingGuest, group: e.target.value || undefined })}
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
               </div>

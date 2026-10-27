@@ -1,6 +1,7 @@
 import { EventWithSettings } from '@/types';
 import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
 import { INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
+import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
 import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
 
 export type InvitationPdfGuest = {
@@ -21,7 +22,8 @@ const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
 const SLICE_TIMEOUT_MS = 40000;
 const PDF_ZIP_CONCURRENCY = 3;
-const PDF_SLICE_JPEG_QUALITY = 0.9;
+const PDF_CAPTURE_SCALE = 1;
+const PDF_SLICE_JPEG_QUALITY = 0.82;
 
 type QrOverlay = {
   dataUrl: string;
@@ -109,12 +111,6 @@ export async function downloadInvitationWebPdf(slug: string) {
 function canvasHeightLimit() {
   const coarse = window.matchMedia?.('(pointer: coarse)').matches;
   return coarse ? 4096 : 8192;
-}
-
-function captureScale(limit: number) {
-  const preferred = window.matchMedia?.('(pointer: coarse)').matches ? 1 : 1.25;
-  const maxScale = Math.max(1, Math.floor((limit - 32) / 900));
-  return Math.min(preferred, maxScale);
 }
 
 async function settleImages(root: ParentNode) {
@@ -229,7 +225,7 @@ function assertGuest(root: HTMLElement, guest?: InvitationPdfGuest | null) {
 async function captureSlices(main: HTMLElement) {
   const { default: html2canvas } = await import('html2canvas');
   const limit = canvasHeightLimit();
-  const scale = captureScale(limit);
+  const scale = PDF_CAPTURE_SCALE;
   const sliceCss = Math.max(600, Math.floor((limit - 48) / scale));
   const total = Math.ceil(main.scrollHeight);
   if (total < 40) throw new Error('L’invitation est vide.');
@@ -312,6 +308,7 @@ export async function generateInvitationPdf(
     name: guest?.name,
     table: guest?.table,
   });
+  const photoObjectUrls: string[] = [];
 
   try {
     mounted.root.querySelectorAll('iframe, video').forEach((node) => node.remove());
@@ -322,6 +319,13 @@ export async function generateInvitationPdf(
     inlineHero(mounted.root);
     flattenModernColors(mounted.root);
     inlineSvgColors(mounted.root);
+    const photoOptimization = await optimizeInvitationPhotos(mounted.root);
+    photoObjectUrls.push(...photoOptimization.objectUrls);
+    if (photoOptimization.failed > 0) {
+      console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {
+        failed: photoOptimization.failed,
+      });
+    }
     assertGuest(mounted.root, guest);
     viewport.style.overflow = 'hidden';
     iframe.style.height = '800px';
@@ -366,6 +370,7 @@ export async function generateInvitationPdf(
     return { blob: pdf.output('blob'), filename };
   } finally {
     mounted.destroy();
+    photoObjectUrls.forEach((url) => URL.revokeObjectURL(url));
     iframe.remove();
   }
 }

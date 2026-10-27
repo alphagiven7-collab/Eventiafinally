@@ -8,9 +8,70 @@ export type InvitationPhotoOptimizationResult = {
   objectUrls: string[];
 };
 
+export type InvitationPhotoDisplayTarget = {
+  width: number;
+  height: number;
+  fit: 'cover' | 'contain';
+};
+
+type PhotoSourceTask = {
+  source: string;
+  matteColor?: string;
+  displayTargets: InvitationPhotoDisplayTarget[];
+};
+
+export function invitationPhotoOutputSize(
+  sourceWidth: number,
+  sourceHeight: number,
+  displayTargets: InvitationPhotoDisplayTarget[],
+  pixelRatio = 2,
+) {
+  if (
+    sourceWidth <= 0 ||
+    sourceHeight <= 0 ||
+    displayTargets.length === 0 ||
+    pixelRatio <= 0
+  ) {
+    return { width: sourceWidth, height: sourceHeight };
+  }
+
+  const scale = Math.min(1, Math.max(...displayTargets.map((target) => {
+    const targetWidth = Math.max(1, target.width * pixelRatio);
+    const targetHeight = Math.max(1, target.height * pixelRatio);
+    return target.fit === 'cover'
+      ? Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight)
+      : Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  })));
+
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+  };
+}
+
 export async function optimizeInvitationPhotos(root: HTMLElement): Promise<InvitationPhotoOptimizationResult> {
-  const JPEG_QUALITY = 0.86;
-  const WEBP_QUALITY = 0.9;
+  const view = root.ownerDocument.defaultView;
+  if (!view) throw new Error('Le navigateur ne peut pas lire les styles de l’invitation.');
+  const getStyle = (element: Element) => view.getComputedStyle(element);
+  const getOutputSize = (
+    sourceWidth: number,
+    sourceHeight: number,
+    displayTargets: InvitationPhotoDisplayTarget[],
+  ) => {
+    const scale = Math.min(1, Math.max(...displayTargets.map((target) => {
+      const targetWidth = Math.max(1, target.width * 2);
+      const targetHeight = Math.max(1, target.height * 2);
+      return target.fit === 'cover'
+        ? Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight)
+        : Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+    })));
+    return {
+      width: Math.max(1, Math.round(sourceWidth * scale)),
+      height: Math.max(1, Math.round(sourceHeight * scale)),
+    };
+  };
+  const JPEG_QUALITY = 0.82;
+  const WEBP_QUALITY = 0.88;
   const MIN_SOURCE_BYTES = 64 * 1024;
   const MIN_SAVING_RATIO = 0.98;
   const MAX_IMAGE_PIXELS = 16_000_000;
@@ -24,7 +85,8 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
     objectUrls: [],
   };
   const optimizedSources = new Map<string, Promise<string | null>>();
-  const getOptimizedSource = (source: string, matteColor?: string): Promise<string | null> => {
+  const getOptimizedSource = (task: PhotoSourceTask): Promise<string | null> => {
+    const { source, matteColor, displayTargets } = task;
     const cacheKey = `${source}\n${matteColor || 'preserve-alpha'}`;
     const cached = optimizedSources.get(cacheKey);
     if (cached) return cached;
@@ -34,10 +96,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
         const response = await fetch(source);
         if (!response.ok) throw new Error(`Chargement de la photo impossible (${response.status}).`);
         const original = await response.blob();
-        if (
-          original.size < MIN_SOURCE_BYTES ||
-          !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(original.type)
-        ) {
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(original.type)) {
           result.skipped += 1;
           return null;
         }
@@ -48,10 +107,18 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
           result.skipped += 1;
           return null;
         }
+        const outputSize = getOutputSize(bitmap.width, bitmap.height, displayTargets);
+        if (
+          (bitmap.width === outputSize.width && bitmap.height === outputSize.height && original.size < MIN_SOURCE_BYTES)
+        ) {
+          bitmap.close();
+          result.skipped += 1;
+          return null;
+        }
 
         const canvas = root.ownerDocument.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
+        canvas.width = outputSize.width;
+        canvas.height = outputSize.height;
         const context = canvas.getContext('2d', { willReadFrequently: true });
         if (!context) {
           bitmap.close();
@@ -61,7 +128,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
           context.fillStyle = matteColor;
           context.fillRect(0, 0, canvas.width, canvas.height);
         }
-        context.drawImage(bitmap, 0, 0);
+        context.drawImage(bitmap, 0, 0, outputSize.width, outputSize.height);
         bitmap.close();
 
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -109,15 +176,11 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
   const photoImages = Array.from(root.querySelectorAll<HTMLImageElement>(
     'img:not(#checkin-qr):not(#gps-image):not(#map-image):not(#paper-motif-left):not(#paper-motif-right)',
   ));
-  const imageSources = photoImages
-    .filter((image) => image.naturalWidth > 0)
-    .map((image) => image.currentSrc || image.src)
-    .filter(Boolean);
   const matteColors = new Map(
     photoImages.map((image) => {
       let ancestor = image.parentElement;
       while (ancestor && root.contains(ancestor)) {
-        const color = getComputedStyle(ancestor).backgroundColor;
+        const color = getStyle(ancestor).backgroundColor;
         if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
           return [image.currentSrc || image.src, color] as const;
         }
@@ -129,45 +192,79 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
   );
 
   const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('*')).filter((element) =>
-    getComputedStyle(element).backgroundImage.includes('url('),
+    getStyle(element).backgroundImage.includes('url('),
   );
   const urlPattern = /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g;
-  const backgroundSources = backgrounds.flatMap((element) => {
-    const backgroundImage = getComputedStyle(element).backgroundImage;
-    return Array.from(backgroundImage.matchAll(urlPattern), (match) =>
-      (match[1] || match[2] || match[3] || '').trim(),
-    ).filter(Boolean);
+  const sourceTasks = new Map<string, PhotoSourceTask>();
+  const addSourceTarget = (
+    source: string,
+    matteColor: string | undefined,
+    target: InvitationPhotoDisplayTarget,
+  ) => {
+    const cacheKey = `${source}\n${matteColor || 'preserve-alpha'}`;
+    const task = sourceTasks.get(cacheKey) || { source, matteColor, displayTargets: [] };
+    task.displayTargets.push(target);
+    sourceTasks.set(cacheKey, task);
+  };
+
+  photoImages.forEach((image) => {
+    const source = image.currentSrc || image.src;
+    if (!source || image.naturalWidth === 0) return;
+    const bounds = image.getBoundingClientRect();
+    const fit = getStyle(image).objectFit === 'cover' ? 'cover' : 'contain';
+    addSourceTarget(source, matteColors.get(source), {
+      width: bounds.width,
+      height: bounds.height,
+      fit,
+    });
   });
-  const sourceTasks: { source: string; matteColor?: string }[] = [
-    ...imageSources.map((source) => ({ source, matteColor: matteColors.get(source) })),
-    ...backgroundSources.map((source) => ({ source, matteColor: undefined })),
-  ].filter((task, index, tasks) =>
-    tasks.findIndex((candidate) =>
-      candidate.source === task.source && candidate.matteColor === task.matteColor,
-    ) === index,
-  );
+
+  backgrounds.forEach((element) => {
+    const backgroundImage = getStyle(element).backgroundImage;
+    const style = getStyle(element);
+    const bounds = element.getBoundingClientRect();
+    const fit = style.backgroundSize.split(',').some((size) => size.trim().startsWith('cover'))
+      ? 'cover'
+      : 'contain';
+    for (const match of backgroundImage.matchAll(urlPattern)) {
+      const source = (match[1] || match[2] || match[3] || '').trim();
+      if (source) addSourceTarget(source, undefined, {
+        width: bounds.width,
+        height: bounds.height,
+        fit,
+      });
+    }
+  });
+
   let nextSource = 0;
-  await Promise.all(Array.from({ length: Math.min(3, sourceTasks.length) }, async () => {
-    while (nextSource < sourceTasks.length) {
-      const task = sourceTasks[nextSource];
+  const tasks = Array.from(sourceTasks.values());
+  await Promise.all(Array.from({ length: Math.min(3, tasks.length) }, async () => {
+    while (nextSource < tasks.length) {
+      const task = tasks[nextSource];
       nextSource += 1;
-      await getOptimizedSource(task.source, task.matteColor);
+      await getOptimizedSource(task);
     }
   }));
 
-  for (const image of photoImages) {
+  await Promise.all(photoImages.map(async (image) => {
     const source = image.currentSrc || image.src;
-    if (!source || image.naturalWidth === 0) continue;
+    if (!source || image.naturalWidth === 0) return;
     const cacheKey = `${source}\n${matteColors.get(source) || 'preserve-alpha'}`;
     const optimizedUrl = await optimizedSources.get(cacheKey);
-    if (!optimizedUrl) continue;
+    if (!optimizedUrl) return;
     image.removeAttribute('srcset');
     image.src = optimizedUrl;
-    result.optimizedImages += 1;
-  }
+    try {
+      await image.decode();
+      result.optimizedImages += 1;
+    } catch {
+      image.src = source;
+      result.failed += 1;
+    }
+  }));
 
   for (const element of backgrounds) {
-    const backgroundImage = getComputedStyle(element).backgroundImage;
+    const backgroundImage = getStyle(element).backgroundImage;
     const matches = Array.from(backgroundImage.matchAll(urlPattern));
     let optimizedBackground = backgroundImage;
     for (const match of matches) {

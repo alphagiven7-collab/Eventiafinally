@@ -1,7 +1,6 @@
 import { EventWithSettings } from '@/types';
 import { mountInvitationForCapture } from '@/components/invitation/InvitationExperience';
 import { INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
-import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
 import { invitationPdfFilename, invitationsZipFilename } from '@/lib/invitation/pdf-names';
 
 export type InvitationPdfGuest = {
@@ -21,6 +20,34 @@ const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
 const SLICE_TIMEOUT_MS = 40000;
 const PDF_ZIP_CONCURRENCY = 3;
+const PDF_SLICE_JPEG_QUALITY = 0.97;
+
+type QrOverlay = {
+  dataUrl: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+function captureQrOverlay(root: HTMLElement, main: HTMLElement): QrOverlay | null {
+  const image = root.querySelector<HTMLImageElement>('#checkin-qr');
+  if (!image?.complete || image.naturalWidth === 0 || !image.src.startsWith('data:image/')) return null;
+  const style = getComputedStyle(image);
+  if (style.display === 'none' || style.visibility === 'hidden') return null;
+
+  const imageRect = image.getBoundingClientRect();
+  const mainRect = main.getBoundingClientRect();
+  if (imageRect.width === 0 || imageRect.height === 0) return null;
+
+  return {
+    dataUrl: image.src,
+    x: imageRect.left - mainRect.left,
+    y: imageRect.top - mainRect.top,
+    width: imageRect.width,
+    height: imageRect.height,
+  };
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -284,7 +311,6 @@ export async function generateInvitationPdf(
     name: guest?.name,
     table: guest?.table,
   });
-  let photoOptimization: Awaited<ReturnType<typeof optimizeInvitationPhotos>> | null = null;
 
   try {
     mounted.root.querySelectorAll('iframe, video').forEach((node) => node.remove());
@@ -293,12 +319,6 @@ export async function generateInvitationPdf(
     iframe.style.height = '4000px';
     await settleImages(mounted.root);
     inlineHero(mounted.root);
-    photoOptimization = await optimizeInvitationPhotos(mounted.root);
-    if (photoOptimization.failed > 0) {
-      console.warn('Certaines photos de l’invitation n’ont pas pu être optimisées.', {
-        failed: photoOptimization.failed,
-      });
-    }
     flattenModernColors(mounted.root);
     inlineSvgColors(mounted.root);
     assertGuest(mounted.root, guest);
@@ -306,6 +326,7 @@ export async function generateInvitationPdf(
     iframe.style.height = '800px';
     if (mounted.main.scrollHeight < 40) throw new Error('L’invitation est vide.');
 
+    const qrOverlay = captureQrOverlay(mounted.root, mounted.main);
     const { slices, total } = await captureSlices(mounted.main);
     const fit = total > MAX_PDF_EDGE ? MAX_PDF_EDGE / total : 1;
     const pageWidth = INVITATION_PDF_WIDTH * fit;
@@ -320,12 +341,22 @@ export async function generateInvitationPdf(
     });
     let cursor = 0;
     for (const slice of slices) {
-      const image = slice.canvas.toDataURL('image/png');
+      const image = slice.canvas.toDataURL('image/jpeg', PDF_SLICE_JPEG_QUALITY);
       const height = slice.cssHeight * fit;
-      pdf.addImage(image, 'PNG', 0, cursor, pageWidth, height, undefined, 'FAST');
+      pdf.addImage(image, 'JPEG', 0, cursor, pageWidth, height, undefined, 'FAST');
       cursor += height;
       slice.canvas.width = 1;
       slice.canvas.height = 1;
+    }
+    if (qrOverlay) {
+      pdf.addImage(
+        qrOverlay.dataUrl,
+        'PNG',
+        qrOverlay.x * fit,
+        qrOverlay.y * fit,
+        qrOverlay.width * fit,
+        qrOverlay.height * fit,
+      );
     }
     if (pdf.getNumberOfPages() !== 1) {
       throw new Error('Le PDF devait tenir sur une seule page.');
@@ -333,7 +364,6 @@ export async function generateInvitationPdf(
     const filename = invitationPdfFilename(event.title || 'Evenement', guest?.name, new Map());
     return { blob: pdf.output('blob'), filename };
   } finally {
-    photoOptimization?.objectUrls.forEach((url) => URL.revokeObjectURL(url));
     mounted.destroy();
     iframe.remove();
   }

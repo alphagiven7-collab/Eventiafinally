@@ -211,6 +211,9 @@ export async function GET(
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-store',
+        'X-PDF-Photos-Optimized': String(imageOptimization.optimizedImages + imageOptimization.optimizedBackgrounds),
+        'X-PDF-Photo-Bytes-Saved': String(Math.max(0, imageOptimization.originalBytes - imageOptimization.optimizedBytes)),
+        'X-PDF-Photo-Optimization-Failed': String(imageOptimization.failed),
         'Server-Timing': [
           `browser;dur=${timings.browser.toFixed(1)}`,
           `page;dur=${timings.page.toFixed(1)}`,

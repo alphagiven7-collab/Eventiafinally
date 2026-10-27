@@ -20,6 +20,7 @@ const MAX_PDF_EDGE = 14000;
 const IMAGE_WAIT_MS = 6000;
 const FONT_WAIT_MS = 4000;
 const SLICE_TIMEOUT_MS = 40000;
+const PDF_ZIP_CONCURRENCY = 3;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -346,40 +347,54 @@ export async function generateInvitationsZip(
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const used = new Map<string, number>();
-  const failures: InvitationPdfFailure[] = [];
   const total = guests.length;
+  const failures: (InvitationPdfFailure | undefined)[] = new Array(total);
+  const filenames = guests.map((guest) =>
+    invitationPdfFilename(event.title || 'Evenement', guest.name, used),
+  );
   let made = 0;
+  let completed = 0;
+  let nextIndex = 0;
   onProgress?.(0, total);
 
-  for (let index = 0; index < guests.length; index += 1) {
-    const guest = guests[index];
-    const label = guest.name?.trim() || `Invité ${index + 1}`;
-    try {
-      const guestInput = {
-        id: guest.id,
-        token: guest.token,
-        name: guest.name?.trim() || '',
-        table: guest.table,
-      };
-      const result = event.is_published && event.slug
-        ? await fetchInvitationWebPdf(event.slug, guestInput)
-        : await generateInvitationPdf(event, guestInput);
-      const filename = invitationPdfFilename(event.title || 'Evenement', guest.name, used);
-      zip.file(filename, result.blob);
-      made += 1;
-    } catch (error) {
-      failures.push({
-        name: label,
-        reason: error instanceof Error ? error.message : 'La génération a échoué.',
-      });
+  const worker = async () => {
+    while (nextIndex < guests.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const guest = guests[index];
+      const label = guest.name?.trim() || `Invité ${index + 1}`;
+      try {
+        const guestInput = {
+          id: guest.id,
+          token: guest.token,
+          name: guest.name?.trim() || '',
+          table: guest.table,
+        };
+        const result = event.is_published && event.slug
+          ? await fetchInvitationWebPdf(event.slug, guestInput)
+          : await generateInvitationPdf(event, guestInput);
+        zip.file(filenames[index], result.blob);
+        made += 1;
+      } catch (error) {
+        failures[index] = {
+          name: label,
+          reason: error instanceof Error ? error.message : 'La génération a échoué.',
+        };
+      }
+      completed += 1;
+      onProgress?.(completed, total);
     }
-    onProgress?.(index + 1, total);
-  }
+  };
 
-  if (failures.length > 0 || made !== guests.length) {
-    return { blob: new Blob(), filename: invitationsZipFilename(event.title || 'Evenement'), failures };
+  await Promise.all(
+    Array.from({ length: Math.min(PDF_ZIP_CONCURRENCY, guests.length) }, () => worker()),
+  );
+  const reportedFailures = failures.filter((failure): failure is InvitationPdfFailure => Boolean(failure));
+
+  if (reportedFailures.length > 0 || made !== guests.length) {
+    return { blob: new Blob(), filename: invitationsZipFilename(event.title || 'Evenement'), failures: reportedFailures };
   }
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
-  return { blob, filename: invitationsZipFilename(event.title || 'Evenement'), failures };
+  return { blob, filename: invitationsZipFilename(event.title || 'Evenement'), failures: reportedFailures };
 }

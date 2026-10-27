@@ -106,7 +106,11 @@ export async function GET(
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
       if (!root) return;
-      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img'));
+      const images = Array.from(root.querySelectorAll<HTMLImageElement>('img')).filter((image) => {
+        const bounds = image.getBoundingClientRect();
+        const style = getComputedStyle(image);
+        return bounds.width > 0 && bounds.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      });
       return Promise.race([
         Promise.all(images.map((image) => image.complete
           ? Promise.resolve()
@@ -114,7 +118,7 @@ export async function GET(
             image.addEventListener('load', () => resolve(), { once: true });
             image.addEventListener('error', () => resolve(), { once: true });
           }))),
-        new Promise<void>((resolve) => setTimeout(resolve, 4000)),
+        new Promise<void>((resolve) => setTimeout(resolve, 1200)),
       ]);
     });
     timings.images = performance.now() - stageStarted;

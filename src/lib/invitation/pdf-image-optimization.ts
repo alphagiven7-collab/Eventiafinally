@@ -128,7 +128,9 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
     }),
   );
 
-  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('.hero-bg, .card-photo-bg'));
+  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('*')).filter((element) =>
+    getComputedStyle(element).backgroundImage.includes('url('),
+  );
   const urlPattern = /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g;
   const backgroundSources = backgrounds.flatMap((element) => {
     const backgroundImage = getComputedStyle(element).backgroundImage;

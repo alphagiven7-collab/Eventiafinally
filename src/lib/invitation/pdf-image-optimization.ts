@@ -91,18 +91,39 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
   const photoImages = Array.from(root.querySelectorAll<HTMLImageElement>(
     'img:not(#checkin-qr):not(#gps-image):not(#map-image):not(#paper-motif-left):not(#paper-motif-right)',
   ));
+  const imageSources = photoImages
+    .filter((image) => image.naturalWidth > 0)
+    .map((image) => image.currentSrc || image.src)
+    .filter(Boolean);
+
+  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('.hero-bg, .card-photo-bg'));
+  const urlPattern = /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g;
+  const backgroundSources = backgrounds.flatMap((element) => {
+    const backgroundImage = getComputedStyle(element).backgroundImage;
+    return Array.from(backgroundImage.matchAll(urlPattern), (match) =>
+      (match[1] || match[2] || match[3] || '').trim(),
+    ).filter(Boolean);
+  });
+  const sources = [...new Set([...imageSources, ...backgroundSources])];
+  let nextSource = 0;
+  await Promise.all(Array.from({ length: Math.min(3, sources.length) }, async () => {
+    while (nextSource < sources.length) {
+      const source = sources[nextSource];
+      nextSource += 1;
+      await getOptimizedSource(source);
+    }
+  }));
+
   for (const image of photoImages) {
     const source = image.currentSrc || image.src;
     if (!source || image.naturalWidth === 0) continue;
-    const optimizedUrl = await getOptimizedSource(source);
+    const optimizedUrl = await optimizedSources.get(source);
     if (!optimizedUrl) continue;
     image.removeAttribute('srcset');
     image.src = optimizedUrl;
     result.optimizedImages += 1;
   }
 
-  const backgrounds = Array.from(root.querySelectorAll<HTMLElement>('.hero-bg, .card-photo-bg'));
-  const urlPattern = /url\((?:"([^"]*)"|'([^']*)'|([^)]*))\)/g;
   for (const element of backgrounds) {
     const backgroundImage = getComputedStyle(element).backgroundImage;
     const matches = Array.from(backgroundImage.matchAll(urlPattern));
@@ -110,7 +131,7 @@ export async function optimizeInvitationPhotos(root: HTMLElement): Promise<Invit
     for (const match of matches) {
       const source = (match[1] || match[2] || match[3] || '').trim();
       if (!source) continue;
-      const optimizedUrl = await getOptimizedSource(source);
+      const optimizedUrl = await optimizedSources.get(source);
       if (!optimizedUrl) continue;
       optimizedBackground = optimizedBackground.replace(match[0], `url("${optimizedUrl}")`);
       result.optimizedBackgrounds += 1;

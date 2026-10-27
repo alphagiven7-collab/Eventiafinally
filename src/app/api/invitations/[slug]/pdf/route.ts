@@ -1,5 +1,5 @@
 import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import puppeteer, { type Page } from 'puppeteer-core';
 import { NextResponse } from 'next/server';
 import { invitationPdfCaptureCss, invitationPdfPageCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
 import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimization';
@@ -7,6 +7,29 @@ import { optimizeInvitationPhotos } from '@/lib/invitation/pdf-image-optimizatio
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+let browserPromise: ReturnType<typeof puppeteer.launch> | null = null;
+
+async function getBrowser() {
+  if (browserPromise) {
+    const browser = await browserPromise;
+    if (browser.connected) return browser;
+    browserPromise = null;
+  }
+
+  browserPromise = puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: { width: INVITATION_PDF_WIDTH, height: 900, deviceScaleFactor: 1 },
+    executablePath: await executablePath(),
+    headless: true,
+  });
+  try {
+    return await browserPromise;
+  } catch (error) {
+    browserPromise = null;
+    throw error;
+  }
+}
 
 function safeFilename(value: string) {
   return value
@@ -41,20 +64,20 @@ export async function GET(
   const theme = requestUrl.searchParams.get('theme') === 'dark' ? 'dark' : 'light';
   invitationUrl.searchParams.set('pdf', '1');
 
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+  let page: Page | null = null;
+  const timings: Record<string, number> = {};
+  const requestStarted = performance.now();
   try {
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: { width: INVITATION_PDF_WIDTH, height: 900, deviceScaleFactor: 1 },
-      executablePath: await executablePath(),
-      headless: true,
-    });
-    const page = await browser.newPage();
+    let stageStarted = performance.now();
+    const browser = await getBrowser();
+    timings.browser = performance.now() - stageStarted;
+    page = await browser.newPage();
     await page.setViewport({ width: INVITATION_PDF_WIDTH, height: 900, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument((savedTheme) => {
       localStorage.setItem('invitia_theme', savedTheme);
       localStorage.setItem('theme', savedTheme);
     }, theme);
+    stageStarted = performance.now();
     await page.goto(invitationUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.emulateMediaType('screen');
     await page.evaluate(() => {
@@ -77,6 +100,8 @@ export async function GET(
       const main = root?.querySelector<HTMLElement>('#main-view');
       return Boolean(main && main.scrollHeight > 200);
     }, { timeout: 30000 });
+    timings.page = performance.now() - stageStarted;
+    stageStarted = performance.now();
     await page.evaluate(() => {
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
@@ -92,6 +117,8 @@ export async function GET(
         new Promise<void>((resolve) => setTimeout(resolve, 12000)),
       ]);
     });
+    timings.images = performance.now() - stageStarted;
+    stageStarted = performance.now();
     const invitationRoot = await page.evaluateHandle(() => {
       const host = document.querySelector<HTMLElement>('.invitation-experience-host');
       const root = host?.shadowRoot?.querySelector<HTMLElement>('.invitation-experience-root');
@@ -106,6 +133,8 @@ export async function GET(
         failed: imageOptimization.failed,
       });
     }
+    timings.optimize = performance.now() - stageStarted;
+    stageStarted = performance.now();
     await page.addStyleTag({
       content: invitationPdfPageCss(INVITATION_PDF_WIDTH),
     });
@@ -168,6 +197,7 @@ export async function GET(
       preferCSSPageSize: false,
       margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
     });
+    timings.render = performance.now() - stageStarted;
     if (imageOptimization.objectUrls.length > 0) {
       await page.evaluate((urls) => urls.forEach((url) => URL.revokeObjectURL(url)), imageOptimization.objectUrls);
     }
@@ -177,6 +207,14 @@ export async function GET(
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-store',
+        'Server-Timing': [
+          `browser;dur=${timings.browser.toFixed(1)}`,
+          `page;dur=${timings.page.toFixed(1)}`,
+          `images;dur=${timings.images.toFixed(1)}`,
+          `optimize;dur=${timings.optimize.toFixed(1)}`,
+          `render;dur=${timings.render.toFixed(1)}`,
+          `total;dur=${(performance.now() - requestStarted).toFixed(1)}`,
+        ].join(', '),
       },
     });
   } catch (error) {
@@ -184,6 +222,6 @@ export async function GET(
     const message = error instanceof Error ? error.message : 'Erreur Chromium inconnue.';
     return NextResponse.json({ error: `Génération PDF impossible : ${message}` }, { status: 500 });
   } finally {
-    await browser?.close();
+    await page?.close();
   }
 }

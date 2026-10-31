@@ -13,7 +13,7 @@ import { parseGuestCsv } from '@/lib/guests/csv';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
-import { duplicateIdsToRemove, isCoupleName, normalizeGuestName, seatsAtTable } from '@/lib/guests/seating';
+import { duplicateIdsToRemove, formatTableLabel, isCoupleName, normalizeGuestName, normalizeTableName, seatsAtTable } from '@/lib/guests/seating';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
@@ -191,8 +191,14 @@ function GuestManagementContent() {
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
+      const tableQuery = normalizeTableName(q).toLowerCase();
       const catalog = events.find((event) => event.id === selectedEventId)?.drinks || [];
-      return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q) || drinkLabel(g, catalog).toLowerCase().includes(q);
+      return g.name.toLowerCase().includes(q) ||
+        (g.phone || '').includes(q) ||
+        (g.email || '').toLowerCase().includes(q) ||
+        drinkLabel(g, catalog).toLowerCase().includes(q) ||
+        (g.table_number || '').toLowerCase().includes(q) ||
+        (Boolean(tableQuery) && normalizeTableName(g.table_number).toLowerCase().includes(tableQuery));
     }
     return true;
   }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
@@ -219,9 +225,22 @@ function GuestManagementContent() {
     return () => window.cancelAnimationFrame(frame);
   }, [openTool, loading]);
 
-  const tables = selectedEvent?.tables || [];
+  const normalizeTableList = (items: { name: string; seats: number }[] = []) => {
+    const byKey = new Map<string, { name: string; seats: number }>();
+    for (const item of items) {
+      const name = normalizeTableName(item.name);
+      if (!name) continue;
+      const seats = Number.isFinite(item.seats) ? Math.max(1, Number(item.seats)) : 1;
+      const key = name.toLocaleLowerCase('fr');
+      const current = byKey.get(key);
+      byKey.set(key, current ? { name, seats: Math.max(current.seats, seats) } : { name, seats });
+    }
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  };
+
+  const tables = normalizeTableList(selectedEvent?.tables || []);
   const seatsUsed = (name: string) => guests.reduce((sum, guest) => (
-    guest.table_number === name ? sum + seatsAtTable(guest) : sum
+    normalizeTableName(guest.table_number) === normalizeTableName(name) ? sum + seatsAtTable(guest) : sum
   ), 0);
   const duplicateIds = duplicateIdsToRemove(guests);
   const duplicateGroups = (() => {
@@ -245,9 +264,10 @@ function GuestManagementContent() {
       addToast('error', 'L’invitation est encore en chargement.');
       return;
     }
+    const normalized = normalizeTableList(next);
     const result = await publishInvitation(createClient(), {
       ...selectedEvent,
-      tables: next,
+      tables: normalized,
       user_id: user.id,
       is_published: selectedEvent.is_published,
     });
@@ -255,7 +275,7 @@ function GuestManagementContent() {
       addToast('error', result.error);
       return;
     }
-    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: next } : event));
+    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: normalized } : event));
   };
 
   const [publishing, setPublishing] = useState(false);
@@ -321,8 +341,9 @@ function GuestManagementContent() {
   };
 
   const assignTable = async (guest: Guest, tableNumber: string) => {
+    const normalizedTableNumber = normalizeTableName(tableNumber);
     const previous = guest.table_number;
-    const optimistic = { ...guest, table_number: tableNumber || undefined };
+    const optimistic = { ...guest, table_number: normalizedTableNumber || undefined };
     setGuests((list) => list.map((item) => item.id === guest.id ? optimistic : item));
     if (!isSupabaseReady()) {
       setGuests((list) => list.map((item) => item.id === guest.id ? guest : item));
@@ -413,9 +434,12 @@ function GuestManagementContent() {
     : guestCapacity();
   const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
   const tableChoices = (current?: string) => {
+    const currentName = normalizeTableName(current);
     const names = tables.map((table) => table.name);
-    if (current && !names.includes(current)) names.push(current);
-    return names;
+    if (currentName && !names.some((name) => normalizeTableName(name).toLocaleLowerCase('fr') === currentName.toLocaleLowerCase('fr'))) {
+      names.push(currentName);
+    }
+    return [...new Set(names.map((name) => normalizeTableName(name)))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
   };
 
   const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -928,10 +952,10 @@ function GuestManagementContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      const name = tableName.trim();
+                      const name = normalizeTableName(tableName);
                       const seats = Math.max(1, Number(tableSeats) || 1);
                       if (!name) return;
-                      void saveTables([...tables.filter((table) => table.name !== name), { name, seats }]);
+                      void saveTables([...tables.filter((table) => normalizeTableName(table.name) !== name), { name, seats }]);
                       setTableName('');
                       setNewTable(name);
                     }}
@@ -952,7 +976,7 @@ function GuestManagementContent() {
                               {used}/{table.seats} places{used > table.seats ? ' · au-dessus du nombre de places' : ''}
                             </p>
                           </div>
-                          <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500 shrink-0">Retirer</button>
+                          <button type="button" onClick={() => void saveTables(tables.filter((item) => normalizeTableName(item.name) !== normalizeTableName(table.name)))} className="text-xs text-red-500 shrink-0">Retirer</button>
                         </div>
                       );
                     })}
@@ -1042,7 +1066,7 @@ function GuestManagementContent() {
             )}
 
             <div className="flex gap-2">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité"
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité ou une table"
                 className="min-w-0 flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
               <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'declined')}
                 aria-label="Filtrer par statut"
@@ -1228,7 +1252,7 @@ function GuestManagementContent() {
                                     const w = window.open('', '_blank');
                                     if (!w) return;
                                     const safe = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
-                                    const tableLine = g.table_number ? `Table ${g.table_number}` : 'Sans table';
+                                    const tableLine = g.table_number ? formatTableLabel(g.table_number) : 'Sans table';
                                     w.document.write(`<title>Entrée - ${safe(g.name)}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${src}" style="width:280px;height:280px"><p style="margin-top:16px;font-size:18px;color:#111"><strong>${safe(g.name)}</strong></p><p style="font-size:14px;color:#2563eb">${safe(tableLine)}</p><p style="font-size:12px;color:#666;margin-top:8px">Montrez cette carte à l'entrée</p></div>`);
                                   });
                                 }}

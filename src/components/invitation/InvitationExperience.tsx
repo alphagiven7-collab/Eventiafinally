@@ -14,6 +14,7 @@ import { invitationPdfCaptureCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/
 import { shouldShowCheckinQr } from '@/lib/invitation/rsvp-qr';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
+import { formatTableLabel } from '@/lib/guests/seating';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -442,8 +443,9 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   const tableLine = $('#guest-table-line');
   if (tableLine) {
-    if (guestTable && guestTable.trim()) {
-      tableLine.textContent = `Table ${guestTable.trim()}`;
+    const label = formatTableLabel(guestTable);
+    if (label !== 'Sans table') {
+      tableLine.textContent = label;
       tableLine.style.display = 'inline-flex';
     } else {
       tableLine.style.display = 'none';

@@ -12,6 +12,7 @@ import { listInvitations } from '@/lib/events/store';
 import { checkInGuest, CheckInResult, listAllEventGuests, lookupGuestByToken, tokenFromInviteLink } from '@/lib/guests/store';
 import { cardBelongsToEvent, pickDefaultEvent } from '@/lib/guests/checkin-rules';
 import { EventWithSettings, Guest } from '@/types';
+import { formatTableLabel } from '@/lib/guests/seating';
 
 const LAST_EVENT_KEY = 'eventia_checkin_event';
 
@@ -34,7 +35,7 @@ type Arrival = {
 
 function arrivalCopy(result: Arrival) {
   const guest = result.guest;
-  const table = guest?.tableNumber ? `Table ${guest.tableNumber}` : 'Sans table';
+  const table = formatTableLabel(guest?.tableNumber);
   if (result.wrongEvent) {
     return {
       tone: 'refused' as const,
@@ -396,7 +397,7 @@ function CheckInContent() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[#1A1A2E]">{guest.name}</p>
                         <p className="text-[11px] text-[#6B5B4F]">
-                          {guest.table_number ? `Table ${guest.table_number}` : 'Sans table'}
+                          {formatTableLabel(guest.table_number)}
                           {guest.checked_in_at ? ' · Déjà entré' : guest.status === 'confirmed' ? ' · Confirmé' : guest.status === 'declined' ? ' · A dit non' : ' · Sans réponse'}
                         </p>
                       </div>

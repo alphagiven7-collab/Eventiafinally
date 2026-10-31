@@ -9,6 +9,20 @@ export function normalizeGuestName(name: string): string {
     .replace(/\s+/g, ' ');
 }
 
+export function normalizeTableName(name: string | null | undefined): string {
+  let value = (name ?? '').trim().replace(/\s+/g, ' ');
+  if (!value) return '';
+  while (/^table\s+/i.test(value)) {
+    value = value.replace(/^table\s+/i, '').trim();
+  }
+  return value.trim();
+}
+
+export function formatTableLabel(name: string | null | undefined): string {
+  const normalized = normalizeTableName(name);
+  return normalized ? `Table ${normalized}` : 'Sans table';
+}
+
 export function isCoupleName(name: string): boolean {
   return /\s(?:&|\+|et|and)\s/i.test(name.trim());
 }

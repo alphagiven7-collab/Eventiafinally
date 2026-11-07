@@ -54,6 +54,36 @@ function csvCell(value: string | number): string {
   return `"${String(value).replaceAll('"', '""')}"`;
 }
 
+const MAX_WHATSAPP_SHARE_URL_LENGTH = 1800;
+
+function buildWhatsAppShareBatches(
+  eventTitle: string,
+  guests: { name: string; table_number?: string; link: string }[],
+): string[] {
+  const heading = `Bonjour, voici les liens personnels des invités pour « ${eventTitle} » :\n\n`;
+  const batches: string[] = [];
+  let current = heading;
+
+  for (const guest of guests) {
+    const name = guest.name.replace(/\s+/g, ' ').trim();
+    const table = guest.table_number?.trim();
+    const entry = `• ${name}${table ? ` · Table ${table}` : ''}\n${guest.link}`;
+    const separator = current === heading ? '' : '\n\n';
+    const candidate = `${current}${separator}${entry}`;
+    const candidateUrl = `https://wa.me/?text=${encodeURIComponent(candidate)}`;
+
+    if (current !== heading && candidateUrl.length > MAX_WHATSAPP_SHARE_URL_LENGTH) {
+      batches.push(current);
+      current = `${heading}${entry}`;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current !== heading) batches.push(current);
+  return batches;
+}
+
 function GuestMessage({ message }: { message?: string }) {
   const text = message?.trim();
   if (!text) return null;
@@ -80,6 +110,11 @@ function GuestManagementContent() {
   const [events, setEvents] = useState<EventWithSettings[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [guests, setGuests] = useState<Guest[]>([]);
+  const [guestSelection, setGuestSelection] = useState<{ eventId: string; ids: Set<string> }>({
+    eventId: '',
+    ids: new Set(),
+  });
+  const [shareBatchIndex, setShareBatchIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
@@ -180,6 +215,8 @@ function GuestManagementContent() {
     return () => { cancelled = true; };
   }, [selectedEventId, addToast]);
 
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
+
   // Stats
   const stats = {
     total: guests.length,
@@ -193,6 +230,7 @@ function GuestManagementContent() {
   // Filtrage
   const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
   const filteredGuests = guests.filter(g => {
+    if (g.event_id !== selectedEventId) return false;
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -201,6 +239,12 @@ function GuestManagementContent() {
     }
     return true;
   }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
+  const selectedGuestIds = guestSelection.eventId === selectedEventId ? guestSelection.ids : new Set<string>();
+  const selectedGuests = guests.filter((guest) => (
+    guest.event_id === selectedEventId && selectedGuestIds.has(guest.id)
+  ));
+  const filteredGuestsSelected = filteredGuests.length > 0
+    && filteredGuests.every((guest) => selectedGuestIds.has(guest.id));
 
   const personalLink = (guest: Guest) => {
     const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
@@ -214,13 +258,45 @@ function GuestManagementContent() {
     return `${base}?text=${encodeURIComponent(text)}`;
   };
 
+  const bulkShareMessages = selectedEvent
+    ? buildWhatsAppShareBatches(
+      selectedEvent.title,
+      selectedGuests.map((guest) => ({
+        name: guest.name,
+        table_number: guest.table_number,
+        link: personalLink(guest),
+      })),
+    )
+    : [];
+  const openBulkShareBatch = (index: number) => {
+    const message = bulkShareMessages[index];
+    if (!message) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    setShareBatchIndex(index + 1);
+  };
+  const toggleGuestSelection = (guest: Guest) => {
+    const currentIds = guestSelection.eventId === selectedEventId ? guestSelection.ids : new Set<string>();
+    const nextIds = new Set(currentIds);
+    if (nextIds.has(guest.id)) nextIds.delete(guest.id);
+    else nextIds.add(guest.id);
+    setGuestSelection({ eventId: selectedEventId, ids: nextIds });
+    setShareBatchIndex(0);
+  };
+  const toggleFilteredGuestSelection = () => {
+    const currentIds = guestSelection.eventId === selectedEventId ? guestSelection.ids : new Set<string>();
+    const nextIds = new Set(currentIds);
+    if (filteredGuestsSelected) filteredGuests.forEach((guest) => nextIds.delete(guest.id));
+    else filteredGuests.forEach((guest) => nextIds.add(guest.id));
+    setGuestSelection({ eventId: selectedEventId, ids: nextIds });
+    setShareBatchIndex(0);
+  };
+
   useEffect(() => {
     if (openTool !== 'add' || loading) return;
     const frame = window.requestAnimationFrame(() => nameInputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [openTool, loading]);
 
-  const selectedEvent = events.find((event) => event.id === selectedEventId);
   const tables = selectedEvent?.tables || [];
   const seatsUsed = (name: string) => guests.reduce((sum, guest) => (
     tableKey(guest.table_number) === tableKey(name) ? sum + seatsAtTable(guest) : sum
@@ -1203,6 +1279,68 @@ function GuestManagementContent() {
               </select>
             </div>
 
+            {guests.length > 0 && (
+              <section className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30" aria-label="Partager les liens personnels sélectionnés">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-green-950 dark:text-green-100">Partager des liens à un organisateur</h2>
+                    <p className="mt-1 text-xs text-green-900/80 dark:text-green-200/80">
+                        {selectedGuests.length} invité(s) sélectionné(s). Les sélections restent actives même si vous changez de filtre.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleFilteredGuestSelection}
+                    disabled={filteredGuests.length === 0}
+                    className="min-h-10 rounded-lg border border-green-300 bg-white px-3 text-xs font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50 dark:border-green-800 dark:bg-gray-900 dark:text-green-100"
+                  >
+                    {filteredGuestsSelected ? 'Désélectionner les résultats' : `Tout sélectionner (${filteredGuests.length})`}
+                  </button>
+                </div>
+                {selectedGuests.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] text-green-900/80 dark:text-green-200/80">
+                      Les liens personnels permettent de répondre au nom de l&apos;invité. Transmettez-les uniquement à un organisateur de confiance.
+                    </p>
+                    {!selectedEvent?.is_published ? (
+                      <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                        Publiez d&apos;abord l&apos;invitation pour partager ses liens personnels.
+                      </p>
+                    ) : shareBatchIndex < bulkShareMessages.length ? (
+                      <button
+                        type="button"
+                        onClick={() => openBulkShareBatch(shareBatchIndex)}
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#1ebe5d]"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        {shareBatchIndex === 0
+                          ? `Préparer ${selectedGuests.length} lien(s) dans WhatsApp`
+                          : `Préparer le lot suivant (${shareBatchIndex + 1}/${bulkShareMessages.length})`}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShareBatchIndex(0)}
+                        className="min-h-10 rounded-lg border border-green-300 bg-white px-3 text-xs font-semibold text-green-900 hover:bg-green-100 dark:border-green-800 dark:bg-gray-900 dark:text-green-100"
+                      >
+                        Recommencer le partage
+                      </button>
+                    )}
+                    {bulkShareMessages.length > 1 && shareBatchIndex === 0 && (
+                      <p className="text-[11px] text-green-900/80 dark:text-green-200/80">
+                        La sélection sera préparée en {bulkShareMessages.length} messages pour que chaque lot reste facile à envoyer. Après chaque message, revenez ici pour préparer le suivant.
+                      </p>
+                    )}
+                    {shareBatchIndex > 0 && shareBatchIndex <= bulkShareMessages.length && (
+                      <p className="text-[11px] text-green-900/80 dark:text-green-200/80">
+                        Lot {shareBatchIndex} sur {bulkShareMessages.length} préparé. Envoyez-le dans WhatsApp, puis revenez préparer le suivant.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Tableau */}
             {filteredGuests.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-10 text-center">
@@ -1216,7 +1354,15 @@ function GuestManagementContent() {
                       {filteredGuests.map(g => (
                         <article key={g.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
                             <div className="flex items-start justify-between gap-3">
-                            <div>
+                            <div className="flex min-w-0 items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedGuestIds.has(g.id)}
+                              onChange={() => toggleGuestSelection(g)}
+                              aria-label={`Sélectionner le lien personnel de ${g.name}`}
+                              className="mt-1 h-5 w-5 shrink-0 accent-green-600"
+                            />
+                            <div className="min-w-0">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
                             <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
@@ -1224,6 +1370,7 @@ function GuestManagementContent() {
                               <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
                             )}
                             <GuestMessage message={g.message} />
+                            </div>
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}

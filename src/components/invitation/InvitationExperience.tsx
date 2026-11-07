@@ -12,7 +12,12 @@ import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { invitationPdfCaptureCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
 import { shouldShowCheckinQr } from '@/lib/invitation/rsvp-qr';
-import { groupDrinksByCategory, partitionDrinksForMenu } from '@/lib/invitation/drinks';
+import {
+  DRINK_CATEGORIES,
+  groupDrinksIntoRows,
+  normalizeDrinkCategory,
+  partitionDrinksForMenu,
+} from '@/lib/invitation/drinks';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 import { formatTableLabel } from '@/lib/guests/seating';
@@ -1591,16 +1596,17 @@ function initThemeToggle(root: HTMLElement) {
   };
 }
 
-function getDrinkIconSvg(id: string): string {
+function getDrinkIconSvg(category: string): string {
   const icons: Record<string, string> = {
-    champagne: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
-    'vin-rouge': `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
-    'vin-blanc': `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/></svg>`,
-    cocktail: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/></svg>`,
-    biere: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 3 11 3s2 .5 3 .5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg>`,
-    soft: `<svg style="width:28px;height:28px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1.5 12a2 2 0 0 1-2 1.8H9.5a2 2 0 0 1-2-1.8L6 8Z"/><path d="M15 2l-2 6"/><path d="M5 8h14"/></svg>`,
+    water: '<path d="M12 3.2S6.5 9.5 6.5 14a5.5 5.5 0 0 0 11 0c0-4.5-5.5-10.8-5.5-10.8Z"/><path d="M9.5 14.5a2.6 2.6 0 0 0 2.5 2.3"/>',
+    'juice-soda': '<path d="M6.5 8h11l-1.2 12h-8.6L6.5 8Z"/><path d="m14 3-3 5"/><path d="M8 12h8"/>',
+    cocktail: '<path d="m5 5 7 8 7-8H5Z"/><path d="M12 13v7"/><path d="M8.5 20h7"/><path d="M16.5 3v3"/>',
+    hot: '<path d="M5 10h14l-1.2 10H6.2L5 10Z"/><path d="M19 12h1a3 3 0 0 1 0 6h-1"/><path d="M8 7c-1-1 1-1.5 0-2.5"/><path d="M12 7c-1-1 1-1.5 0-2.5"/><path d="M16 7c-1-1 1-1.5 0-2.5"/>',
+    alcoholic: '<path d="M7 3h10v4a5 5 0 0 1-10 0V3Z"/><path d="M12 12v8"/><path d="M8 20h8"/><path d="M7.5 7h9"/>',
+    other: '<path d="M7 4h10v3a5 5 0 0 1-10 0V4Z"/><path d="M12 12v8"/><path d="M8 20h8"/><path d="m5 3 .5 1.5L7 5l-1.5.5L5 7l-.5-1.5L3 5l1.5-.5L5 3Z"/><path d="m19 10 .4 1.1 1.1.4-1.1.4L19 13l-.4-1.1-1.1-.4 1.1-.4L19 10Z"/>',
   };
-  return icons[id] || icons.champagne;
+  const paths = icons[normalizeDrinkCategory(category)] || icons.other;
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 }
 
 function drinkStorageKey(slug?: string) {
@@ -1626,7 +1632,7 @@ function persistGuestDrinks(slug: string, token: string) {
   void saveGuestDrinks(createClient(), { token, drinks });
 }
 
-function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?: string) {
+function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?: string, expandAll = false) {
   const section = root.querySelector('#drink-menu-section') as HTMLElement | null;
   const grid = root.querySelector('#drink-menu-grid') as HTMLElement | null;
   if (!section || !grid) return () => {};
@@ -1643,7 +1649,7 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
     guestToken ||
     (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
   let saveTimer = 0;
-  let expanded = false;
+  let expanded = expandAll;
 
   try {
     const saved = rememberedDrinks(event?.slug);
@@ -1667,38 +1673,39 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
   function render() {
     if (!grid) return;
     const { visible: visibleDrinks, remaining: remainingDrinks } = partitionDrinksForMenu(defaultDrinks);
-    const renderGroups = (drinks: typeof defaultDrinks) => groupDrinksByCategory(drinks)
-      .map((group) => `
-        <div class="drink-menu-category">
-          <h4 class="drink-menu-category-title">${escapeHtml(group.label)}</h4>
-          <div class="drink-menu-category-cards">
-            ${group.drinks.map((d) => `
-      <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${escapeHtml(d.id)}">
-        <input type="checkbox" class="drink-card-input" value="${escapeHtml(d.id)}" ${selected.has(d.id) ? 'checked' : ''}>
+    const renderDrink = (drink: typeof defaultDrinks[number]) => {
+      const category = normalizeDrinkCategory(drink.category);
+      const categoryLabel = DRINK_CATEGORIES.find((item) => item.id === category)?.label || 'Autres boissons';
+      return `
+      <label class="drink-card${selected.has(drink.id) ? ' is-selected' : ''}" data-category="${category}" data-drink="${escapeHtml(drink.id)}">
+        <input type="checkbox" class="drink-card-input" value="${escapeHtml(drink.id)}" ${selected.has(drink.id) ? 'checked' : ''}>
         <div class="drink-card-media">
-          <div class="drink-card-icon-wrap" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--icon-color, #2563eb);">
-            ${getDrinkIconSvg(d.id)}
+          <div class="drink-card-icon-wrap">
+            ${getDrinkIconSvg(category)}
           </div>
-          <span class="drink-card-check">${selected.has(d.id) ? checkSvg : ''}</span>
+          <span class="drink-card-check">${selected.has(drink.id) ? checkSvg : ''}</span>
         </div>
         <div class="drink-card-body">
-          <span class="drink-card-title">${escapeHtml(d.name)}</span>
-          <span class="drink-card-desc">${escapeHtml(d.desc || '')}</span>
+          <span class="drink-card-title">${escapeHtml(drink.name)}</span>
+          <span class="drink-card-category">${escapeHtml(categoryLabel)}</span>
+          ${drink.desc ? `<span class="drink-card-desc">${escapeHtml(drink.desc)}</span>` : ''}
         </div>
-      </label>
-            `).join('')}
-          </div>
+      </label>`;
+    };
+    const renderRows = (drinks: typeof defaultDrinks) => groupDrinksIntoRows(drinks, 2)
+      .map((row) => `
+        <div class="drink-menu-row${row.length === 3 ? ' drink-menu-row--triple' : ''}">
+          ${row.map(renderDrink).join('')}
         </div>
       `)
       .join('');
-    grid.innerHTML = `${renderGroups(visibleDrinks)}
+    const allDrinks = [...visibleDrinks, ...remainingDrinks];
+    grid.innerHTML = `${renderRows(expanded ? allDrinks : visibleDrinks)}
       ${remainingDrinks.length > 0 ? `
-        <button type="button" class="drink-menu-toggle" aria-expanded="${expanded}" aria-controls="drink-menu-more">
-          ${expanded ? 'Masquer' : 'Voir'} les ${remainingDrinks.length} autres boissons
+        <button type="button" class="drink-menu-toggle" aria-expanded="${expanded}" aria-controls="drink-menu-grid">
+          <span>${expanded ? 'Réduire la carte' : `Voir les ${remainingDrinks.length} autres boissons`}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${expanded ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'}"/></svg>
         </button>
-        <div id="drink-menu-more" class="drink-menu-more" ${expanded ? '' : 'hidden'}>
-          ${renderGroups(remainingDrinks)}
-        </div>
       ` : ''}`;
 
     grid.querySelectorAll('.drink-card').forEach((card) => {
@@ -2460,37 +2467,76 @@ function getOriginalCSS(): string {
       width: 100%;
       box-sizing: border-box;
     }
-    .invitation-experience-root .drink-menu-category + .drink-menu-category,
-    .invitation-experience-root .drink-menu-more {
-      margin-top: 12px;
-    }
-    .invitation-experience-root .drink-menu-category-title {
-      margin: 0 0 8px;
-      color: #64748b;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-align: left;
-      text-transform: uppercase;
-    }
-    .invitation-experience-root .drink-menu-category-cards {
+    .invitation-experience-root .drink-menu-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.75rem;
     }
+    .invitation-experience-root .drink-menu-row + .drink-menu-row { margin-top: 0.75rem; }
+    .invitation-experience-root .drink-menu-row--triple { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .invitation-experience-root .drink-menu-toggle {
-      display: block;
+      display: flex;
       width: 100%;
       margin-top: 12px;
-      padding: 10px 12px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.72);
-      color: var(--rsvp-color, #7c3aed);
-      font-size: 0.75rem;
+      padding: 12px 16px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--rsvp-color, #7c3aed), #a855f7);
+      box-shadow: 0 8px 18px rgba(91, 33, 182, 0.22);
+      color: #fff;
+      font-size: 0.8rem;
       font-weight: 700;
+      letter-spacing: 0.01em;
       cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
     }
+    .invitation-experience-root .drink-menu-toggle:hover { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(91, 33, 182, 0.28); filter: brightness(1.04); }
+    .invitation-experience-root .drink-menu-toggle:focus-visible { outline: 3px solid rgba(124, 58, 237, 0.35); outline-offset: 3px; }
+    .invitation-experience-root .drink-menu-toggle svg { width: 17px; height: 17px; flex: 0 0 auto; }
+    .invitation-experience-root .drink-card-media {
+      display: flex;
+      min-height: 82px;
+      aspect-ratio: auto;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    }
+    .invitation-experience-root .drink-card-icon-wrap {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.72);
+      color: #475569;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+    .invitation-experience-root .drink-card-icon-wrap svg { width: 27px; height: 27px; }
+    .invitation-experience-root .drink-card[data-category="water"] .drink-card-media { background: linear-gradient(135deg, #eff9ff, #dbeafe); }
+    .invitation-experience-root .drink-card[data-category="water"] .drink-card-icon-wrap { color: #0284c7; }
+    .invitation-experience-root .drink-card[data-category="juice-soda"] .drink-card-media { background: linear-gradient(135deg, #fff7ed, #fed7aa); }
+    .invitation-experience-root .drink-card[data-category="juice-soda"] .drink-card-icon-wrap { color: #ea580c; }
+    .invitation-experience-root .drink-card[data-category="cocktail"] .drink-card-media { background: linear-gradient(135deg, #fdf2f8, #fbcfe8); }
+    .invitation-experience-root .drink-card[data-category="cocktail"] .drink-card-icon-wrap { color: #db2777; }
+    .invitation-experience-root .drink-card[data-category="hot"] .drink-card-media { background: linear-gradient(135deg, #fff7ed, #fed7aa); }
+    .invitation-experience-root .drink-card[data-category="hot"] .drink-card-icon-wrap { color: #9a3412; }
+    .invitation-experience-root .drink-card[data-category="alcoholic"] .drink-card-media { background: linear-gradient(135deg, #f5f3ff, #ddd6fe); }
+    .invitation-experience-root .drink-card[data-category="alcoholic"] .drink-card-icon-wrap { color: #7c3aed; }
+    .invitation-experience-root .drink-card[data-category="other"] .drink-card-media { background: linear-gradient(135deg, #ecfdf5, #bbf7d0); }
+    .invitation-experience-root .drink-card[data-category="other"] .drink-card-icon-wrap { color: #059669; }
+    .invitation-experience-root .drink-card-category {
+      display: block;
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 0.58rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .invitation-experience-root .drink-card-desc { overflow-wrap: anywhere; }
     .invitation-experience-root #about-toggle-detail #about-story-1,
     .invitation-experience-root #about-toggle-detail #about-story-2 {
       white-space: pre-wrap;
@@ -2514,7 +2560,7 @@ function getOriginalCSS(): string {
       box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25), 0 10px 24px rgba(124, 58, 237, 0.12);
     }
     .invitation-experience-root .drink-card-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; margin: 0; }
-    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: 4 / 3; min-height: 78px; overflow: hidden; background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+    .invitation-experience-root .drink-card-media { position: relative; width: 100%; aspect-ratio: auto; min-height: 82px; overflow: hidden; }
     .invitation-experience-root .drink-card-check {
       position: absolute;
       top: 8px;
@@ -2615,12 +2661,15 @@ function getOriginalCSS(): string {
     .invitation-experience-root.dark-mode-applied .drink-card-title {
       color: #f8fafc !important;
     }
-    .invitation-experience-root.dark-mode-applied .drink-menu-category-title {
-      color: #cbd5e1 !important;
-    }
     .invitation-experience-root.dark-mode-applied .drink-menu-toggle {
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    }
+    .invitation-experience-root.dark-mode-applied .drink-card-category {
+      color: #cbd5e1;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-card-icon-wrap {
+      border-color: rgba(255, 255, 255, 0.18);
       background: rgba(15, 23, 42, 0.72);
-      border-color: rgba(148, 163, 184, 0.28);
     }
     .invitation-experience-root.dark-mode-applied .drink-card-desc {
       color: #94a3b8 !important;
@@ -4109,7 +4158,7 @@ export function mountInvitationForCapture(
   root.innerHTML = getOriginalHTML();
   host.append(style, root);
   hydrateEventData(root, event, guest?.name?.trim() || undefined, guest?.table);
-  initDrinkMenu(root, event);
+  initDrinkMenu(root, event, undefined, true);
   if (event.event_date) initCountdown(root, event.event_date)();
   const main = root.querySelector('#main-view');
   if (!(main instanceof HTMLElement)) {

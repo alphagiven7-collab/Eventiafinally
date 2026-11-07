@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
-import { EventWithSettings, Guest, GuestFamilySide, GuestStatus } from '@/types';
+import { EventWithSettings, Guest, GuestStatus } from '@/types';
 import { fetchInvitationBySlug, fromDatabase, listInvitations, publishInvitation } from '@/lib/events/store';
 import { isCurrentSuperAdmin } from '@/lib/admin/session';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest, type GuestDraft } from '@/lib/guests/store';
@@ -13,7 +13,7 @@ import { parseGuestCsv } from '@/lib/guests/csv';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
 import { guestCapacity, TRIAL_INVITATIONS } from '@/constants/pricing';
-import { duplicateIdsToRemove, formatTableLabel, isCoupleName, normalizeGuestName, normalizeTableName, seatsAtTable } from '@/lib/guests/seating';
+import { duplicateIdsToRemove, isCoupleName, normalizeGuestName, normalizeTableName, seatsAtTable } from '@/lib/guests/seating';
 import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
@@ -44,6 +44,14 @@ function drinkLabel(guest: Guest, catalog: { id: string; name: string }[]): stri
     .join(', ');
 }
 
+function tableKey(name: string | null | undefined): string {
+  return normalizeTableName(name).toLocaleLowerCase('fr');
+}
+
+function csvCell(value: string | number): string {
+  return `"${String(value).replaceAll('"', '""')}"`;
+}
+
 function GuestManagementContent() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -54,9 +62,6 @@ function GuestManagementContent() {
   const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
-  const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
-  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
-  const [bulkFamilySide, setBulkFamilySide] = useState<GuestFamilySide | ''>('');
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,14 +75,10 @@ function GuestManagementContent() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newTable, setNewTable] = useState('');
-  const [newFamilySide, setNewFamilySide] = useState<GuestFamilySide | ''>('');
-  const [importFamilySide, setImportFamilySide] = useState<GuestFamilySide | ''>('');
-  const [csvSource, setCsvSource] = useState('');
   const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
-  const [zipFailures, setZipFailures] = useState<{ id?: string; name: string; reason: string }[]>([]);
-  const [zipIncludedCount, setZipIncludedCount] = useState<number | null>(null);
+  const [zipFailures, setZipFailures] = useState<{ name: string; reason: string }[]>([]);
   const zipLock = useRef(false);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [tableName, setTableName] = useState('');
@@ -86,6 +87,8 @@ function GuestManagementContent() {
     ready: GuestDraft[];
     bad: { line: number; text: string; reason: string }[];
     duplicates: string[];
+    missingTables: string[];
+    tableCapacities: Record<string, number>;
   }>(null);
 
   // WhatsApp template
@@ -156,10 +159,6 @@ function GuestManagementContent() {
     return () => { cancelled = true; };
   }, [selectedEventId, addToast]);
 
-  useEffect(() => {
-    setSelectedGuestIds([]);
-  }, [selectedEventId]);
-
   // Stats
   const stats = {
     total: guests.length,
@@ -170,35 +169,14 @@ function GuestManagementContent() {
     children: guests.reduce((s, g) => s + (g.children || 0), 0),
   };
 
-  const selectedEvent = events.find((event) => event.id === selectedEventId);
-  const isWedding = selectedEvent?.type === 'wedding';
-  const familyLabel = (side: GuestFamilySide) => side === 'groom' ? 'Famille du marié' : 'Famille de la mariée';
-  const familyFilteredGuests = guests.filter((guest) => {
-    if (!isWedding || familyFilter === 'all') return true;
-    if (familyFilter === 'unassigned') return !guest.family_side;
-    return guest.family_side === familyFilter;
-  });
-  const familyCounts = {
-    all: guests.length,
-    groom: guests.filter((guest) => guest.family_side === 'groom').length,
-    bride: guests.filter((guest) => guest.family_side === 'bride').length,
-    unassigned: guests.filter((guest) => !guest.family_side).length,
-  };
-
   // Filtrage
   const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
-  const filteredGuests = familyFilteredGuests.filter(g => {
+  const filteredGuests = guests.filter(g => {
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
-      const tableQuery = normalizeTableName(q).toLowerCase();
       const catalog = events.find((event) => event.id === selectedEventId)?.drinks || [];
-      return g.name.toLowerCase().includes(q) ||
-        (g.phone || '').includes(q) ||
-        (g.email || '').toLowerCase().includes(q) ||
-        drinkLabel(g, catalog).toLowerCase().includes(q) ||
-        (g.table_number || '').toLowerCase().includes(q) ||
-        (Boolean(tableQuery) && normalizeTableName(g.table_number).toLowerCase().includes(tableQuery));
+      return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q) || drinkLabel(g, catalog).toLowerCase().includes(q);
     }
     return true;
   }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
@@ -225,28 +203,30 @@ function GuestManagementContent() {
     return () => window.cancelAnimationFrame(frame);
   }, [openTool, loading]);
 
-  const normalizeTableList = (items: { name: string; seats: number }[] = []) => {
-    const byKey = new Map<string, { name: string; seats: number }>();
-    for (const item of items) {
-      const name = normalizeTableName(item.name);
-      if (!name) continue;
-      const seats = Number.isFinite(item.seats) ? Math.max(1, Number(item.seats)) : 1;
-      const key = name.toLocaleLowerCase('fr');
-      const current = byKey.get(key);
-      byKey.set(key, current ? { name, seats: Math.max(current.seats, seats) } : { name, seats });
-    }
-    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  };
-
-  const tables = normalizeTableList(selectedEvent?.tables || []);
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
+  const tables = selectedEvent?.tables || [];
   const seatsUsed = (name: string) => guests.reduce((sum, guest) => (
-    normalizeTableName(guest.table_number) === normalizeTableName(name) ? sum + seatsAtTable(guest) : sum
+    tableKey(guest.table_number) === tableKey(name) ? sum + seatsAtTable(guest) : sum
   ), 0);
+  const tableChoiceLabel = (name: string) => {
+    const table = tables.find((item) => tableKey(item.name) === tableKey(name));
+    return table ? `${name} · ${seatsUsed(name)}/${table.seats} places` : `${name} · à configurer`;
+  };
+  const csvTableAssignments = (csvPreview?.ready || []).reduce<Record<string, number>>((counts, guest) => {
+    if (guest.tableNumber) counts[guest.tableNumber] = (counts[guest.tableNumber] || 0) + 1;
+    return counts;
+  }, {});
+  const unregisteredTables = [...new Map(
+    guests
+      .map((guest) => guest.table_number?.trim())
+      .filter((name): name is string => Boolean(name) && !tables.some((table) => tableKey(table.name) === tableKey(name)))
+      .map((name) => [tableKey(name), name]),
+  ).values()];
   const duplicateIds = duplicateIdsToRemove(guests);
   const duplicateGroups = (() => {
     const grouped = new Map<string, Guest[]>();
     for (const guest of guests) {
-      const key = `${guest.family_side || 'unassigned'}:${normalizeGuestName(guest.name)}`;
+      const key = normalizeGuestName(guest.name);
       if (!key) continue;
       const list = grouped.get(key) ?? [];
       list.push(guest);
@@ -255,27 +235,27 @@ function GuestManagementContent() {
     return [...grouped.values()].filter((group) => group.length > 1);
   })();
 
-  const saveTables = async (next: { name: string; seats: number }[]) => {
+  const saveTables = async (next: { name: string; seats: number }[]): Promise<boolean> => {
     if (!selectedEvent || !user?.id || !isSupabaseReady()) {
       addToast('error', SUPABASE_REQUIRED);
-      return;
+      return false;
     }
     if (!detailsReady) {
       addToast('error', 'L’invitation est encore en chargement.');
-      return;
+      return false;
     }
-    const normalized = normalizeTableList(next);
     const result = await publishInvitation(createClient(), {
       ...selectedEvent,
-      tables: normalized,
+      tables: next,
       user_id: user.id,
       is_published: selectedEvent.is_published,
     });
     if (result.error) {
       addToast('error', result.error);
-      return;
+      return false;
     }
-    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: normalized } : event));
+    setEvents((current) => current.map((event) => event.id === selectedEvent.id ? { ...event, tables: next } : event));
+    return true;
   };
 
   const [publishing, setPublishing] = useState(false);
@@ -324,7 +304,6 @@ function GuestManagementContent() {
       name: newName,
       phone: newPhone,
       tableNumber: newTable,
-      familySide: newFamilySide || undefined,
       adults: couple ? 2 : 1,
     }, capacity);
     if (result.error || !result.guest) {
@@ -334,16 +313,14 @@ function GuestManagementContent() {
     setGuests((current) => [result.guest!, ...current]);
     setNewName('');
     setNewPhone('');
-    setNewFamilySide('');
     setNewCouple(false);
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
     nameInputRef.current?.focus();
   };
 
   const assignTable = async (guest: Guest, tableNumber: string) => {
-    const normalizedTableNumber = normalizeTableName(tableNumber);
     const previous = guest.table_number;
-    const optimistic = { ...guest, table_number: normalizedTableNumber || undefined };
+    const optimistic = { ...guest, table_number: tableNumber || undefined };
     setGuests((list) => list.map((item) => item.id === guest.id ? optimistic : item));
     if (!isSupabaseReady()) {
       setGuests((list) => list.map((item) => item.id === guest.id ? guest : item));
@@ -354,24 +331,6 @@ function GuestManagementContent() {
     if (result.error || !result.guest) {
       setGuests((list) => list.map((item) => item.id === guest.id ? { ...item, table_number: previous } : item));
       addToast('error', result.error || 'Table non enregistrée');
-      return;
-    }
-    setGuests((list) => list.map((item) => item.id === guest.id ? result.guest! : item));
-  };
-
-  const assignFamilySide = async (guest: Guest, familySide: GuestFamilySide | '') => {
-    const previous = guest.family_side;
-    const optimistic = { ...guest, family_side: familySide || undefined };
-    setGuests((list) => list.map((item) => item.id === guest.id ? optimistic : item));
-    if (!isSupabaseReady()) {
-      setGuests((list) => list.map((item) => item.id === guest.id ? guest : item));
-      addToast('error', SUPABASE_REQUIRED);
-      return;
-    }
-    const result = await updateGuest(createClient(), optimistic);
-    if (result.error || !result.guest) {
-      setGuests((list) => list.map((item) => item.id === guest.id ? { ...item, family_side: previous } : item));
-      addToast('error', result.error || 'Famille non enregistrée');
       return;
     }
     setGuests((list) => list.map((item) => item.id === guest.id ? result.guest! : item));
@@ -434,12 +393,9 @@ function GuestManagementContent() {
     : guestCapacity();
   const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
   const tableChoices = (current?: string) => {
-    const currentName = normalizeTableName(current);
     const names = tables.map((table) => table.name);
-    if (currentName && !names.some((name) => normalizeTableName(name).toLocaleLowerCase('fr') === currentName.toLocaleLowerCase('fr'))) {
-      names.push(currentName);
-    }
-    return [...new Set(names.map((name) => normalizeTableName(name)))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+    if (current && !names.includes(current)) names.push(current);
+    return names;
   };
 
   const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -447,31 +403,40 @@ function GuestManagementContent() {
     e.target.value = '';
     if (!file) return;
     const text = await file.text();
-    setCsvSource(text);
-    const { ready, bad, duplicates } = parseGuestCsv(
-      text,
-      guests.map((guest) => ({ name: guest.name, family_side: guest.family_side })),
-      importFamilySide || undefined,
-    );
+    const parsed = parseGuestCsv(text, guests.map((guest) => guest.name));
+    const knownTables = new Map(tables.map((table) => [tableKey(table.name), table.name]));
+    const ready = parsed.ready.map((guest) => {
+      if (!guest.tableNumber) return guest;
+      const key = tableKey(guest.tableNumber);
+      return { ...guest, tableNumber: knownTables.get(key) || normalizeTableName(guest.tableNumber) };
+    });
+    const missingTables = [...new Map(
+      ready
+        .map((guest) => guest.tableNumber)
+        .filter((name): name is string => Boolean(name) && !knownTables.has(tableKey(name)))
+        .map((name) => [tableKey(name), name]),
+    ).values()];
+    const tableCapacities = Object.fromEntries(missingTables.map((name) => [name, 8]));
+    const { bad, duplicates } = parsed;
     if (ready.length + bad.length + duplicates.length === 0) return;
-    setCsvPreview({ ready, bad, duplicates });
-  };
-
-  const changeImportFamilySide = (familySide: GuestFamilySide | '') => {
-    setImportFamilySide(familySide);
-    if (!csvSource) return;
-    const { ready, bad, duplicates } = parseGuestCsv(
-      csvSource,
-      guests.map((guest) => ({ name: guest.name, family_side: guest.family_side })),
-      familySide || undefined,
-    );
-    setCsvPreview(ready.length + bad.length + duplicates.length > 0 ? { ready, bad, duplicates } : null);
+    setCsvPreview({ ready, bad, duplicates, missingTables, tableCapacities });
   };
 
   const confirmCsvImport = async () => {
     if (!csvPreview || !isSupabaseReady()) {
       addToast('error', SUPABASE_REQUIRED);
       return;
+    }
+    if (csvPreview.missingTables.some((name) => !Number.isInteger(csvPreview.tableCapacities[name]) || csvPreview.tableCapacities[name] < 1)) {
+      addToast('error', 'Indiquez une capacité valide pour chaque nouvelle table.');
+      return;
+    }
+    if (csvPreview.missingTables.length > 0) {
+      const nextTables = [
+        ...tables,
+        ...csvPreview.missingTables.map((name) => ({ name, seats: csvPreview.tableCapacities[name] })),
+      ];
+      if (!(await saveTables(nextTables))) return;
     }
     const result = await addGuests(createClient(), selectedEventId, csvPreview.ready, capacity);
     if (result.guests.length > 0) {
@@ -485,17 +450,26 @@ function GuestManagementContent() {
       addToast('success', `${result.guests.length} invités enregistrés.`);
     }
     setCsvPreview(null);
-    setCsvSource('');
-    setImportFamilySide('');
   };
 
   // Export CSV
   const handleExportCSV = () => {
-    const header = 'nom,telephone,famille,cote_famille,email,statut,adultes,enfants,boissons\n';
+    const header = ['nom', 'telephone', 'groupe', 'email', 'statut', 'adultes', 'enfants', 'table', 'boissons', 'message']
+      .map(csvCell)
+      .join(',') + '\n';
     const catalog = selectedEvent?.drinks || [];
-    const rows = guests.map(g =>
-      `"${g.name}","${g.phone || ''}","${g.group || ''}","${g.family_side ? familyLabel(g.family_side) : ''}","${g.email || ''}","${g.status}",${g.adults || 1},${g.children || 0},"${drinkLabel(g, catalog)}"`
-    ).join('\n');
+    const rows = guests.map((guest) => [
+      guest.name,
+      guest.phone || '',
+      guest.group || '',
+      guest.email || '',
+      guest.status,
+      guest.adults || 1,
+      guest.children || 0,
+      guest.table_number || '',
+      drinkLabel(guest, catalog),
+      guest.message || '',
+    ].map(csvCell).join(',')).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -518,11 +492,7 @@ function GuestManagementContent() {
     addToast('success', 'Export JSON téléchargé');
   };
 
-  const exportAllPdfs = async (
-    familyScope = familyFilter,
-    selectedOnly = false,
-    retryGuestIds?: string[],
-  ) => {
+  const exportAllPdfs = async () => {
     if (zipLock.current) return;
     const selected = events.find((event) => event.id === selectedEventId);
     if (!user?.id || !selected) {
@@ -540,32 +510,22 @@ function GuestManagementContent() {
     zipLock.current = true;
     setPdfOpen(true);
     setZipFailures([]);
-    setZipIncludedCount(null);
-    setZipProgress({ done: 0, total: familyFilteredGuests.length });
+    setZipProgress({ done: 0, total: guests.length });
     try {
       const loaded = await listAllEventGuests(createClient(), selected.id);
       if (loaded.error) {
         addToast('error', loaded.error);
         return;
       }
-      const selectedIds = new Set(selectedGuestIds);
-      const retryIds = retryGuestIds ? new Set(retryGuestIds) : null;
-      const scopedGuests = loaded.guests.filter((guest) => {
-        if (retryIds && !retryIds.has(guest.id)) return false;
-        if (selectedOnly && !selectedIds.has(guest.id)) return false;
-        if (!isWedding || familyScope === 'all') return true;
-        if (familyScope === 'unassigned') return !guest.family_side;
-        return guest.family_side === familyScope;
-      });
-      if (scopedGuests.length === 0) {
-        addToast('error', selectedOnly ? 'Aucun invité sélectionné.' : 'Aucun invité dans cette famille.');
+      if (loaded.guests.length === 0) {
+        addToast('error', 'Aucun invité enregistré pour cette invitation.');
         return;
       }
-      setZipProgress({ done: 0, total: scopedGuests.length });
+      setZipProgress({ done: 0, total: loaded.guests.length });
       const { generateInvitationsZip, downloadBlob } = await import('@/lib/invitation/pdf');
       const result = await generateInvitationsZip(
         selected,
-        scopedGuests.map((guest) => ({
+        loaded.guests.map((guest) => ({
           id: guest.id,
           token: guest.token,
           name: guest.name,
@@ -573,27 +533,13 @@ function GuestManagementContent() {
         })),
         (done, total) => setZipProgress({ done, total }),
       );
-      setZipFailures(result.failures);
-      setZipIncludedCount(result.included);
       if (result.failures.length > 0) {
-        if (result.included === 0) {
-          addToast('error', `Aucun PDF n’a pu être créé. ${result.failures.length} échec(s).`);
-          return;
-        }
-        addToast(
-          'warning',
-          `${result.included} PDF prêt(s) dans le ZIP. ${result.failures.length} invité(s) n’ont pas pu être inclus.`,
-        );
-      } else {
-        addToast('success', `${result.included} PDF réunis dans le fichier ZIP.`);
-      }
-      if (result.included === 0) {
+        setZipFailures(result.failures);
+        addToast('error', `${result.failures.length} PDF n’ont pas pu être créés. L’archive n’a pas été téléchargée.`);
         return;
       }
-      const familySuffix = isWedding && familyScope !== 'all'
-        ? `_${familyScope === 'unassigned' ? 'A_classer' : familyScope === 'groom' ? 'Famille_du_marie' : 'Famille_de_la_mariee'}`
-        : selectedOnly ? '_Selection' : '';
-      downloadBlob(result.blob, result.filename.replace(/\.zip$/i, `${familySuffix}.zip`));
+      downloadBlob(result.blob, result.filename);
+      addToast('success', `${loaded.guests.length} PDF réunis dans le fichier ZIP.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'L’export PDF a échoué.';
       addToast('error', message);
@@ -610,39 +556,20 @@ function GuestManagementContent() {
         <span className="flex items-center gap-2">{zipProgress && <span role="status" className="text-xs">{zipProgress.done} / {zipProgress.total}</span>}<ChevronDown className={`h-4 w-4 transition ${pdfOpen ? 'rotate-180' : ''}`} /></span>
       </button>
       <div id="invitation-pdf-downloads" hidden={!pdfOpen} className="space-y-3 pt-2">
-      {(activeTab === 'exports' || activeTab === 'guests') && isWedding && (
-        <label className="flex items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-300">
-          Famille à exporter
-          <select
-            value={familyFilter}
-            onChange={(event) => setFamilyFilter(event.target.value as typeof familyFilter)}
-            className="min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-          >
-            <option value="all">Toutes</option>
-            <option value="groom">Famille du marié</option>
-            <option value="bride">Famille de la mariée</option>
-            <option value="unassigned">À classer</option>
-          </select>
-        </label>
-      )}
       <p className="text-xs text-gray-600 dark:text-gray-300">
-        {familyFilteredGuests.length} PDF {familyFilteredGuests.length > 1 ? 'seront générés' : 'sera généré'}, un par invité{isWedding && familyFilter !== 'all' ? ` · ${familyFilter === 'unassigned' ? 'non classé' : familyLabel(familyFilter)}` : ''}.
+        {guests.length} PDF {guests.length > 1 ? 'seront générés' : 'sera généré'}, un par invité de la liste complète du mariage sélectionné, même si un filtre est actif.
       </p>
       <button
         type="button"
         onClick={() => void exportAllPdfs()}
-        disabled={Boolean(zipProgress) || familyFilteredGuests.length === 0 || !detailsReady}
+        disabled={Boolean(zipProgress) || guests.length === 0 || !detailsReady}
         className="w-full min-h-12 px-4 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60"
       >
-        {zipProgress ? `${zipProgress.done} / ${zipProgress.total}` : familyFilter === 'all' ? 'Télécharger tous les PDF (ZIP)' : 'Télécharger ces PDF (ZIP)'}
+        {zipProgress ? `${zipProgress.done} / ${zipProgress.total}` : 'Télécharger tous les PDF (ZIP)'}
       </button>
       {zipFailures.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-2">
-          <p className="font-semibold">
-            {zipIncludedCount
-              ? `L’archive contient ${zipIncludedCount} PDF. Les invitations suivantes n’ont pas pu être incluses :`
-              : 'Aucun PDF n’a pu être créé pour cette archive :'}
-          </p>
+          <p className="font-semibold">Ces invitations n’ont pas été créées. L’archive n’a pas été téléchargée.</p>
           <ul className="space-y-1">
             {zipFailures.map((failure) => (
               <li key={`${failure.name}-${failure.reason}`}>{failure.name} : {failure.reason}</li>
@@ -650,54 +577,17 @@ function GuestManagementContent() {
           </ul>
           <button
             type="button"
-            onClick={() => void exportAllPdfs(
-              'all',
-              false,
-              zipFailures.flatMap((failure) => failure.id ? [failure.id] : []),
-            )}
+            onClick={() => void exportAllPdfs()}
             disabled={Boolean(zipProgress)}
             className="min-h-10 px-3 rounded-lg bg-red-700 text-white font-semibold"
-            hidden={!zipFailures.some((failure) => failure.id)}
           >
-            Réessayer les invitations en échec
+            Relancer l’export
           </button>
         </div>
       )}
       </div>
     </div>
   );
-
-  const toggleGuestSelection = (guestId: string) => {
-    setSelectedGuestIds((current) => current.includes(guestId)
-      ? current.filter((id) => id !== guestId)
-      : [...current, guestId]);
-  };
-
-  const toggleVisibleGuestSelection = () => {
-    const visibleIds = filteredGuests.map((guest) => guest.id);
-    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedGuestIds.includes(id));
-    setSelectedGuestIds((current) => allVisibleSelected
-      ? current.filter((id) => !visibleIds.includes(id))
-      : [...new Set([...current, ...visibleIds])]);
-  };
-
-  const assignFamilyToSelection = async () => {
-    if (!bulkFamilySide || selectedGuestIds.length === 0) return;
-    if (!isSupabaseReady()) {
-      addToast('error', SUPABASE_REQUIRED);
-      return;
-    }
-    const selected = guests.filter((guest) => selectedGuestIds.includes(guest.id));
-    const results = await Promise.all(selected.map((guest) => updateGuest(createClient(), {
-      ...guest,
-      family_side: bulkFamilySide,
-    })));
-    const saved = new Map(results.flatMap((result) => result.guest ? [[result.guest.id, result.guest] as const] : []));
-    setGuests((current) => current.map((guest) => saved.get(guest.id) || guest));
-    const failed = results.filter((result) => result.error || !result.guest).length;
-    if (failed) addToast('error', `${selected.length - failed} invité(s) classé(s), ${failed} échec(s).`);
-    else addToast('success', `${selected.length} invité(s) classé(s) dans ${familyLabel(bulkFamilySide)}.`);
-  };
 
   const statusLabel = (s: GuestStatus) => {
     if (s === 'confirmed') return '✅ Confirmé';
@@ -832,18 +722,6 @@ function GuestManagementContent() {
                       );
                     })}
                   </select>
-                  {isWedding && (
-                    <select
-                      aria-label="Famille du nouvel invité"
-                      value={newFamilySide}
-                      onChange={(e) => setNewFamilySide(e.target.value as GuestFamilySide | '')}
-                      className="min-w-0 flex-1 min-h-11 px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="">Famille à classer</option>
-                      <option value="groom">Famille du marié</option>
-                      <option value="bride">Famille de la mariée</option>
-                    </select>
-                  )}
                   <input
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
@@ -896,22 +774,7 @@ function GuestManagementContent() {
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Choisissez le côté par défaut pour toute la liste, ou renseignez <code>cote_famille</code> dans le CSV pour préciser le côté de chaque invité. Les doublons sont comparés uniquement au sein du même côté.</p>
-                {isWedding && (
-                  <label className="mb-3 flex items-center justify-between gap-3 text-xs font-medium text-gray-700 dark:text-gray-200">
-                    Côté de la liste importée
-                    <select
-                      value={importFamilySide}
-                      onChange={(event) => changeImportFamilySide(event.target.value as GuestFamilySide | '')}
-                      className="min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs dark:border-gray-600 dark:bg-gray-700"
-                    >
-                      <option value="">Utiliser le CSV / laisser non classé</option>
-                      <option value="groom">Toute la liste · Famille du marié</option>
-                      <option value="bride">Toute la liste · Famille de la mariée</option>
-                    </select>
-                  </label>
-                )}
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, famille, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». La colonne « famille » désigne le nom de famille/groupe. Les séparateurs , et ; sont acceptés.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, groupe, email, table</code>. Seul le nom est obligatoire. Les séparateurs , et ; sont acceptés.</p>
                 <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
@@ -919,6 +782,44 @@ function GuestManagementContent() {
                 {csvPreview && (
                   <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs">
                     <p className="font-semibold text-gray-900 dark:text-gray-100">{csvPreview.ready.length} ligne(s) prête(s) à importer</p>
+                    {Object.keys(csvTableAssignments).length > 0 && (
+                      <p className="text-gray-600 dark:text-gray-300">
+                        Attributions du fichier : {Object.entries(csvTableAssignments).map(([name, count]) => `${name} (${count})`).join(' · ')}
+                      </p>
+                    )}
+                    {csvPreview.missingTables.length > 0 && (
+                      <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 space-y-2">
+                        <p className="font-semibold text-blue-900 dark:text-blue-200">
+                          {csvPreview.missingTables.length} nouvelle(s) table(s) détectée(s)
+                        </p>
+                        <p className="text-blue-800 dark:text-blue-300">
+                          Elles seront créées avec leur capacité avant d&apos;enregistrer les invités. Vous pourrez modifier ces capacités ensuite.
+                        </p>
+                        {csvPreview.missingTables.map((name) => (
+                          <label key={name} className="flex items-center justify-between gap-3 text-gray-700 dark:text-gray-200">
+                            <span className="truncate">{name}</span>
+                            <span className="inline-flex items-center gap-2 shrink-0">
+                              <span>Places</span>
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                aria-label={`Capacité de la table ${name}`}
+                                value={csvPreview.tableCapacities[name] || ''}
+                                onChange={(event) => {
+                                  const seats = Number(event.target.value);
+                                  setCsvPreview((current) => current ? {
+                                    ...current,
+                                    tableCapacities: { ...current.tableCapacities, [name]: seats },
+                                  } : current);
+                                }}
+                                className="w-20 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 text-sm"
+                              />
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                     {csvPreview.duplicates.length > 0 && (
                       <p className="text-amber-700 dark:text-amber-300">Doublons écartés : {csvPreview.duplicates.join(', ')}</p>
                     )}
@@ -930,8 +831,8 @@ function GuestManagementContent() {
                       </ul>
                     )}
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold">Importer ces lignes</button>
-                      <button type="button" onClick={() => { setCsvPreview(null); setCsvSource(''); }} className="px-3 py-2 border rounded-lg">Annuler</button>
+                      <button type="button" disabled={csvPreview.ready.length === 0} onClick={() => void confirmCsvImport()} className="px-3 py-2 bg-violet-600 text-white rounded-lg font-semibold disabled:opacity-50">Importer ces lignes</button>
+                      <button type="button" onClick={() => setCsvPreview(null)} className="px-3 py-2 border rounded-lg">Annuler</button>
                     </div>
                   </div>
                 )}
@@ -952,10 +853,10 @@ function GuestManagementContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      const name = normalizeTableName(tableName);
+                      const name = tableName.trim();
                       const seats = Math.max(1, Number(tableSeats) || 1);
                       if (!name) return;
-                      void saveTables([...tables.filter((table) => normalizeTableName(table.name) !== name), { name, seats }]);
+                      void saveTables([...tables.filter((table) => table.name !== name), { name, seats }]);
                       setTableName('');
                       setNewTable(name);
                     }}
@@ -968,18 +869,45 @@ function GuestManagementContent() {
                   <div className="space-y-2">
                     {tables.map((table) => {
                       const used = seatsUsed(table.name);
+                      const assigned = guests.filter((guest) => tableKey(guest.table_number) === tableKey(table.name));
                       return (
-                        <div key={table.name} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{table.name}</p>
-                            <p className={`text-[11px] ${used > table.seats ? 'text-red-600 font-semibold' : 'text-blue-600 dark:text-blue-300'}`}>
-                              {used}/{table.seats} places{used > table.seats ? ' · au-dessus du nombre de places' : ''}
-                            </p>
+                        <div key={table.name} className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{table.name}</p>
+                              <p className={`text-[11px] ${used > table.seats ? 'text-red-600 font-semibold' : 'text-blue-600 dark:text-blue-300'}`}>
+                                {used}/{table.seats} places{used > table.seats ? ' · au-dessus du nombre de places' : ''}
+                              </p>
+                            </div>
+                            <button type="button" onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))} className="text-xs text-red-500 shrink-0">Retirer</button>
                           </div>
-                          <button type="button" onClick={() => void saveTables(tables.filter((item) => normalizeTableName(item.name) !== normalizeTableName(table.name)))} className="text-xs text-red-500 shrink-0">Retirer</button>
+                          {assigned.length > 0 && (
+                            <p className="mt-1 text-[11px] text-gray-600 dark:text-gray-300">
+                              {assigned.map((guest) => guest.name).join(' · ')}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {unregisteredTables.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                      Attributions sans table configurée
+                    </p>
+                    {unregisteredTables.map((name) => (
+                      <div key={name} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate text-amber-900 dark:text-amber-100">{name} · {seatsUsed(name)} place(s)</span>
+                        <button
+                          type="button"
+                          onClick={() => void saveTables([...tables, { name, seats: Math.max(8, seatsUsed(name)) }])}
+                          className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1.5 font-semibold text-white"
+                        >
+                          Créer
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {withoutTable.length > 0 && (
@@ -1007,7 +935,7 @@ function GuestManagementContent() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Noms en double</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                  Un nom n’est considéré en double qu’au sein du même côté familial. Une fiche est gardée, de préférence celle qui a déjà une table ou un téléphone.
+                  Une fiche est gardée, de préférence celle qui a déjà une table ou un téléphone. Les autres sont retirées.
                 </p>
                 {duplicateGroups.length === 0 ? (
                   <p className="text-xs text-gray-600 dark:text-gray-300">Aucun doublon.</p>
@@ -1015,7 +943,7 @@ function GuestManagementContent() {
                   <div className="space-y-2">
                     {duplicateGroups.map((group) => (
                       <p key={group[0].id} className="text-xs text-gray-800 dark:text-gray-100">
-                        {group[0].name} · {group[0].family_side ? familyLabel(group[0].family_side) : 'Côté non précisé'} · {group.length} fiches, {group.length - 1} à retirer
+                        {group[0].name} · {group.length} fiches, {group.length - 1} à retirer
                       </p>
                     ))}
                     <button
@@ -1040,33 +968,8 @@ function GuestManagementContent() {
               </div>
             )}
 
-            {isWedding && (
-              <div role="group" aria-label="Filtrer par famille" className="flex gap-1 overflow-x-auto rounded-xl bg-white dark:bg-gray-800 p-1 border border-gray-100 dark:border-gray-700">
-                {([
-                  ['all', 'Tous', familyCounts.all],
-                  ['groom', 'Marié', familyCounts.groom],
-                  ['bride', 'Mariée', familyCounts.bride],
-                  ['unassigned', 'À classer', familyCounts.unassigned],
-                ] as const).map(([side, label, count]) => (
-                  <button
-                    key={side}
-                    type="button"
-                    aria-pressed={familyFilter === side}
-                    onClick={() => setFamilyFilter(side)}
-                    className={`shrink-0 min-h-10 rounded-lg px-3 text-xs font-semibold transition ${
-                      familyFilter === side
-                        ? 'bg-violet-600 text-white'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {label} <span className="ml-1 opacity-75">{count}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
             <div className="flex gap-2">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité ou une table"
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité"
                 className="min-w-0 flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
               <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'declined')}
                 aria-label="Filtrer par statut"
@@ -1077,66 +980,6 @@ function GuestManagementContent() {
                 <option value="declined">Refus</option>
               </select>
             </div>
-
-            {filteredGuests.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                <label className="flex min-h-10 items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-200">
-                  <input
-                    type="checkbox"
-                    checked={filteredGuests.every((guest) => selectedGuestIds.includes(guest.id))}
-                    onChange={toggleVisibleGuestSelection}
-                    className="h-4 w-4 accent-violet-600"
-                    aria-label="Sélectionner tous les invités affichés"
-                  />
-                  Sélectionner la liste affichée
-                </label>
-                {selectedGuestIds.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
-                      {selectedGuestIds.length} sélectionné(s)
-                    </span>
-                    {isWedding && (
-                      <>
-                        <select
-                          aria-label="Famille à attribuer aux invités sélectionnés"
-                          value={bulkFamilySide}
-                          onChange={(event) => setBulkFamilySide(event.target.value as GuestFamilySide | '')}
-                          className="min-h-10 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        >
-                          <option value="">Classer dans…</option>
-                          <option value="groom">Famille du marié</option>
-                          <option value="bride">Famille de la mariée</option>
-                        </select>
-                        {bulkFamilySide && (
-                          <button
-                            type="button"
-                            onClick={() => void assignFamilyToSelection()}
-                            className="min-h-10 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white"
-                          >
-                            Attribuer
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void exportAllPdfs('all', true)}
-                      disabled={Boolean(zipProgress) || !detailsReady}
-                      className="min-h-10 rounded-lg bg-gray-900 px-3 text-xs font-semibold text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
-                    >
-                      Télécharger la sélection
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedGuestIds([])}
-                      className="min-h-10 rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-600 dark:border-gray-600 dark:text-gray-300"
-                    >
-                      Effacer
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Tableau */}
             {filteredGuests.length === 0 ? (
@@ -1151,49 +994,22 @@ function GuestManagementContent() {
                       {filteredGuests.map(g => (
                         <article key={g.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
                             <div className="flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-start gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedGuestIds.includes(g.id)}
-                              onChange={() => toggleGuestSelection(g.id)}
-                              aria-label={`Sélectionner ${g.name}`}
-                              className="mt-1 h-4 w-4 shrink-0 accent-violet-600"
-                            />
-                            <div className="min-w-0">
+                            <div>
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · Famille : ${g.group}` : ''}</p>
+                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                             {drinkLabel(g, selectedEvent?.drinks || []) && (
                               <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
                             )}
-                            </div>
+                            {g.message?.trim() && (
+                              <p className="mt-1 max-w-prose whitespace-pre-wrap break-words rounded-lg bg-amber-50 dark:bg-amber-900/20 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-100">
+                                <span className="font-semibold">Message :</span> {g.message}
+                              </p>
+                            )}
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
                             </span>
-                            </div>
-                            <div className="mt-3 flex flex-col gap-1">
-                              <label htmlFor={`guest-table-${g.id}`} className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                Table · {seatsAtTable(g)} place{seatsAtTable(g) === 1 ? '' : 's'}
-                              </label>
-                              <select
-                                id={`guest-table-${g.id}`}
-                                aria-label={`Table de ${g.name}`}
-                                value={g.table_number || ''}
-                                onChange={(e) => void assignTable(g, e.target.value)}
-                                className="min-w-0 w-full min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                              >
-                                <option value="">Sans table</option>
-                                {tableChoices(g.table_number).map((name) => {
-                                  const table = tables.find((item) => item.name === name);
-                                  const usedExcludingGuest = Math.max(0, seatsUsed(name) - (g.table_number === name ? seatsAtTable(g) : 0));
-                                  return (
-                                    <option key={name} value={name}>
-                                      {table ? `${name} · ${usedExcludingGuest}/${table.seats} places` : name}
-                                    </option>
-                                  );
-                                })}
-                              </select>
                             </div>
                             {selectedEvent?.is_published ? (
                               <a
@@ -1216,18 +1032,17 @@ function GuestManagementContent() {
                               </button>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                            {isWedding && (
-                              <select
-                                aria-label={`Famille de ${g.name}`}
-                                value={g.family_side || ''}
-                                onChange={(e) => void assignFamilySide(g, e.target.value as GuestFamilySide | '')}
-                                className="min-w-0 w-full sm:max-w-xs min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                              >
-                                <option value="">Famille à classer</option>
-                                <option value="groom">Famille du marié</option>
-                                <option value="bride">Famille de la mariée</option>
-                              </select>
-                            )}
+                            <select
+                              aria-label={`Table de ${g.name}`}
+                              value={g.table_number || ''}
+                              onChange={(e) => void assignTable(g, e.target.value)}
+                              className="min-w-0 w-full sm:max-w-xs min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="">Sans table</option>
+                              {tableChoices(g.table_number).map((name) => (
+                                <option key={name} value={name}>{tableChoiceLabel(name)}</option>
+                              ))}
+                            </select>
                             {tables.length === 0 && (
                               <button type="button" onClick={() => setOpenTool('tables')} className="text-xs font-semibold text-violet-700 dark:text-violet-300 text-left">
                                 Créer une table
@@ -1252,7 +1067,7 @@ function GuestManagementContent() {
                                     const w = window.open('', '_blank');
                                     if (!w) return;
                                     const safe = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
-                                    const tableLine = g.table_number ? formatTableLabel(g.table_number) : 'Sans table';
+                                    const tableLine = g.table_number ? `Table ${g.table_number}` : 'Sans table';
                                     w.document.write(`<title>Entrée - ${safe(g.name)}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fff;font-family:sans-serif}</style><div style="text-align:center"><img src="${src}" style="width:280px;height:280px"><p style="margin-top:16px;font-size:18px;color:#111"><strong>${safe(g.name)}</strong></p><p style="font-size:14px;color:#2563eb">${safe(tableLine)}</p><p style="font-size:12px;color:#666;margin-top:8px">Montrez cette carte à l'entrée</p></div>`);
                                   });
                                 }}
@@ -1290,6 +1105,11 @@ function GuestManagementContent() {
                         <p className="text-[10px] text-gray-400">{g.adults || 1} adulte(s) {g.children > 0 ? `· ${g.children} enfant(s)` : ''}</p>
                         {drinkLabel(g, selectedEvent?.drinks || []) && (
                           <p className="text-[10px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
+                        )}
+                        {g.message?.trim() && (
+                          <p className="mt-1 max-w-prose whitespace-pre-wrap break-words text-xs text-gray-700 dark:text-gray-200">
+                            <span className="font-semibold">Message :</span> {g.message}
+                          </p>
                         )}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
@@ -1351,24 +1171,10 @@ function GuestManagementContent() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Famille</label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
                 <input value={editingGuest.group || ''} onChange={(e) => setEditingGuest({ ...editingGuest, group: e.target.value || undefined })}
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
               </div>
-              {isWedding && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Famille</label>
-                  <select
-                    value={editingGuest.family_side || ''}
-                    onChange={(e) => setEditingGuest({ ...editingGuest, family_side: (e.target.value || undefined) as GuestFamilySide | undefined })}
-                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">À classer</option>
-                    <option value="groom">Famille du marié</option>
-                    <option value="bride">Famille de la mariée</option>
-                  </select>
-                </div>
-              )}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
@@ -1396,7 +1202,7 @@ function GuestManagementContent() {
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                   <option value="">Sans table</option>
                   {tableChoices(editingGuest.table_number).map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                    <option key={name} value={name}>{tableChoiceLabel(name)}</option>
                   ))}
                 </select>
               </div>

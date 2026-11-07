@@ -43,9 +43,31 @@ export function ShareInvitationDialog({ isOpen, onClose, slug, title, eventId }:
   return (
     <Modal isOpen={isOpen} onClose={() => { setCopied(false); onClose(); }} title="Partager l’invitation">
       <div className="space-y-4">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/20">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+              <Users className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-emerald-950 dark:text-emerald-100">Liens personnels</p>
+              <p className="mt-1 text-xs leading-relaxed text-emerald-900/80 dark:text-emerald-100/80">
+                Créez un lien par invité, avec son nom et sa table. Il pourra confirmer sa présence et recevoir sa carte d’entrée.
+              </p>
+            </div>
+          </div>
+          <Link
+            href={eventId ? `/dashboard/invites?event=${encodeURIComponent(eventId)}&tool=add` : '/dashboard/invites'}
+            onClick={onClose}
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+          >
+            <Users className="h-4 w-4" />
+            Ajouter des invités et envoyer leurs liens
+          </Link>
+        </div>
+
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lien général</p>
-          <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-300">Pour présenter l’invitation à tout le monde.</p>
+          <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-300">Pour présenter l’invitation à tout le monde. Ce lien ne permet pas de confirmer sa présence.</p>
           <div className="mt-2 break-all rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
             {link}
           </div>
@@ -80,20 +102,6 @@ export function ShareInvitationDialog({ isOpen, onClose, slug, title, eventId }:
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Liens personnels</p>
-          <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
-            Chaque invité reçoit son propre lien, avec son nom et sa table. Il peut ainsi confirmer sa présence et recevoir sa carte d’entrée. Le lien général ne le permet pas.
-          </p>
-          <Link
-            href={eventId ? `/dashboard/invites?event=${encodeURIComponent(eventId)}&tool=add` : '/dashboard/invites'}
-            onClick={onClose}
-            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm hover:bg-amber-100 dark:bg-gray-800 dark:text-amber-100"
-          >
-            <Users className="h-4 w-4" />
-            Ajouter des invités et envoyer leurs liens
-          </Link>
-        </div>
       </div>
     </Modal>
   );

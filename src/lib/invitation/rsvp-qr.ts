@@ -7,5 +7,6 @@ export function shouldShowCheckinQr(
   revealedByConfirmation = false,
 ) {
   if (status === 'declined') return false;
+  if (status === 'confirmed') return true;
   return mode === 'immediate' || revealedByConfirmation;
 }

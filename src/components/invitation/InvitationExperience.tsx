@@ -20,7 +20,6 @@ import {
 } from '@/lib/invitation/drinks';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
-import { formatTableLabel } from '@/lib/guests/seating';
 
 function showPdfNotice(root: HTMLElement, message: string) {
   let note = root.querySelector('#pdf-notice') as HTMLElement | null;
@@ -93,9 +92,23 @@ export default function InvitationExperience({
       printBtn.disabled = true;
       printBtn.style.opacity = '0.65';
       try {
-        const { downloadInvitationWebPdf, generateInvitationPdf, downloadBlob } = await import('@/lib/invitation/pdf');
+        const {
+          downloadInvitationWebPdf,
+          generateInvitationPdf,
+          downloadBlob,
+          InvitationPdfEndpointUnavailableError,
+        } = await import('@/lib/invitation/pdf');
         if (isCurrentInvitation(window.location.href, event.slug)) {
-          await downloadInvitationWebPdf(event.slug);
+          try {
+            await downloadInvitationWebPdf(event.slug);
+          } catch (error) {
+            if (!(error instanceof InvitationPdfEndpointUnavailableError)) throw error;
+            const result = await generateInvitationPdf(event, {
+              name: guestName,
+              table: guestTable,
+            });
+            downloadBlob(result.blob, result.filename);
+          }
         } else {
           const result = await generateInvitationPdf(event, {
             name: guestName,
@@ -449,9 +462,8 @@ function hydrateEventData(root: HTMLElement, event: EventWithSettings, guestName
 
   const tableLine = $('#guest-table-line');
   if (tableLine) {
-    const label = formatTableLabel(guestTable);
-    if (label !== 'Sans table') {
-      tableLine.textContent = label;
+    if (guestTable && guestTable.trim()) {
+      tableLine.textContent = `Table ${guestTable.trim()}`;
       tableLine.style.display = 'inline-flex';
     } else {
       tableLine.style.display = 'none';

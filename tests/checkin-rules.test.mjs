@@ -4,6 +4,7 @@ import { cardBelongsToEvent, pickDefaultEvent } from '../src/lib/guests/checkin-
 
 test('a card is accepted only for the event its guest belongs to', () => {
   assert.equal(cardBelongsToEvent('event-a', 'event-a'), true);
+  assert.equal(cardBelongsToEvent(' event-a ', 'event-a'), true);
   assert.equal(cardBelongsToEvent('event-b', 'event-a'), false);
   assert.equal(cardBelongsToEvent(undefined, 'event-a'), false);
   assert.equal(cardBelongsToEvent('event-a', ''), false);

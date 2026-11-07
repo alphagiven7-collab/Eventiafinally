@@ -10,6 +10,7 @@ test('immediate QR mode displays a pass before an RSVP response', () => {
 test('confirmation-only QR mode waits for a confirmed response', () => {
   assert.equal(shouldShowCheckinQr('after-confirmation', undefined), false);
   assert.equal(shouldShowCheckinQr('after-confirmation', 'pending'), false);
+  assert.equal(shouldShowCheckinQr('after-confirmation', 'confirmed'), true);
   assert.equal(shouldShowCheckinQr('after-confirmation', 'confirmed', true), true);
 });
 

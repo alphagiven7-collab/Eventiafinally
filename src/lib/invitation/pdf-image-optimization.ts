@@ -58,27 +58,9 @@ export async function optimizeInvitationPhotos(
   const view = root.ownerDocument.defaultView;
   if (!view) throw new Error('Le navigateur ne peut pas lire les styles de l’invitation.');
   const getStyle = (element: Element) => view.getComputedStyle(element);
-  const getOutputSize = (
-    sourceWidth: number,
-    sourceHeight: number,
-    displayTargets: InvitationPhotoDisplayTarget[],
-  ) => {
-    const scale = Math.min(1, Math.max(...displayTargets.map((target) => {
-      const targetWidth = Math.max(1, target.width * pixelRatio);
-      const targetHeight = Math.max(1, target.height * pixelRatio);
-      return target.fit === 'cover'
-        ? Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight)
-        : Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
-    })));
-    return {
-      width: Math.max(1, Math.round(sourceWidth * scale)),
-      height: Math.max(1, Math.round(sourceHeight * scale)),
-    };
-  };
   const JPEG_QUALITY = 0.8;
   const WEBP_QUALITY = 0.84;
   const MIN_SOURCE_BYTES = 64 * 1024;
-  const MAX_OUTPUT_RATIO = 1;
   const MAX_IMAGE_PIXELS = 16_000_000;
   const result: InvitationPhotoOptimizationResult = {
     optimizedImages: 0,
@@ -112,7 +94,12 @@ export async function optimizeInvitationPhotos(
           result.skipped += 1;
           return null;
         }
-        const outputSize = getOutputSize(bitmap.width, bitmap.height, displayTargets);
+        const outputSize = invitationPhotoOutputSize(
+          bitmap.width,
+          bitmap.height,
+          displayTargets,
+          pixelRatio,
+        );
         if (
           (bitmap.width === outputSize.width && bitmap.height === outputSize.height && original.size < MIN_SOURCE_BYTES)
         ) {
@@ -157,7 +144,7 @@ export async function optimizeInvitationPhotos(
         if (!compressed) throw new Error('La compression de cette photo a échoué.');
         if (
           (hasTransparency && compressed.type !== 'image/webp') ||
-          compressed.size >= original.size * MAX_OUTPUT_RATIO
+          compressed.size >= original.size
         ) {
           result.skipped += 1;
           return null;

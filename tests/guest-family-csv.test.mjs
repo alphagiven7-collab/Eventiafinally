@@ -53,6 +53,12 @@ test('CSV import applies the selected family default and explicit CSV values tak
   assert.deepEqual(result.ready.map(({ familySide }) => familySide), ['groom', 'bride']);
 });
 
+test('CSV import normalizes table labels so assigned guests match managed tables', () => {
+  const result = parseGuestCsv('nom,table\nAlex,  Table   5  \nSam,Table d’honneur');
+
+  assert.deepEqual(result.ready.map(({ tableNumber }) => tableNumber), ['5', 'd’honneur']);
+});
+
 test('removing duplicates keeps the same name once on each family side', () => {
   const duplicateIds = duplicateIdsToRemove([
     { id: 'groom-1', name: 'Alex', family_side: 'groom' },

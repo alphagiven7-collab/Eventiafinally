@@ -1,5 +1,6 @@
 import type { GuestDraft } from './store';
 import type { GuestFamilySide } from '@/types';
+import { normalizeTableName } from './seating';
 
 export type CsvRow = { line: number; cells: string[] };
 
@@ -145,7 +146,7 @@ export function parseGuestCsv(
       group: pick(cells, 'group'),
       familySide: assignedSide,
       email: pick(cells, 'email'),
-      tableNumber: pick(cells, 'table'),
+      tableNumber: normalizeTableName(pick(cells, 'table')) || undefined,
       adults: count(pick(cells, 'adults')),
       children: count(pick(cells, 'children')),
     });

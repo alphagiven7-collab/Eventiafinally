@@ -7,12 +7,18 @@ type CheckInEvent = {
 
 /** Une carte d'entrée ne vaut que pour le mariage auquel son invité appartient. */
 export function cardBelongsToEvent(guestEventId: string | undefined, eventId: string): boolean {
-  return Boolean(guestEventId) && Boolean(eventId) && guestEventId === eventId;
+  const guestId = guestEventId?.trim();
+  const currentId = eventId.trim();
+  return Boolean(guestId) && Boolean(currentId) && guestId === currentId;
 }
 
 /** Le mariage choisi s'il existe, sinon le plus proche d'aujourd'hui (publiés d'abord). */
 export function pickDefaultEvent(events: CheckInEvent[], preferredId: string, now = Date.now()): string {
-  if (events.some((event) => event.id === preferredId)) return preferredId;
+  const normalizedPreferredId = preferredId.trim();
+  if (normalizedPreferredId) {
+    const match = events.find((event) => (event.id || '').trim() === normalizedPreferredId);
+    if (match) return match.id;
+  }
   const open = events.filter((event) => event.is_published && !event.isBlocked);
   const pool = open.length > 0 ? open : events;
   const distance = (event: CheckInEvent) => {

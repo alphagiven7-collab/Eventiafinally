@@ -18,10 +18,12 @@ import { SUPABASE_REQUIRED } from '@/providers/auth-provider';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
   BarChart3,
+  Armchair,
   Users,
   CheckCircle2,
   Download,
   MessageCircle,
+  Wine,
   Check,
   X,
   Pencil,
@@ -32,7 +34,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'guests' | 'rsvps' | 'exports';
+type Tab = 'overview' | 'guests' | 'tables' | 'drinks' | 'rsvps' | 'exports';
 type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp' | 'duplicates';
 
 function drinkLabel(guest: Guest, catalog: { id: string; name: string }[]): string {
@@ -52,6 +54,25 @@ function csvCell(value: string | number): string {
   return `"${String(value).replaceAll('"', '""')}"`;
 }
 
+function GuestMessage({ message }: { message?: string }) {
+  const text = message?.trim();
+  if (!text) return null;
+  const preview = text.replace(/\s+/g, ' ');
+
+  return (
+    <details className="group mt-1 max-w-prose rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-100">
+        <span className="shrink-0 font-semibold">Message</span>
+        <span className="min-w-0 flex-1 truncate text-amber-900/75 dark:text-amber-100/75">{preview}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <p className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words border-t border-amber-200 px-2.5 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-800 dark:text-amber-100">
+        {text}
+      </p>
+    </details>
+  );
+}
+
 function GuestManagementContent() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -69,7 +90,7 @@ function GuestManagementContent() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const eventsRef = useRef(events);
   useEffect(() => { eventsRef.current = events; }, [events]);
-  const [shareOrigin, setShareOrigin] = useState('');
+  const [shareOrigin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
 
   // Formulaire ajout : seul le nom est obligatoire
   const [newName, setNewName] = useState('');
@@ -192,10 +213,6 @@ function GuestManagementContent() {
     const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
     return `${base}?text=${encodeURIComponent(text)}`;
   };
-
-  useEffect(() => {
-    setShareOrigin(window.location.origin);
-  }, []);
 
   useEffect(() => {
     if (openTool !== 'add' || loading) return;
@@ -619,6 +636,8 @@ function GuestManagementContent() {
           {[
             { id: 'overview' as Tab, icon: <BarChart3 className="w-3.5 h-3.5" />, label: 'Vue d\'ensemble' },
             { id: 'guests' as Tab, icon: <Users className="w-3.5 h-3.5" />, label: 'Invités' },
+            { id: 'tables' as Tab, icon: <Armchair className="w-3.5 h-3.5" />, label: 'Tables' },
+            { id: 'drinks' as Tab, icon: <Wine className="w-3.5 h-3.5" />, label: 'Boissons' },
             { id: 'rsvps' as Tab, icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: 'Confirmations' },
             { id: 'exports' as Tab, icon: <Download className="w-3.5 h-3.5" />, label: 'Exports' },
           ].map(tab => (
@@ -648,24 +667,227 @@ function GuestManagementContent() {
               </div>
             ))}
           </div>
-          {(selectedEvent?.drinks || []).some((drink) => guests.some((guest) => (guest.drink_preferences || '').split(',').includes(drink.id))) && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">Boissons choisies</h2>
-              <ul className="space-y-2">
+          </div>
+        )}
+
+        {activeTab === 'tables' && (
+          <section className="space-y-3">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Plan de table</h2>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Répartissez les invités et suivez les places occupées par table.
+                  </p>
+                </div>
+                <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-200">
+                  {tables.length} table(s)
+                </span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_auto]">
+                <input
+                  value={tableName}
+                  onChange={(event) => setTableName(event.target.value)}
+                  placeholder="Nom de la table"
+                  aria-label="Nom de la nouvelle table"
+                  className="min-h-11 min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <input
+                  value={tableSeats}
+                  onChange={(event) => setTableSeats(event.target.value)}
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="Places"
+                  aria-label="Capacité de la nouvelle table"
+                  className="min-h-11 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = normalizeTableName(tableName);
+                    const seats = Number(tableSeats);
+                    if (!name || !Number.isInteger(seats) || seats < 1) {
+                      addToast('error', 'Indiquez un nom et une capacité valide.');
+                      return;
+                    }
+                    if (tables.some((table) => tableKey(table.name) === tableKey(name))) {
+                      addToast('error', 'Cette table existe déjà.');
+                      return;
+                    }
+                    void saveTables([...tables, { name, seats }]).then((saved) => {
+                      if (saved) {
+                        setTableName('');
+                        addToast('success', `Table « ${name} » créée.`);
+                      }
+                    });
+                  }}
+                  className="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-700"
+                >
+                  Créer la table
+                </button>
+              </div>
+            </div>
+
+            {tables.map((table) => {
+              const assigned = guests.filter((guest) => tableKey(guest.table_number) === tableKey(table.name));
+              const used = assigned.reduce((sum, guest) => sum + seatsAtTable(guest), 0);
+              const overCapacity = used > table.seats;
+              return (
+                <article key={table.name} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-gray-900 dark:text-gray-100">{table.name}</h3>
+                      <p className={`mt-0.5 text-xs font-medium ${overCapacity ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                        {used} / {table.seats} places occupées · {assigned.length} invitation(s)
+                        {overCapacity ? ' · capacité dépassée' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        Capacité
+                        <input
+                          key={`${table.name}-${table.seats}`}
+                          type="number"
+                          min={1}
+                          step={1}
+                          defaultValue={table.seats}
+                          aria-label={`Capacité de la table ${table.name}`}
+                          onBlur={(event) => {
+                            const seats = Number(event.currentTarget.value);
+                            if (!Number.isInteger(seats) || seats < 1 || seats === table.seats) return;
+                            void saveTables(tables.map((item) => item.name === table.name ? { ...item, seats } : item));
+                          }}
+                          className="w-20 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void saveTables(tables.filter((item) => item.name !== table.name))}
+                        className="min-h-10 rounded-lg border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/20"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  </div>
+                  {assigned.length > 0 ? (
+                    <ul className="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
+                      {assigned.map((guest) => (
+                        <li key={guest.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                          <span className="min-w-0 flex-1 truncate text-sm text-gray-800 dark:text-gray-200">
+                            {guest.name}
+                            <span className="ml-2 text-xs text-gray-400">{seatsAtTable(guest)} place(s)</span>
+                          </span>
+                          <select
+                            aria-label={`Changer la table de ${guest.name}`}
+                            value={guest.table_number || ''}
+                            onChange={(event) => void assignTable(guest, event.target.value)}
+                            className="min-h-10 max-w-48 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          >
+                            <option value="">Sans table</option>
+                            {tableChoices(guest.table_number).map((name) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-xs text-gray-400">Aucun invité attribué à cette table.</p>
+                  )}
+                </article>
+              );
+            })}
+
+            {unregisteredTables.map((name) => (
+              <div key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">{name} · table à configurer</p>
+                  <p className="text-xs text-amber-800 dark:text-amber-200">{seatsUsed(name)} place(s) déjà attribuée(s)</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void saveTables([...tables, { name, seats: Math.max(8, seatsUsed(name)) }])}
+                  className="min-h-10 rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white hover:bg-amber-700"
+                >
+                  Créer cette table
+                </button>
+              </div>
+            ))}
+
+            {withoutTable.length > 0 && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Invités sans table · {withoutTable.length}</h3>
+                <ul className="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
+                  {withoutTable.map((guest) => (
+                    <li key={guest.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800 dark:text-gray-200">{guest.name}</span>
+                      <select
+                        aria-label={`Attribuer une table à ${guest.name}`}
+                        value=""
+                        onChange={(event) => void assignTable(guest, event.target.value)}
+                        className="min-h-10 max-w-48 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      >
+                        <option value="">Choisir une table</option>
+                        {tables.map((table) => (
+                          <option key={table.name} value={table.name}>{table.name} · {seatsUsed(table.name)}/{table.seats}</option>
+                        ))}
+                      </select>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'drinks' && (
+          <section className="space-y-3">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100">
+                <Wine className="h-5 w-5 text-violet-600" /> Choix des boissons
+              </h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Les boissons sélectionnées par les invités depuis leur lien personnel.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 {(selectedEvent?.drinks || []).map((drink) => {
                   const count = guests.filter((guest) => (guest.drink_preferences || '').split(',').includes(drink.id)).length;
-                  if (!count) return null;
                   return (
-                    <li key={drink.id} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-200">
-                      <span>{drink.name}</span>
-                      <span className="font-semibold tabular-nums">{count}</span>
-                    </li>
+                    <div key={drink.id} className="rounded-xl bg-violet-50 p-3 dark:bg-violet-900/20">
+                      <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{drink.name}</p>
+                      <p className="mt-1 text-xs text-violet-700 dark:text-violet-300">{count} choix</p>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
+              {(selectedEvent?.drinks || []).length === 0 && (
+                <p className="mt-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  Aucune boisson n&apos;est configurée pour cette invitation.
+                </p>
+              )}
             </div>
-          )}
-          </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Réponses par invité</h3>
+              {guests.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun invité dans cette liste.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {guests.map((guest) => {
+                    const chosen = drinkLabel(guest, selectedEvent?.drinks || []);
+                    return (
+                      <li key={guest.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{guest.name}</span>
+                        <span className={`text-xs ${chosen ? 'text-violet-700 dark:text-violet-300' : 'text-gray-400'}`}>
+                          {chosen || 'Aucun choix communiqué'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </section>
         )}
 
         {/* ═══════ INVITÉS ═══════ */}
@@ -1001,11 +1223,7 @@ function GuestManagementContent() {
                             {drinkLabel(g, selectedEvent?.drinks || []) && (
                               <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
                             )}
-                            {g.message?.trim() && (
-                              <p className="mt-1 max-w-prose whitespace-pre-wrap break-words rounded-lg bg-amber-50 dark:bg-amber-900/20 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-100">
-                                <span className="font-semibold">Message :</span> {g.message}
-                              </p>
-                            )}
+                            <GuestMessage message={g.message} />
                             </div>
                             <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                               {statusLabel(g.status)}
@@ -1094,7 +1312,7 @@ function GuestManagementContent() {
                   <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-400 flex items-center justify-center mx-auto mb-3">
                     <Mail className="w-6 h-6" />
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Aucune confirmation reçue pour l'instant.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Aucune confirmation reçue pour l&apos;instant.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1106,11 +1324,7 @@ function GuestManagementContent() {
                         {drinkLabel(g, selectedEvent?.drinks || []) && (
                           <p className="text-[10px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
                         )}
-                        {g.message?.trim() && (
-                          <p className="mt-1 max-w-prose whitespace-pre-wrap break-words text-xs text-gray-700 dark:text-gray-200">
-                            <span className="font-semibold">Message :</span> {g.message}
-                          </p>
-                        )}
+                        <GuestMessage message={g.message} />
                       </div>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${statusColor(g.status)}`}>
                         {statusLabel(g.status)}
@@ -1149,7 +1363,7 @@ function GuestManagementContent() {
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setEditingGuest(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Modifier l'invité</h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Modifier l&apos;invité</h3>
               <button onClick={() => setEditingGuest(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <div className="space-y-3">

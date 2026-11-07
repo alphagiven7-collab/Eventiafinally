@@ -12,6 +12,7 @@ import { checkinCardFileName, checkinEntryCardDataUrl, checkinQrDataUrl } from '
 import { saveOfflineInvitation, storeOfflineView } from '@/lib/invitation/offline';
 import { invitationPdfCaptureCss, INVITATION_PDF_WIDTH } from '@/lib/invitation/pdf-capture';
 import { shouldShowCheckinQr } from '@/lib/invitation/rsvp-qr';
+import { groupDrinksByCategory, partitionDrinksForMenu } from '@/lib/invitation/drinks';
 import { captureInstallClick, iosInstallHint, isStandalonePwa, launchInstalledApp, rememberGuestEntry, rememberGuestEntryOffline } from '@/lib/pwa/install-prompt';
 import { INVITATION_CARDS, cardTextOf, cssColor, mixHex, readableColor, cssColorSoft, familyMotifsVisible, heroLightOf, heroTextOf, heroTitleSize, invitationModel, textFontFamily } from '@/lib/invitation/appearance';
 import { formatTableLabel } from '@/lib/guests/seating';
@@ -1642,6 +1643,7 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
     guestToken ||
     (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
   let saveTimer = 0;
+  let expanded = false;
 
   try {
     const saved = rememberedDrinks(event?.slug);
@@ -1664,11 +1666,15 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
 
   function render() {
     if (!grid) return;
-    grid.innerHTML = defaultDrinks
-      .map(
-        (d) => `
-      <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${d.id}">
-        <input type="checkbox" class="drink-card-input" value="${d.id}" ${selected.has(d.id) ? 'checked' : ''}>
+    const { visible: visibleDrinks, remaining: remainingDrinks } = partitionDrinksForMenu(defaultDrinks);
+    const renderGroups = (drinks: typeof defaultDrinks) => groupDrinksByCategory(drinks)
+      .map((group) => `
+        <div class="drink-menu-category">
+          <h4 class="drink-menu-category-title">${escapeHtml(group.label)}</h4>
+          <div class="drink-menu-category-cards">
+            ${group.drinks.map((d) => `
+      <label class="drink-card ${selected.has(d.id) ? 'is-selected' : ''}" data-drink="${escapeHtml(d.id)}">
+        <input type="checkbox" class="drink-card-input" value="${escapeHtml(d.id)}" ${selected.has(d.id) ? 'checked' : ''}>
         <div class="drink-card-media">
           <div class="drink-card-icon-wrap" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--icon-color, #2563eb);">
             ${getDrinkIconSvg(d.id)}
@@ -1680,9 +1686,20 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
           <span class="drink-card-desc">${escapeHtml(d.desc || '')}</span>
         </div>
       </label>
-    `
-      )
+            `).join('')}
+          </div>
+        </div>
+      `)
       .join('');
+    grid.innerHTML = `${renderGroups(visibleDrinks)}
+      ${remainingDrinks.length > 0 ? `
+        <button type="button" class="drink-menu-toggle" aria-expanded="${expanded}" aria-controls="drink-menu-more">
+          ${expanded ? 'Masquer' : 'Voir'} les ${remainingDrinks.length} autres boissons
+        </button>
+        <div id="drink-menu-more" class="drink-menu-more" ${expanded ? '' : 'hidden'}>
+          ${renderGroups(remainingDrinks)}
+        </div>
+      ` : ''}`;
 
     grid.querySelectorAll('.drink-card').forEach((card) => {
       card.addEventListener('click', (e) => {
@@ -1693,6 +1710,11 @@ function initDrinkMenu(root: HTMLElement, event?: EventWithSettings, guestToken?
         remember();
         render();
       });
+    });
+    grid.querySelector('.drink-menu-toggle')?.addEventListener('click', () => {
+      expanded = !expanded;
+      render();
+      grid.querySelector<HTMLButtonElement>('.drink-menu-toggle')?.focus();
     });
   }
 
@@ -2434,7 +2456,46 @@ function getOriginalCSS(): string {
 
     /* Drink menu */
     .invitation-experience-root .drink-menu-shell { background: linear-gradient(168deg, #ffffff 0%, #fffafb 45%, #f8fafc 100%); }
-    .invitation-experience-root .drink-menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; width: 100%; }
+    .invitation-experience-root .drink-menu-grid {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .invitation-experience-root .drink-menu-category + .drink-menu-category,
+    .invitation-experience-root .drink-menu-more {
+      margin-top: 12px;
+    }
+    .invitation-experience-root .drink-menu-category-title {
+      margin: 0 0 8px;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+    .invitation-experience-root .drink-menu-category-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .invitation-experience-root .drink-menu-toggle {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--rsvp-color, #7c3aed);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .invitation-experience-root #about-toggle-detail #about-story-1,
+    .invitation-experience-root #about-toggle-detail #about-story-2 {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
     .invitation-experience-root label.drink-card {
       position: relative;
       display: block;
@@ -2553,6 +2614,13 @@ function getOriginalCSS(): string {
     }
     .invitation-experience-root.dark-mode-applied .drink-card-title {
       color: #f8fafc !important;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-menu-category-title {
+      color: #cbd5e1 !important;
+    }
+    .invitation-experience-root.dark-mode-applied .drink-menu-toggle {
+      background: rgba(15, 23, 42, 0.72);
+      border-color: rgba(148, 163, 184, 0.28);
     }
     .invitation-experience-root.dark-mode-applied .drink-card-desc {
       color: #94a3b8 !important;

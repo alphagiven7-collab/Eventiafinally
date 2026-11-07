@@ -84,6 +84,12 @@ export function invitationPdfCaptureCss(width: number = INVITATION_PDF_WIDTH) {
       animation: none !important;
       transform: none !important;
     }
+    .invitation-experience-root.pdf-capture .drink-menu-toggle {
+      display: none !important;
+    }
+    .invitation-experience-root.pdf-capture .drink-menu-more[hidden] {
+      display: block !important;
+    }
     .invitation-experience-root.pdf-capture section,
     .invitation-experience-root.pdf-capture .surface-card,
     .invitation-experience-root.pdf-capture .invitation-card,

@@ -40,8 +40,10 @@ import {
   InvitationModel,
   ProgramItem,
   PracticalInfoItem,
+  DrinkItem,
 } from '@/types';
 import { buttonFromPair, cardTextOf, CARD_THEMES, COLOR_HARMONIES, familyMotifsVisible, INVITATION_CARDS, heroBrightnessOf, heroTextOf, invitationModel } from '@/lib/invitation/appearance';
+import { DRINK_CATEGORIES, normalizeDrinkCategory } from '@/lib/invitation/drinks';
 import { coverPhotoOf, coverPositionOf } from '@/lib/invitation/cover';
 import { getEventBySlug } from '@/data/events';
 import { isSupabaseReady } from '@/config/supabase';
@@ -750,7 +752,7 @@ function EditEventContent() {
   const [secCountdown, setSecCountdown] = useState(true);
   const [programSectionTitle, setProgramSectionTitle] = useState('');
   const [program, setProgram] = useState<ProgramItem[]>([]);
-  const [drinks, setDrinks] = useState<{ id: string; name: string; desc: string; emoji: string }[]>([]);
+  const [drinks, setDrinks] = useState<DrinkItem[]>([]);
   const [secDressCode, setSecDressCode] = useState(true);
   const [secGuestbook, setSecGuestbook] = useState(false);
   const [dressCodeTitle, setDressCodeTitle] = useState('');
@@ -2051,9 +2053,9 @@ function EditEventContent() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Les boissons
                 </label>
-                <p className="text-[10px] text-gray-400">Sans boisson, cette section n’apparaît pas. Le choix de chaque invité s’affiche sur la page Invités.</p>
+                <p className="text-[10px] text-gray-400">Sans boisson, cette section n’apparaît pas. Le choix de chaque invité s’affiche sur la page Invités. Classez les boissons par catégorie.</p>
                 {drinks.map((drink, index) => (
-                  <div key={drink.id} className="flex gap-2">
+                  <div key={drink.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
                     <input
                       value={drink.name}
                       onChange={(e) => {
@@ -2062,7 +2064,8 @@ function EditEventContent() {
                         setDrinks(next);
                       }}
                       placeholder="Champagne"
-                      className="min-w-0 flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      aria-label="Nom de la boisson"
+                      className="min-w-0 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <input
                       value={drink.desc}
@@ -2072,14 +2075,29 @@ function EditEventContent() {
                         setDrinks(next);
                       }}
                       placeholder="Un mot court"
-                      className="min-w-0 flex-1 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      aria-label="Description de la boisson"
+                      className="min-w-0 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
-                    <button type="button" onClick={() => setDrinks(drinks.filter((_, i) => i !== index))} className="px-2 text-red-400">✕</button>
+                    <button type="button" onClick={() => setDrinks(drinks.filter((_, i) => i !== index))} className="px-2 text-red-400" aria-label={`Supprimer ${drink.name || 'cette boisson'}`}>✕</button>
+                    <select
+                      value={normalizeDrinkCategory(drink.category)}
+                      onChange={(e) => {
+                        const next = [...drinks];
+                        next[index] = { ...drink, category: normalizeDrinkCategory(e.target.value) };
+                        setDrinks(next);
+                      }}
+                      aria-label={`Catégorie de ${drink.name || 'la boisson'}`}
+                      className="col-span-2 min-w-0 px-2.5 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    >
+                      {DRINK_CATEGORIES.map((category) => (
+                        <option key={category.id} value={category.id}>{category.label}</option>
+                      ))}
+                    </select>
                   </div>
                 ))}
                 <button
                   type="button"
-                  onClick={() => setDrinks([...drinks, { id: crypto.randomUUID(), name: '', desc: '', emoji: '' }])}
+                  onClick={() => setDrinks([...drinks, { id: crypto.randomUUID(), name: '', desc: '', emoji: '', category: 'other' }])}
                   className="w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400"
                 >
                   + Ajouter une boisson

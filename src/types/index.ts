@@ -130,11 +130,14 @@ export interface Branding {
   ogShareImage: string;
 }
 
+export type DrinkCategory = 'water' | 'juice-soda' | 'cocktail' | 'hot' | 'alcoholic' | 'other';
+
 export interface DrinkItem {
   id: string;
   name: string;
   desc: string;
   emoji: string;
+  category?: DrinkCategory;
 }
 
 export interface EventSections {

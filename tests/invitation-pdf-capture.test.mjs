@@ -12,6 +12,8 @@ test('PDF capture CSS shares a fixed page width and prevents animated photo over
   assert.match(css, /\.gallery-flow-track\s*\{[^}]*display:\s*grid !important/s);
   assert.match(css, /\.gallery-flow-group\s*\{\s*display:\s*contents !important/s);
   assert.match(css, /\.dress-marquee-track\s*\{[^}]*animation:\s*none !important/s);
+  assert.match(css, /\.drink-menu-toggle\s*\{\s*display:\s*none !important/s);
+  assert.match(css, /\.drink-menu-more\[hidden\]\s*\{\s*display:\s*block !important/s);
 });
 
 test('PDF capture CSS uses a caller-supplied width consistently', () => {

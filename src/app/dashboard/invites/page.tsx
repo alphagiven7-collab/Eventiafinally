@@ -50,6 +50,10 @@ function tableKey(name: string | null | undefined): string {
   return normalizeTableName(name).toLocaleLowerCase('fr');
 }
 
+function normalizeGuestGroup(group?: string | null): string {
+  return (group || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr');
+}
+
 function familyLabel(side?: GuestFamilySide): string {
   if (side === 'groom') return 'Côté du marié';
   if (side === 'bride') return 'Côté de la mariée';
@@ -124,6 +128,7 @@ function GuestManagementContent() {
   const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
+  const [groupFilter, setGroupFilter] = useState('');
   const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
@@ -239,6 +244,16 @@ function GuestManagementContent() {
 
   // Filtrage
   const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
+  const groupOptions = [...new Map(
+    guests
+      .filter((guest) => guest.event_id === selectedEventId)
+      .map((guest) => guest.group?.trim().replace(/\s+/g, ' '))
+      .filter((group): group is string => Boolean(group))
+      .map((group) => [normalizeGuestGroup(group), group]),
+  ).values()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const activeGroupFilter = groupOptions.some((group) => normalizeGuestGroup(group) === normalizeGuestGroup(groupFilter))
+    ? groupFilter
+    : '';
   const familyFilteredGuests = guests.filter((guest) => {
     if (familyFilter === 'all') return guest.event_id === selectedEventId;
     if (familyFilter === 'unassigned') return guest.event_id === selectedEventId && !guest.family_side;
@@ -252,6 +267,7 @@ function GuestManagementContent() {
   };
   const filteredGuests = familyFilteredGuests.filter(g => {
     if (g.event_id !== selectedEventId) return false;
+    if (activeGroupFilter && normalizeGuestGroup(g.group) !== normalizeGuestGroup(activeGroupFilter)) return false;
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -1358,6 +1374,21 @@ function GuestManagementContent() {
                 <option value="confirmed">Confirmés</option>
                 <option value="declined">Refus</option>
               </select>
+              {groupOptions.length > 0 && (
+                <select
+                  value={activeGroupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  aria-label="Filtrer par groupe"
+                  className="min-w-0 w-40 max-w-[42%] px-2 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Tous les groupes</option>
+                  {groupOptions.map((group) => (
+                    <option key={normalizeGuestGroup(group)} value={group}>
+                      {group} · {guests.filter((guest) => guest.event_id === selectedEventId && normalizeGuestGroup(guest.group) === normalizeGuestGroup(group)).length}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div role="group" aria-label="Filtrer par côté familial" className="flex gap-1 overflow-x-auto rounded-xl border border-gray-100 bg-white p-1 dark:border-gray-700 dark:bg-gray-800">

@@ -8,7 +8,17 @@ import { useToast } from '@/components/ui';
 import { EventWithSettings, Guest, GuestFamilySide, GuestStatus } from '@/types';
 import { fetchInvitationBySlug, fromDatabase, listInvitations, publishInvitation } from '@/lib/events/store';
 import { isCurrentSuperAdmin } from '@/lib/admin/session';
-import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest, type GuestDraft } from '@/lib/guests/store';
+import {
+  addGuest,
+  addGuests,
+  deleteGuest,
+  guestInvitePath,
+  listAllEventGuests,
+  updateGuest,
+  updateGuestsFamilySide,
+  updateGuestsGroup,
+  type GuestDraft,
+} from '@/lib/guests/store';
 import { parseGuestCsv } from '@/lib/guests/csv';
 import { isSupabaseReady } from '@/config/supabase';
 import { createClient } from '@/lib/supabase/client';
@@ -130,6 +140,10 @@ function GuestManagementContent() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
+  const [bulkFamilySide, setBulkFamilySide] = useState<GuestFamilySide | 'unassigned' | ''>('');
+  const [bulkGroupTarget, setBulkGroupTarget] = useState('');
+  const [bulkNewGroupName, setBulkNewGroupName] = useState('');
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -280,6 +294,7 @@ function GuestManagementContent() {
   const selectedGuests = guests.filter((guest) => (
     guest.event_id === selectedEventId && selectedGuestIds.has(guest.id)
   ));
+  const visibleSelectedGuests = filteredGuests.filter((guest) => selectedGuestIds.has(guest.id));
   const filteredGuestsSelected = filteredGuests.length > 0
     && filteredGuests.every((guest) => selectedGuestIds.has(guest.id));
 
@@ -326,6 +341,74 @@ function GuestManagementContent() {
     else filteredGuests.forEach((guest) => nextIds.add(guest.id));
     setGuestSelection({ eventId: selectedEventId, ids: nextIds });
     setShareBatchIndex(0);
+  };
+  const applyBulkFamilySide = async () => {
+    if (!selectedEventId || visibleSelectedGuests.length === 0 || !bulkFamilySide || bulkUpdating) return;
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const side = bulkFamilySide === 'unassigned' ? null : bulkFamilySide;
+    const label = side ? familyLabel(side) : 'aucun côté familial';
+    if (!window.confirm(`Affecter ${visibleSelectedGuests.length} invité(s) à « ${label} » ?`)) return;
+
+    setBulkUpdating(true);
+    try {
+      const result = await updateGuestsFamilySide(
+        createClient(),
+        selectedEventId,
+        visibleSelectedGuests.map((guest) => guest.id),
+        side,
+      );
+      if (result.guests.length > 0) {
+        const updatedGuests = new Map(result.guests.map((guest) => [guest.id, guest]));
+        setGuests((current) => current.map((guest) => updatedGuests.get(guest.id) || guest));
+      }
+      if (result.error) {
+        addToast('error', result.error);
+        return;
+      }
+      setBulkFamilySide('');
+      addToast('success', `Côté familial mis à jour pour ${result.guests.length} invité(s).`);
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Le côté familial n’a pas pu être enregistré.');
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+  const applyBulkGroup = async () => {
+    if (!selectedEventId || visibleSelectedGuests.length === 0 || bulkUpdating) return;
+    const group = bulkGroupTarget === '__no_group__'
+      ? null
+      : bulkGroupTarget === '__new_group__'
+        ? bulkNewGroupName.trim()
+        : bulkGroupTarget;
+    if (!group && bulkGroupTarget !== '__no_group__') return;
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const label = group ? `au groupe « ${group} »` : 'sans groupe';
+    if (!window.confirm(`Affecter ${visibleSelectedGuests.length} invité(s) ${label} ?`)) return;
+
+    setBulkUpdating(true);
+    try {
+      const result = await updateGuestsGroup(
+        createClient(),
+        selectedEventId,
+        visibleSelectedGuests.map((guest) => guest.id),
+        group,
+      );
+      if (result.guests.length > 0) {
+        const updatedGuests = new Map(result.guests.map((guest) => [guest.id, guest]));
+        setGuests((current) => current.map((guest) => updatedGuests.get(guest.id) || guest));
+      }
+      if (result.error) {
+        addToast('error', result.error);
+        return;
+      }
+      setBulkGroupTarget('');
+      setBulkNewGroupName('');
+      addToast('success', `Groupe mis à jour pour ${result.guests.length} invité(s).`);
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Le groupe n’a pas pu être enregistré.');
+    } finally {
+      setBulkUpdating(false);
+    }
   };
 
   useEffect(() => {
@@ -1415,22 +1498,110 @@ function GuestManagementContent() {
             </div>
 
             {guests.length > 0 && (
-              <section className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30" aria-label="Partager les liens personnels sélectionnés">
+              <section className="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800" aria-label="Actions sur la sélection">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-bold text-green-950 dark:text-green-100">Partager des liens à un organisateur</h2>
-                    <p className="mt-1 text-xs text-green-900/80 dark:text-green-200/80">
-                        {selectedGuests.length} invité(s) sélectionné(s). Les sélections restent actives même si vous changez de filtre.
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Actions sur la sélection</h2>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                      {visibleSelectedGuests.length} sélectionné(s) parmi {filteredGuests.length} invité(s) affiché(s)
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={toggleFilteredGuestSelection}
-                    disabled={filteredGuests.length === 0}
-                    className="min-h-10 rounded-lg border border-green-300 bg-white px-3 text-xs font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50 dark:border-green-800 dark:bg-gray-900 dark:text-green-100"
+                    disabled={filteredGuests.length === 0 || bulkUpdating}
+                    className="min-h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-700"
                   >
-                    {filteredGuestsSelected ? 'Désélectionner les résultats' : `Tout sélectionner (${filteredGuests.length})`}
+                    {filteredGuestsSelected ? 'Désélectionner les invités affichés' : `Tout sélectionner (${filteredGuests.length})`}
                   </button>
+                </div>
+                {visibleSelectedGuests.length > 0 && (
+                  <details className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-700">
+                    <summary className="min-h-10 cursor-pointer py-2 text-sm font-semibold text-violet-700 dark:text-violet-300">
+                      Classer les {visibleSelectedGuests.length} invité(s) sélectionné(s)
+                    </summary>
+                    <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label htmlFor="bulk-family-side" className="block text-xs font-semibold text-gray-700 dark:text-gray-200">
+                          Côté familial
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            id="bulk-family-side"
+                            value={bulkFamilySide}
+                            onChange={(event) => setBulkFamilySide(event.target.value as GuestFamilySide | 'unassigned' | '')}
+                            disabled={bulkUpdating}
+                            className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                          >
+                            <option value="">Choisir un côté…</option>
+                            <option value="groom">Côté du marié</option>
+                            <option value="bride">Côté de la mariée</option>
+                            <option value="unassigned">Retirer le côté familial</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void applyBulkFamilySide()}
+                            disabled={!bulkFamilySide || bulkUpdating}
+                            className="min-h-10 shrink-0 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            Affecter
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="bulk-group" className="block text-xs font-semibold text-gray-700 dark:text-gray-200">
+                          Groupe
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            id="bulk-group"
+                            value={bulkGroupTarget}
+                            onChange={(event) => setBulkGroupTarget(event.target.value)}
+                            disabled={bulkUpdating}
+                            className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                          >
+                            <option value="">Choisir un groupe…</option>
+                            {groupOptions.map((group) => (
+                              <option key={normalizeGuestGroup(group)} value={group}>{group}</option>
+                            ))}
+                            <option value="__new_group__">Créer un nouveau groupe…</option>
+                            <option value="__no_group__">Retirer le groupe</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void applyBulkGroup()}
+                            disabled={!bulkGroupTarget || (bulkGroupTarget === '__new_group__' && !bulkNewGroupName.trim()) || bulkUpdating}
+                            className="min-h-10 shrink-0 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            Affecter
+                          </button>
+                        </div>
+                        {bulkGroupTarget === '__new_group__' && (
+                          <input
+                            value={bulkNewGroupName}
+                            onChange={(event) => setBulkNewGroupName(event.target.value)}
+                            disabled={bulkUpdating}
+                            aria-label="Nom du nouveau groupe"
+                            placeholder="Nom du nouveau groupe"
+                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </details>
+                )}
+              </section>
+            )}
+
+            {guests.length > 0 && (
+              <section className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30" aria-label="Partager les liens personnels sélectionnés">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-green-950 dark:text-green-100">Partager des liens à un organisateur</h2>
+                    <p className="mt-1 text-xs text-green-900/80 dark:text-green-200/80">
+                      Sélectionnez les invités à partager dans la liste ci-dessous. Les liens cochés restent actifs même si vous changez de filtre.
+                    </p>
+                  </div>
                 </div>
                 {selectedGuests.length > 0 && (
                   <div className="mt-3 space-y-2">
@@ -1494,7 +1665,7 @@ function GuestManagementContent() {
                               type="checkbox"
                               checked={selectedGuestIds.has(g.id)}
                               onChange={() => toggleGuestSelection(g)}
-                              aria-label={`Sélectionner le lien personnel de ${g.name}`}
+                              aria-label={`Sélectionner ${g.name}`}
                               className="mt-1 h-5 w-5 shrink-0 accent-green-600"
                             />
                             <div className="min-w-0">

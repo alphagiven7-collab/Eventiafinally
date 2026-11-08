@@ -257,6 +257,45 @@ export async function updateGuest(
   return { guest: toGuest(data as GuestRow) };
 }
 
+async function updateGuestsClassification(
+  client: SupabaseClient,
+  eventId: string,
+  guestIds: string[],
+  values: { family_side?: GuestFamilySide | null; group_name?: string | null },
+): Promise<{ guests: Guest[]; error?: string }> {
+  const { data, error } = await client
+    .from('guests')
+    .update(values)
+    .eq('event_id', eventId)
+    .in('id', guestIds)
+    .select('*');
+
+  if (error) return { guests: [], error: explainGuestError(error.message) };
+  const guests = ((data ?? []) as GuestRow[]).map(toGuest);
+  if (guests.length !== guestIds.length) {
+    return { guests, error: 'Certains invités n’ont pas été modifiés. Vérifiez vos droits et réessayez.' };
+  }
+  return { guests };
+}
+
+export function updateGuestsFamilySide(
+  client: SupabaseClient,
+  eventId: string,
+  guestIds: string[],
+  familySide: GuestFamilySide | null,
+): Promise<{ guests: Guest[]; error?: string }> {
+  return updateGuestsClassification(client, eventId, guestIds, { family_side: familySide });
+}
+
+export function updateGuestsGroup(
+  client: SupabaseClient,
+  eventId: string,
+  guestIds: string[],
+  group: string | null,
+): Promise<{ guests: Guest[]; error?: string }> {
+  return updateGuestsClassification(client, eventId, guestIds, { group_name: group });
+}
+
 export async function deleteGuest(client: SupabaseClient, guestId: string): Promise<{ error?: string }> {
   const { error } = await client.from('guests').delete().eq('id', guestId);
   if (error) return { error: explainGuestError(error.message) };

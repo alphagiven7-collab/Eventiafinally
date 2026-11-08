@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
-import { EventWithSettings, Guest, GuestStatus } from '@/types';
+import { EventWithSettings, Guest, GuestFamilySide, GuestStatus } from '@/types';
 import { fetchInvitationBySlug, fromDatabase, listInvitations, publishInvitation } from '@/lib/events/store';
 import { isCurrentSuperAdmin } from '@/lib/admin/session';
 import { addGuest, addGuests, deleteGuest, guestInvitePath, listAllEventGuests, updateGuest, type GuestDraft } from '@/lib/guests/store';
@@ -48,6 +48,12 @@ function drinkLabel(guest: Guest, catalog: { id: string; name: string }[]): stri
 
 function tableKey(name: string | null | undefined): string {
   return normalizeTableName(name).toLocaleLowerCase('fr');
+}
+
+function familyLabel(side?: GuestFamilySide): string {
+  if (side === 'groom') return 'Côté du marié';
+  if (side === 'bride') return 'Côté de la mariée';
+  return 'Côté non précisé';
 }
 
 function csvCell(value: string | number): string {
@@ -118,6 +124,7 @@ function GuestManagementContent() {
   const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
+  const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,6 +138,7 @@ function GuestManagementContent() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newTable, setNewTable] = useState('');
+  const [newFamilySide, setNewFamilySide] = useState<GuestFamilySide | ''>('');
   const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
@@ -146,6 +154,8 @@ function GuestManagementContent() {
     missingTables: string[];
     tableCapacities: Record<string, number>;
   }>(null);
+  const [csvSource, setCsvSource] = useState('');
+  const [importFamilySide, setImportFamilySide] = useState<GuestFamilySide | ''>('');
 
   // WhatsApp template
   const [waTemplate, setWaTemplate] = useState('Bonjour {nom}, voici votre invitation personnelle : {lien}');
@@ -229,7 +239,18 @@ function GuestManagementContent() {
 
   // Filtrage
   const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
-  const filteredGuests = guests.filter(g => {
+  const familyFilteredGuests = guests.filter((guest) => {
+    if (familyFilter === 'all') return guest.event_id === selectedEventId;
+    if (familyFilter === 'unassigned') return guest.event_id === selectedEventId && !guest.family_side;
+    return guest.event_id === selectedEventId && guest.family_side === familyFilter;
+  });
+  const familyCounts = {
+    all: guests.filter((guest) => guest.event_id === selectedEventId).length,
+    groom: guests.filter((guest) => guest.event_id === selectedEventId && guest.family_side === 'groom').length,
+    bride: guests.filter((guest) => guest.event_id === selectedEventId && guest.family_side === 'bride').length,
+    unassigned: guests.filter((guest) => guest.event_id === selectedEventId && !guest.family_side).length,
+  };
+  const filteredGuests = familyFilteredGuests.filter(g => {
     if (g.event_id !== selectedEventId) return false;
     if (filter !== 'all' && g.status !== filter) return false;
     if (search) {
@@ -340,7 +361,6 @@ function GuestManagementContent() {
     const result = await publishInvitation(createClient(), {
       ...selectedEvent,
       tables: next,
-      user_id: user.id,
       is_published: selectedEvent.is_published,
     });
     if (result.error) {
@@ -369,7 +389,7 @@ function GuestManagementContent() {
       addToast('error', 'Complétez la date et le lieu dans la personnalisation avant de publier.');
       return;
     }
-    const result = await publishInvitation(createClient(), { ...full, user_id: user.id, is_published: true });
+    const result = await publishInvitation(createClient(), { ...full, is_published: true });
     setPublishing(false);
     if (result.error) {
       addToast('error', result.error);
@@ -397,6 +417,7 @@ function GuestManagementContent() {
       name: newName,
       phone: newPhone,
       tableNumber: newTable,
+      familySide: newFamilySide || undefined,
       adults: couple ? 2 : 1,
     }, capacity);
     if (result.error || !result.guest) {
@@ -406,6 +427,7 @@ function GuestManagementContent() {
     setGuests((current) => [result.guest!, ...current]);
     setNewName('');
     setNewPhone('');
+    setNewFamilySide('');
     setNewCouple(false);
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
     nameInputRef.current?.focus();
@@ -427,6 +449,24 @@ function GuestManagementContent() {
       return;
     }
     setGuests((list) => list.map((item) => item.id === guest.id ? result.guest! : item));
+  };
+
+  const assignFamilySide = async (guest: Guest, familySide: GuestFamilySide | '') => {
+    const previous = guest.family_side;
+    const updated = { ...guest, family_side: familySide || undefined };
+    setGuests((current) => current.map((item) => item.id === guest.id ? updated : item));
+    if (!isSupabaseReady()) {
+      setGuests((current) => current.map((item) => item.id === guest.id ? guest : item));
+      addToast('error', SUPABASE_REQUIRED);
+      return;
+    }
+    const result = await updateGuest(createClient(), updated);
+    if (result.error || !result.guest) {
+      setGuests((current) => current.map((item) => item.id === guest.id ? { ...item, family_side: previous } : item));
+      addToast('error', result.error || 'Côté familial non enregistré');
+      return;
+    }
+    setGuests((current) => current.map((item) => item.id === guest.id ? result.guest! : item));
   };
 
   const handleRemoveDuplicates = async () => {
@@ -491,12 +531,13 @@ function GuestManagementContent() {
     return names;
   };
 
-  const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    const text = await file.text();
-    const parsed = parseGuestCsv(text, guests.map((guest) => guest.name));
+  const previewCsvText = (text: string, defaultSide = importFamilySide) => {
+    const parsed = parseGuestCsv(
+      text,
+      guests.filter((guest) => guest.event_id === selectedEventId)
+        .map((guest) => ({ name: guest.name, family_side: guest.family_side })),
+      defaultSide || undefined,
+    );
     const knownTables = new Map(tables.map((table) => [tableKey(table.name), table.name]));
     const ready = parsed.ready.map((guest) => {
       if (!guest.tableNumber) return guest;
@@ -511,8 +552,25 @@ function GuestManagementContent() {
     ).values()];
     const tableCapacities = Object.fromEntries(missingTables.map((name) => [name, 8]));
     const { bad, duplicates } = parsed;
-    if (ready.length + bad.length + duplicates.length === 0) return;
+    if (ready.length + bad.length + duplicates.length === 0) {
+      setCsvPreview(null);
+      return;
+    }
     setCsvPreview({ ready, bad, duplicates, missingTables, tableCapacities });
+  };
+
+  const handlePreviewCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const text = await file.text();
+    setCsvSource(text);
+    previewCsvText(text);
+  };
+
+  const changeImportFamilySide = (side: GuestFamilySide | '') => {
+    setImportFamilySide(side);
+    if (csvSource) previewCsvText(csvSource, side);
   };
 
   const confirmCsvImport = async () => {
@@ -547,7 +605,7 @@ function GuestManagementContent() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const header = ['nom', 'telephone', 'groupe', 'email', 'statut', 'adultes', 'enfants', 'table', 'boissons', 'message']
+    const header = ['nom', 'telephone', 'groupe', 'cote_famille', 'email', 'statut', 'adultes', 'enfants', 'table', 'boissons', 'message']
       .map(csvCell)
       .join(',') + '\n';
     const catalog = selectedEvent?.drinks || [];
@@ -555,6 +613,7 @@ function GuestManagementContent() {
       guest.name,
       guest.phone || '',
       guest.group || '',
+      guest.family_side ? familyLabel(guest.family_side) : '',
       guest.email || '',
       guest.status,
       guest.adults || 1,
@@ -1029,6 +1088,16 @@ function GuestManagementContent() {
                     className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
+                <select
+                  aria-label="Côté familial du nouvel invité"
+                  value={newFamilySide}
+                  onChange={(event) => setNewFamilySide(event.target.value as GuestFamilySide | '')}
+                  className="w-full min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Côté familial non précisé</option>
+                  <option value="groom">Famille du marié</option>
+                  <option value="bride">Famille de la mariée</option>
+                </select>
                 <label className="flex items-center gap-2 min-h-11 text-xs text-gray-700 dark:text-gray-200">
                   <input
                     type="checkbox"
@@ -1072,7 +1141,19 @@ function GuestManagementContent() {
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Importer des invités</h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues par leur titre : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, groupe, email, table</code>. Seul le nom est obligatoire. Les séparateurs , et ; sont acceptés.</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Colonnes reconnues : <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">nom, telephone, groupe, cote_famille, email, table</code>. Pour <code>cote_famille</code>, indiquez « marié » ou « mariée ». Les séparateurs , et ; sont acceptés.</p>
+                <label className="mb-3 block text-xs text-gray-700 dark:text-gray-200">
+                  Côté par défaut si le CSV n&apos;a pas de colonne « cote_famille »
+                  <select
+                    value={importFamilySide}
+                    onChange={(event) => changeImportFamilySide(event.target.value as GuestFamilySide | '')}
+                    className="mt-1 w-full min-h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  >
+                    <option value="">Ne pas préciser</option>
+                    <option value="groom">Famille du marié</option>
+                    <option value="bride">Famille de la mariée</option>
+                  </select>
+                </label>
                 <label className="inline-flex min-h-11 items-center px-4 py-2.5 bg-violet-600 text-white rounded-xl text-xs font-medium cursor-pointer hover:bg-violet-700 transition">
                   Choisir un fichier CSV
                   <input type="file" accept=".csv,text/csv" className="hidden" onChange={handlePreviewCSV} />
@@ -1279,6 +1360,29 @@ function GuestManagementContent() {
               </select>
             </div>
 
+            <div role="group" aria-label="Filtrer par côté familial" className="flex gap-1 overflow-x-auto rounded-xl border border-gray-100 bg-white p-1 dark:border-gray-700 dark:bg-gray-800">
+              {([
+                ['all', `Tous · ${familyCounts.all}`],
+                ['groom', `Côté du marié · ${familyCounts.groom}`],
+                ['bride', `Côté de la mariée · ${familyCounts.bride}`],
+                ['unassigned', `Non classés · ${familyCounts.unassigned}`],
+              ] as const).map(([side, label]) => (
+                <button
+                  key={side}
+                  type="button"
+                  aria-pressed={familyFilter === side}
+                  onClick={() => setFamilyFilter(side)}
+                  className={`min-h-10 shrink-0 rounded-lg px-3 text-xs font-semibold transition ${
+                    familyFilter === side
+                      ? 'bg-violet-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {guests.length > 0 && (
               <section className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30" aria-label="Partager les liens personnels sélectionnés">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1364,7 +1468,12 @@ function GuestManagementContent() {
                             />
                             <div className="min-w-0">
                             <p className="font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
-                            <p className="text-[11px] text-gray-500">{g.phone || 'Sans téléphone'}{g.group ? ` · ${g.group}` : ''}</p>
+                            <p className="text-[11px] text-gray-500">
+                              {g.phone || 'Sans téléphone'}{g.group ? ` · Groupe : ${g.group}` : ''}
+                            </p>
+                            <p className={`text-[11px] font-medium ${g.family_side ? 'text-violet-700 dark:text-violet-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                              {familyLabel(g.family_side)}
+                            </p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
                             {drinkLabel(g, selectedEvent?.drinks || []) && (
                               <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
@@ -1397,6 +1506,16 @@ function GuestManagementContent() {
                               </button>
                             )}
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <select
+                              aria-label={`Côté familial de ${g.name}`}
+                              value={g.family_side || ''}
+                              onChange={(event) => void assignFamilySide(g, event.target.value as GuestFamilySide | '')}
+                              className="min-w-0 w-full sm:max-w-xs min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="">Côté non précisé</option>
+                              <option value="groom">Famille du marié</option>
+                              <option value="bride">Famille de la mariée</option>
+                            </select>
                             <select
                               aria-label={`Table de ${g.name}`}
                               value={g.table_number || ''}
@@ -1535,6 +1654,21 @@ function GuestManagementContent() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
                 <input value={editingGuest.group || ''} onChange={(e) => setEditingGuest({ ...editingGuest, group: e.target.value || undefined })}
                   className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Côté familial</label>
+                <select
+                  value={editingGuest.family_side || ''}
+                  onChange={(event) => setEditingGuest({
+                    ...editingGuest,
+                    family_side: (event.target.value || undefined) as GuestFamilySide | undefined,
+                  })}
+                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Côté non précisé</option>
+                  <option value="groom">Famille du marié</option>
+                  <option value="bride">Famille de la mariée</option>
+                </select>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>

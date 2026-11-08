@@ -368,6 +368,19 @@ export async function publishInvitation(
   event: EventWithSettings,
   options?: { shareCover?: string },
 ): Promise<{ error: string | null; id: string }> {
+  let id = isUuid(event.id) ? event.id : '';
+  const existingQuery = supabase.from('events').select('id, user_id');
+  const { data: existing, error: existingError } = await (
+    id
+      ? existingQuery.eq('id', id).maybeSingle()
+      : existingQuery.eq('slug', event.slug).maybeSingle()
+  );
+  if (existingError) return { error: explainWriteError(existingError.message), id: id || event.id };
+  if (existing?.id) id = existing.id;
+  else if (!id) id = crypto.randomUUID();
+
+  const ownerId = existing ? existing.user_id : event.user_id;
+  const ownedEvent = { ...event, user_id: ownerId ?? undefined };
   const musicLength = event.ambiance?.musicUrl?.length || 0;
   if (musicLength > 7_000_000) {
     return {
@@ -375,7 +388,7 @@ export async function publishInvitation(
       id: event.id,
     };
   }
-  const payloadEvent = withoutInlineMusic(slimInvitation(event));
+  const payloadEvent = withoutInlineMusic(slimInvitation(ownedEvent));
   if (JSON.stringify(payloadEvent).length > MAX_PAYLOAD_CHARS) {
     return {
       error: 'Les photos sont trop lourdes pour être publiées. Réduisez la galerie, puis réessayez.',
@@ -383,15 +396,6 @@ export async function publishInvitation(
     };
   }
 
-  let id = isUuid(event.id) ? event.id : '';
-  if (!id) {
-    const { data: existing } = await supabase
-      .from('events')
-      .select('id')
-      .eq('slug', event.slug)
-      .maybeSingle();
-    id = existing?.id || crypto.randomUUID();
-  }
   const now = new Date().toISOString();
   const storedPayload: EventWithSettings = { ...payloadEvent, id, updated_at: now };
   const ambianceToStore = event.ambiance ?? { enabled: false, musicUrl: '', volume: 0.35, hasFile: false };
@@ -409,7 +413,7 @@ export async function publishInvitation(
 
   const eventRow: Record<string, unknown> = {
     id,
-    user_id: event.user_id,
+    user_id: ownerId,
     slug: event.slug,
     title: event.title,
     subtitle: event.subtitle ?? null,

@@ -123,6 +123,131 @@ function GuestMessage({ message }: { message?: string }) {
   );
 }
 
+interface GuestAddFormProps {
+  capacity: number;
+  guestCount: number;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onTableChange: (table: string) => void;
+  onSubmit: (draft: GuestDraft) => Promise<boolean>;
+  tableNumber: string;
+  tableChoiceLabel: (name: string) => string;
+  tables: NonNullable<EventWithSettings['tables']>;
+}
+
+function GuestAddForm({
+  capacity,
+  guestCount,
+  inputRef,
+  onTableChange,
+  onSubmit,
+  tableNumber,
+  tableChoiceLabel,
+  tables,
+}: GuestAddFormProps) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [familySide, setFamilySide] = useState<GuestFamilySide | ''>('');
+  const [couple, setCouple] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      const saved = await onSubmit({
+        name,
+        phone,
+        tableNumber,
+        familySide: familySide || undefined,
+        adults: couple || isCoupleName(name) ? 2 : 1,
+      });
+      if (!saved) return;
+      setName('');
+      setPhone('');
+      onTableChange('');
+      setFamilySide('');
+      setCouple(false);
+      inputRef.current?.focus();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const tableChoices = [...tables.map((table) => table.name)];
+  if (tableNumber && !tableChoices.includes(tableNumber)) tableChoices.push(tableNumber);
+
+  return (
+    <form
+      onSubmit={(event) => void handleSubmit(event)}
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-violet-200 dark:border-violet-900 p-3 space-y-2"
+    >
+      <p className="text-xs text-gray-600 dark:text-gray-300">Écrivez le nom, puis validez. Le téléphone et la table sont facultatifs.</p>
+      <div className="flex gap-2">
+        <input
+          id="guest-name"
+          ref={inputRef}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Nom de l'invité"
+          aria-label="Nom de l'invité"
+          className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        />
+        <button
+          type="submit"
+          disabled={saving}
+          className="shrink-0 min-h-11 px-4 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60"
+        >
+          {saving ? 'Ajout…' : 'Ajouter'}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <select
+          aria-label="Table du nouvel invité"
+          value={tableNumber}
+          onChange={(event) => onTableChange(event.target.value)}
+          className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        >
+          <option value="">Sans table</option>
+          {tableChoices.map((tableName) => (
+            <option key={tableName} value={tableName}>{tableChoiceLabel(tableName)}</option>
+          ))}
+        </select>
+        <input
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          placeholder="Tél. facultatif"
+          inputMode="tel"
+          aria-label="Téléphone, facultatif"
+          className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        />
+      </div>
+      <select
+        aria-label="Côté familial du nouvel invité"
+        value={familySide}
+        onChange={(event) => setFamilySide(event.target.value as GuestFamilySide | '')}
+        className="w-full min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+      >
+        <option value="">Côté familial non précisé</option>
+        <option value="groom">Famille du marié</option>
+        <option value="bride">Famille de la mariée</option>
+      </select>
+      <label className="flex items-center gap-2 min-h-11 text-xs text-gray-700 dark:text-gray-200">
+        <input
+          type="checkbox"
+          checked={couple || isCoupleName(name)}
+          onChange={(event) => setCouple(event.target.checked)}
+          className="w-5 h-5 accent-violet-600"
+        />
+        Couple : une seule invitation, 2 places à table
+      </label>
+      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+        Seul le nom est obligatoire. {guestCount}/{capacity} invitations, dont {TRIAL_INVITATIONS} d&apos;essai. Un couple compte pour une seule invitation.
+      </p>
+    </form>
+  );
+}
+
 function GuestManagementContent() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -139,6 +264,7 @@ function GuestManagementContent() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [guestPage, setGuestPage] = useState(0);
+  const [newTable, setNewTable] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
@@ -155,12 +281,6 @@ function GuestManagementContent() {
   useEffect(() => { eventsRef.current = events; }, [events]);
   const [shareOrigin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
 
-  // Formulaire ajout : seul le nom est obligatoire
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newTable, setNewTable] = useState('');
-  const [newFamilySide, setNewFamilySide] = useState<GuestFamilySide | ''>('');
-  const [newCouple, setNewCouple] = useState(false);
   const [removingDuplicates, setRemovingDuplicates] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
   const [zipFailures, setZipFailures] = useState<{ name: string; reason: string }[]>([]);
@@ -539,29 +659,20 @@ function GuestManagementContent() {
   };
 
   // Ajouter un invité
-  const handleAddGuest = async () => {
-    if (!newName.trim()) { addToast('error', 'Le nom est obligatoire.'); return; }
-    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
-    const couple = newCouple || isCoupleName(newName);
+  const handleAddGuest = async (draft: GuestDraft): Promise<boolean> => {
+    if (!draft.name.trim()) { addToast('error', 'Le nom est obligatoire.'); return false; }
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return false; }
     const result = await addGuest(createClient(), selectedEventId, {
-      name: newName,
-      phone: newPhone,
-      tableNumber: newTable,
-      familySide: newFamilySide || undefined,
-      adults: couple ? 2 : 1,
+      ...draft,
     });
     if (result.error || !result.guest) {
       addToast('error', result.error || 'Invité non enregistré');
-      return;
+      return false;
     }
     setGuests((current) => [result.guest!, ...current]);
     setGuestPage(0);
-    setNewName('');
-    setNewPhone('');
-    setNewFamilySide('');
-    setNewCouple(false);
     addToast('success', `${result.guest.name} ajouté(e). Le lien personnel est prêt.`);
-    nameInputRef.current?.focus();
+    return true;
   };
 
   const assignTable = async (guest: Guest, tableNumber: string) => {
@@ -1176,74 +1287,16 @@ function GuestManagementContent() {
               <ChevronDown className={`w-4 h-4 shrink-0 transition ${openTool === 'add' ? 'rotate-180' : ''}`} />
             </button>
             {openTool === 'add' && (
-              <form
-                onSubmit={(event) => { event.preventDefault(); void handleAddGuest(); }}
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-violet-200 dark:border-violet-900 p-3 space-y-2"
-              >
-                <p className="text-xs text-gray-600 dark:text-gray-300">Écrivez le nom, puis validez. Le téléphone et la table sont facultatifs.</p>
-                <div className="flex gap-2">
-                  <input
-                    id="guest-name"
-                    ref={nameInputRef}
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Nom de l'invité"
-                    aria-label="Nom de l'invité"
-                    className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                  <button type="submit" className="shrink-0 min-h-11 px-4 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition">
-                    Ajouter
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <select
-                    aria-label="Table du nouvel invité"
-                    value={newTable}
-                    onChange={(e) => setNewTable(e.target.value)}
-                    className="min-w-0 flex-1 min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="">Sans table</option>
-                    {tableChoices(newTable).map((name) => {
-                      const table = tables.find((item) => item.name === name);
-                      return (
-                        <option key={name} value={name}>
-                          {table ? `${name} · ${seatsUsed(name)}/${table.seats}` : name}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <input
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="Tél. facultatif"
-                    inputMode="tel"
-                    aria-label="Téléphone, facultatif"
-                    className="min-w-0 w-[42%] min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-                <select
-                  aria-label="Côté familial du nouvel invité"
-                  value={newFamilySide}
-                  onChange={(event) => setNewFamilySide(event.target.value as GuestFamilySide | '')}
-                  className="w-full min-h-11 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Côté familial non précisé</option>
-                  <option value="groom">Famille du marié</option>
-                  <option value="bride">Famille de la mariée</option>
-                </select>
-                <label className="flex items-center gap-2 min-h-11 text-xs text-gray-700 dark:text-gray-200">
-                  <input
-                    type="checkbox"
-                    checked={newCouple || isCoupleName(newName)}
-                    onChange={(e) => setNewCouple(e.target.checked)}
-                    className="w-5 h-5 accent-violet-600"
-                  />
-                  Couple : une seule invitation, 2 places à table
-                </label>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Seul le nom est obligatoire. {guests.length}/{capacity} invitations, dont {TRIAL_INVITATIONS} d&apos;essai. Un couple compte pour une seule invitation.
-                </p>
-              </form>
+              <GuestAddForm
+                capacity={capacity}
+                guestCount={guests.length}
+                inputRef={nameInputRef}
+                onTableChange={setNewTable}
+                onSubmit={handleAddGuest}
+                tableNumber={newTable}
+                tableChoiceLabel={tableChoiceLabel}
+                tables={tables}
+              />
             )}
 
             <div className="grid grid-cols-3 gap-2">

@@ -184,13 +184,9 @@ export async function addGuest(
   client: SupabaseClient,
   eventId: string,
   draft: GuestDraft,
-  limit = guestCapacity(),
 ): Promise<{ guest?: Guest; error?: string }> {
   if (!isUuid(eventId)) return { error: 'Enregistrez d\'abord l\'invitation pour ajouter des invités.' };
   if (!draft.name.trim()) return { error: 'Le nom est obligatoire.' };
-
-  const taken = await countGuests(client, eventId);
-  if (taken >= limit) return { error: freeGuestLimitMessage(limit) };
 
   const { data, error } = await client
     .from('guests')

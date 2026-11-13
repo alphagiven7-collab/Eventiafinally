@@ -1,7 +1,7 @@
 'use client';
 
 import { trackPixelCustom } from '@/lib/analytics/pixel';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui';
@@ -47,8 +47,7 @@ import {
 type Tab = 'overview' | 'guests' | 'tables' | 'drinks' | 'rsvps' | 'exports';
 type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp' | 'duplicates';
 
-function drinkLabel(guest: Guest, catalog: { id: string; name: string }[]): string {
-  const names = new Map(catalog.map((drink) => [drink.id, drink.name]));
+function drinkLabel(guest: Guest, names: ReadonlyMap<string, string>): string {
   return (guest.drink_preferences || '')
     .split(',')
     .map((id) => names.get(id.trim()) || '')
@@ -75,6 +74,7 @@ function csvCell(value: string | number): string {
 }
 
 const MAX_WHATSAPP_SHARE_URL_LENGTH = 1800;
+const GUESTS_PER_PAGE = 50;
 
 function buildWhatsAppShareBatches(
   eventTitle: string,
@@ -137,6 +137,8 @@ function GuestManagementContent() {
   const [shareBatchIndex, setShareBatchIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('guests');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [guestPage, setGuestPage] = useState(0);
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'declined'>('all');
   const [groupFilter, setGroupFilter] = useState('');
   const [familyFilter, setFamilyFilter] = useState<'all' | GuestFamilySide | 'unassigned'>('all');
@@ -245,58 +247,87 @@ function GuestManagementContent() {
   }, [selectedEventId, addToast]);
 
   const selectedEvent = events.find((event) => event.id === selectedEventId);
-
-  // Stats
-  const stats = {
-    total: guests.length,
-    confirmed: guests.filter(g => g.status === 'confirmed').length,
-    declined: guests.filter(g => g.status === 'declined').length,
-    pending: guests.filter(g => g.status === 'pending').length,
-    adults: guests.reduce((s, g) => s + (g.adults || 1), 0),
-    children: guests.reduce((s, g) => s + (g.children || 0), 0),
-  };
-
-  // Filtrage
-  const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
-  const groupOptions = [...new Map(
-    guests
-      .filter((guest) => guest.event_id === selectedEventId)
-      .map((guest) => guest.group?.trim().replace(/\s+/g, ' '))
-      .filter((group): group is string => Boolean(group))
-      .map((group) => [normalizeGuestGroup(group), group]),
-  ).values()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const drinkNames = useMemo(
+    () => new Map((selectedEvent?.drinks || []).map((drink) => [drink.id, drink.name])),
+    [selectedEvent?.drinks],
+  );
+  const eventGuests = useMemo(
+    () => guests.filter((guest) => guest.event_id === selectedEventId),
+    [guests, selectedEventId],
+  );
+  const stats = useMemo(() => ({
+    total: eventGuests.length,
+    confirmed: eventGuests.filter((guest) => guest.status === 'confirmed').length,
+    declined: eventGuests.filter((guest) => guest.status === 'declined').length,
+    pending: eventGuests.filter((guest) => guest.status === 'pending').length,
+    adults: eventGuests.reduce((sum, guest) => sum + (guest.adults || 1), 0),
+    children: eventGuests.reduce((sum, guest) => sum + (guest.children || 0), 0),
+  }), [eventGuests]);
+  const { groupOptions, groupCounts } = useMemo(() => {
+    const groups = new Map<string, { name: string; count: number }>();
+    for (const guest of eventGuests) {
+      const name = guest.group?.trim().replace(/\s+/g, ' ');
+      if (!name) continue;
+      const key = normalizeGuestGroup(name);
+      const current = groups.get(key);
+      if (current) current.count += 1;
+      else groups.set(key, { name, count: 1 });
+    }
+    const sortedGroups = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return {
+      groupOptions: sortedGroups.map((group) => group.name),
+      groupCounts: new Map(sortedGroups.map((group) => [normalizeGuestGroup(group.name), group.count])),
+    };
+  }, [eventGuests]);
   const activeGroupFilter = groupOptions.some((group) => normalizeGuestGroup(group) === normalizeGuestGroup(groupFilter))
     ? groupFilter
     : '';
-  const familyFilteredGuests = guests.filter((guest) => {
-    if (familyFilter === 'all') return guest.event_id === selectedEventId;
-    if (familyFilter === 'unassigned') return guest.event_id === selectedEventId && !guest.family_side;
-    return guest.event_id === selectedEventId && guest.family_side === familyFilter;
-  });
-  const familyCounts = {
-    all: guests.filter((guest) => guest.event_id === selectedEventId).length,
-    groom: guests.filter((guest) => guest.event_id === selectedEventId && guest.family_side === 'groom').length,
-    bride: guests.filter((guest) => guest.event_id === selectedEventId && guest.family_side === 'bride').length,
-    unassigned: guests.filter((guest) => guest.event_id === selectedEventId && !guest.family_side).length,
-  };
-  const filteredGuests = familyFilteredGuests.filter(g => {
-    if (g.event_id !== selectedEventId) return false;
-    if (activeGroupFilter && normalizeGuestGroup(g.group) !== normalizeGuestGroup(activeGroupFilter)) return false;
-    if (filter !== 'all' && g.status !== filter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      const catalog = events.find((event) => event.id === selectedEventId)?.drinks || [];
-      return g.name.toLowerCase().includes(q) || (g.phone || '').includes(q) || (g.email || '').toLowerCase().includes(q) || drinkLabel(g, catalog).toLowerCase().includes(q);
-    }
-    return true;
-  }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
-  const selectedGuestIds = guestSelection.eventId === selectedEventId ? guestSelection.ids : new Set<string>();
-  const selectedGuests = guests.filter((guest) => (
-    guest.event_id === selectedEventId && selectedGuestIds.has(guest.id)
-  ));
-  const visibleSelectedGuests = filteredGuests.filter((guest) => selectedGuestIds.has(guest.id));
-  const filteredGuestsSelected = filteredGuests.length > 0
-    && filteredGuests.every((guest) => selectedGuestIds.has(guest.id));
+  const familyFilteredGuests = useMemo(() => eventGuests.filter((guest) => {
+    if (familyFilter === 'all') return true;
+    if (familyFilter === 'unassigned') return !guest.family_side;
+    return guest.family_side === familyFilter;
+  }), [eventGuests, familyFilter]);
+  const familyCounts = useMemo(() => ({
+    all: eventGuests.length,
+    groom: eventGuests.filter((guest) => guest.family_side === 'groom').length,
+    bride: eventGuests.filter((guest) => guest.family_side === 'bride').length,
+    unassigned: eventGuests.filter((guest) => !guest.family_side).length,
+  }), [eventGuests]);
+  const filteredGuests = useMemo(() => {
+    const query = deferredSearch.trim().toLocaleLowerCase('fr');
+    const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
+    return familyFilteredGuests.filter((guest) => {
+      if (activeGroupFilter && normalizeGuestGroup(guest.group) !== normalizeGuestGroup(activeGroupFilter)) return false;
+      if (filter !== 'all' && guest.status !== filter) return false;
+      if (!query) return true;
+      return guest.name.toLocaleLowerCase('fr').includes(query)
+        || (guest.phone || '').includes(query)
+        || (guest.email || '').toLocaleLowerCase('fr').includes(query)
+        || drinkLabel(guest, drinkNames).toLocaleLowerCase('fr').includes(query);
+    }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
+  }, [activeGroupFilter, deferredSearch, drinkNames, familyFilteredGuests, filter]);
+  const pageCount = Math.max(1, Math.ceil(filteredGuests.length / GUESTS_PER_PAGE));
+  const currentGuestPage = Math.min(guestPage, pageCount - 1);
+  const displayedGuests = filteredGuests.slice(
+    currentGuestPage * GUESTS_PER_PAGE,
+    (currentGuestPage + 1) * GUESTS_PER_PAGE,
+  );
+  const selectedGuestIds = useMemo(
+    () => guestSelection.eventId === selectedEventId ? guestSelection.ids : new Set<string>(),
+    [guestSelection, selectedEventId],
+  );
+  const selectedGuests = useMemo(() => {
+    if (guestSelection.eventId !== selectedEventId) return [];
+    return guests.filter((guest) => guest.event_id === selectedEventId && guestSelection.ids.has(guest.id));
+  }, [guestSelection, guests, selectedEventId]);
+  const visibleSelectedGuests = useMemo(
+    () => filteredGuests.filter((guest) => selectedGuestIds.has(guest.id)),
+    [filteredGuests, selectedGuestIds],
+  );
+  const filteredGuestsSelected = useMemo(
+    () => filteredGuests.length > 0 && filteredGuests.every((guest) => selectedGuestIds.has(guest.id)),
+    [filteredGuests, selectedGuestIds],
+  );
 
   const personalLink = (guest: Guest) => {
     const slug = events.find((event) => event.id === selectedEventId)?.slug || '';
@@ -435,7 +466,7 @@ function GuestManagementContent() {
       .filter((name): name is string => Boolean(name) && !tables.some((table) => tableKey(table.name) === tableKey(name)))
       .map((name) => [tableKey(name), name]),
   ).values()];
-  const duplicateIds = duplicateIdsToRemove(guests);
+  const duplicateIds = useMemo(() => duplicateIdsToRemove(guests), [guests]);
   const duplicateGroups = (() => {
     const grouped = new Map<string, Guest[]>();
     for (const guest of guests) {
@@ -518,12 +549,13 @@ function GuestManagementContent() {
       tableNumber: newTable,
       familySide: newFamilySide || undefined,
       adults: couple ? 2 : 1,
-    }, capacity);
+    });
     if (result.error || !result.guest) {
       addToast('error', result.error || 'Invité non enregistré');
       return;
     }
     setGuests((current) => [result.guest!, ...current]);
+    setGuestPage(0);
     setNewName('');
     setNewPhone('');
     setNewFamilySide('');
@@ -623,7 +655,10 @@ function GuestManagementContent() {
   const capacity = selectedEvent
     ? (selectedEvent.guestLimit ?? guestCapacity(selectedEvent.guestPack))
     : guestCapacity();
-  const withoutTable = guests.filter((guest) => !guest.table_number?.trim());
+  const withoutTable = useMemo(
+    () => guests.filter((guest) => !guest.table_number?.trim()),
+    [guests],
+  );
   const tableChoices = (current?: string) => {
     const names = tables.map((table) => table.name);
     if (current && !names.includes(current)) names.push(current);
@@ -707,7 +742,6 @@ function GuestManagementContent() {
     const header = ['nom', 'telephone', 'groupe', 'cote_famille', 'email', 'statut', 'adultes', 'enfants', 'table', 'boissons', 'message']
       .map(csvCell)
       .join(',') + '\n';
-    const catalog = selectedEvent?.drinks || [];
     const rows = guests.map((guest) => [
       guest.name,
       guest.phone || '',
@@ -718,7 +752,7 @@ function GuestManagementContent() {
       guest.adults || 1,
       guest.children || 0,
       guest.table_number || '',
-      drinkLabel(guest, catalog),
+      drinkLabel(guest, drinkNames),
       guest.message || '',
     ].map(csvCell).join(',')).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
@@ -1108,7 +1142,7 @@ function GuestManagementContent() {
               ) : (
                 <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                   {guests.map((guest) => {
-                    const chosen = drinkLabel(guest, selectedEvent?.drinks || []);
+                    const chosen = drinkLabel(guest, drinkNames);
                     return (
                       <li key={guest.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{guest.name}</span>
@@ -1447,9 +1481,9 @@ function GuestManagementContent() {
             )}
 
             <div className="flex gap-2">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un invité"
+              <input value={search} onChange={(e) => { setSearch(e.target.value); setGuestPage(0); }} placeholder="Rechercher un invité"
                 className="min-w-0 flex-1 px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-              <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'declined')}
+              <select value={filter} onChange={(e) => { setFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'declined'); setGuestPage(0); }}
                 aria-label="Filtrer par statut"
                 className="min-w-0 w-28 px-2 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                 <option value="all">Tous</option>
@@ -1460,14 +1494,14 @@ function GuestManagementContent() {
               {groupOptions.length > 0 && (
                 <select
                   value={activeGroupFilter}
-                  onChange={(e) => setGroupFilter(e.target.value)}
+                  onChange={(e) => { setGroupFilter(e.target.value); setGuestPage(0); }}
                   aria-label="Filtrer par groupe"
                   className="min-w-0 w-40 max-w-[42%] px-2 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Tous les groupes</option>
                   {groupOptions.map((group) => (
                     <option key={normalizeGuestGroup(group)} value={group}>
-                      {group} · {guests.filter((guest) => guest.event_id === selectedEventId && normalizeGuestGroup(guest.group) === normalizeGuestGroup(group)).length}
+                      {group} · {groupCounts.get(normalizeGuestGroup(group)) || 0}
                     </option>
                   ))}
                 </select>
@@ -1485,7 +1519,7 @@ function GuestManagementContent() {
                   key={side}
                   type="button"
                   aria-pressed={familyFilter === side}
-                  onClick={() => setFamilyFilter(side)}
+                  onClick={() => { setFamilyFilter(side); setGuestPage(0); }}
                   className={`min-h-10 shrink-0 rounded-lg px-3 text-xs font-semibold transition ${
                     familyFilter === side
                       ? 'bg-violet-600 text-white'
@@ -1657,7 +1691,7 @@ function GuestManagementContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                      {filteredGuests.map(g => (
+                      {displayedGuests.map(g => (
                         <article key={g.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
                             <div className="flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-start gap-2">
@@ -1677,8 +1711,8 @@ function GuestManagementContent() {
                               {familyLabel(g.family_side)}
                             </p>
                             <p className="text-[11px] text-gray-400">{g.adults || 1} adulte(s){g.children > 0 ? ` · ${g.children} enfant(s)` : ''}{seatsAtTable(g) >= 2 ? ` · ${seatsAtTable(g)} places à la table` : ''}{g.checked_in_at ? ' · En salle' : ''}</p>
-                            {drinkLabel(g, selectedEvent?.drinks || []) && (
-                              <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
+                            {drinkLabel(g, drinkNames) && (
+                              <p className="text-[11px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, drinkNames)}</p>
                             )}
                             <GuestMessage message={g.message} />
                             </div>
@@ -1764,6 +1798,29 @@ function GuestManagementContent() {
                             </div>
                         </article>
                       ))}
+                {filteredGuests.length > GUESTS_PER_PAGE && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-xs dark:bg-gray-800">
+                    <button
+                      type="button"
+                      onClick={() => setGuestPage((page) => Math.max(0, page - 1))}
+                      disabled={currentGuestPage === 0}
+                      className="min-h-10 rounded-lg border border-gray-200 px-3 font-semibold text-gray-700 disabled:opacity-40 dark:border-gray-600 dark:text-gray-200"
+                    >
+                      Précédent
+                    </button>
+                    <span className="text-center text-gray-600 dark:text-gray-300">
+                      {currentGuestPage * GUESTS_PER_PAGE + 1}–{Math.min((currentGuestPage + 1) * GUESTS_PER_PAGE, filteredGuests.length)} sur {filteredGuests.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGuestPage((page) => Math.min(pageCount - 1, page + 1))}
+                      disabled={currentGuestPage >= pageCount - 1}
+                      className="min-h-10 rounded-lg border border-gray-200 px-3 font-semibold text-gray-700 disabled:opacity-40 dark:border-gray-600 dark:text-gray-200"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1789,8 +1846,8 @@ function GuestManagementContent() {
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{g.name}</p>
                         <p className="text-[10px] text-gray-400">{g.adults || 1} adulte(s) {g.children > 0 ? `· ${g.children} enfant(s)` : ''}</p>
-                        {drinkLabel(g, selectedEvent?.drinks || []) && (
-                          <p className="text-[10px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, selectedEvent?.drinks || [])}</p>
+                        {drinkLabel(g, drinkNames) && (
+                          <p className="text-[10px] text-violet-700 dark:text-violet-300">Boisson : {drinkLabel(g, drinkNames)}</p>
                         )}
                         <GuestMessage message={g.message} />
                       </div>

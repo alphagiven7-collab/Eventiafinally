@@ -298,6 +298,21 @@ export async function deleteGuest(client: SupabaseClient, guestId: string): Prom
   return {};
 }
 
+export async function deleteGuests(
+  client: SupabaseClient,
+  eventId: string,
+  guestIds: string[],
+): Promise<{ error?: string }> {
+  if (guestIds.length === 0) return {};
+  const { error } = await client
+    .from('guests')
+    .delete()
+    .eq('event_id', eventId)
+    .in('id', guestIds);
+  if (error) return { error: explainGuestError(error.message) };
+  return {};
+}
+
 export async function lookupGuestByToken(client: SupabaseClient, token: string): Promise<PublicGuest | null> {
   const { data, error } = await client.rpc('lookup_guest_by_token', { p_token: token });
   if (error || !Array.isArray(data) || data.length === 0) return null;

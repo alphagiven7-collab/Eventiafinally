@@ -12,6 +12,7 @@ import {
   addGuest,
   addGuests,
   deleteGuest,
+  deleteGuests,
   guestInvitePath,
   listAllEventGuests,
   updateGuest,
@@ -272,6 +273,7 @@ function GuestManagementContent() {
   const [bulkGroupTarget, setBulkGroupTarget] = useState('');
   const [bulkNewGroupName, setBulkNewGroupName] = useState('');
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [openTool, setOpenTool] = useState<GuestTool | null>(null);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -738,7 +740,41 @@ function GuestManagementContent() {
     const result = await deleteGuest(createClient(), id);
     if (result.error) { addToast('error', result.error); return; }
     setGuests((current) => current.filter((guest) => guest.id !== id));
+    setGuestSelection((current) => {
+      if (current.eventId !== selectedEventId || !current.ids.has(id)) return current;
+      const ids = new Set(current.ids);
+      ids.delete(id);
+      return { ...current, ids };
+    });
     addToast('success', 'Invité supprimé');
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!selectedEventId || selectedGuests.length === 0 || bulkDeleting) return;
+    if (!isSupabaseReady()) { addToast('error', SUPABASE_REQUIRED); return; }
+    const confirmed = window.confirm(
+      `Supprimer définitivement les ${selectedGuests.length} invité(s) sélectionné(s) ? Cette action est irréversible.`,
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const ids = selectedGuests.map((guest) => guest.id);
+      const result = await deleteGuests(createClient(), selectedEventId, ids);
+      if (result.error) {
+        addToast('error', result.error);
+        return;
+      }
+      const deletedIds = new Set(ids);
+      setGuests((current) => current.filter((guest) => !deletedIds.has(guest.id)));
+      setGuestSelection({ eventId: selectedEventId, ids: new Set() });
+      setShareBatchIndex(0);
+      addToast('success', `${ids.length} invité(s) supprimé(s).`);
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Les invités sélectionnés n’ont pas pu être supprimés.');
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   // Modifier statut
@@ -1595,11 +1631,24 @@ function GuestManagementContent() {
                   <button
                     type="button"
                     onClick={toggleFilteredGuestSelection}
-                    disabled={filteredGuests.length === 0 || bulkUpdating}
+                    disabled={filteredGuests.length === 0 || bulkUpdating || bulkDeleting}
                     className="min-h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-700"
                   >
                     {filteredGuestsSelected ? 'Désélectionner les invités affichés' : `Tout sélectionner (${filteredGuests.length})`}
                   </button>
+                  {selectedGuests.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteSelected()}
+                      disabled={bulkDeleting || bulkUpdating}
+                      className="min-h-10 rounded-lg bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-600"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {bulkDeleting ? 'Suppression…' : `Supprimer les ${selectedGuests.length} sélectionné(s)`}
+                      </span>
+                    </button>
+                  )}
                 </div>
                 {visibleSelectedGuests.length > 0 && (
                   <details className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-700">
@@ -1751,6 +1800,7 @@ function GuestManagementContent() {
                               type="checkbox"
                               checked={selectedGuestIds.has(g.id)}
                               onChange={() => toggleGuestSelection(g)}
+                              disabled={bulkDeleting}
                               aria-label={`Sélectionner ${g.name}`}
                               className="mt-1 h-5 w-5 shrink-0 accent-green-600"
                             />

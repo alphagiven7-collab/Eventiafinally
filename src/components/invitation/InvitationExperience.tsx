@@ -4145,7 +4145,7 @@ function getOriginalHTML(): string {
       </footer>
       <div id="offline-invitation-bar" style="position:sticky;bottom:12px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 16px 20px;">
         <button id="save-offline-btn" type="button" style="min-height:40px;padding:0 14px;border-radius:999px;background:var(--rsvp-color, #5b21b6);color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Installer l’application</button>
-        <a href="/create/wedding" style="min-height:40px;padding:0 14px;border-radius:999px;background:white;color:#5b21b6;border:1px solid #c4b5fd;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(91,33,182,0.1);">Créer mon invitation avec Eventia</a>
+        <a href="/create/wedding" style="min-height:40px;padding:0 14px;border-radius:999px;background:var(--rsvp-color, #5b21b6);color:white;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,0.16);">Créer mon invitation avec Eventia</a>
       </div>
     </main>
     <div id="gallery-lightbox" class="gallery-lightbox" hidden>

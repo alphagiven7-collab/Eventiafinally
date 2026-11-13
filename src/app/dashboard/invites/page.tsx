@@ -415,7 +415,6 @@ function GuestManagementContent() {
   }), [eventGuests]);
   const filteredGuests = useMemo(() => {
     const query = deferredSearch.trim().toLocaleLowerCase('fr');
-    const statusOrder: Record<GuestStatus, number> = { confirmed: 0, pending: 1, declined: 2 };
     return familyFilteredGuests.filter((guest) => {
       if (activeGroupFilter && normalizeGuestGroup(guest.group) !== normalizeGuestGroup(activeGroupFilter)) return false;
       if (filter !== 'all' && guest.status !== filter) return false;
@@ -424,7 +423,7 @@ function GuestManagementContent() {
         || (guest.phone || '').includes(query)
         || (guest.email || '').toLocaleLowerCase('fr').includes(query)
         || drinkLabel(guest, drinkNames).toLocaleLowerCase('fr').includes(query);
-    }).sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, 'fr'));
+    }).sort((a, b) => b.created_at.localeCompare(a.created_at));
   }, [activeGroupFilter, deferredSearch, drinkNames, familyFilteredGuests, filter]);
   const pageCount = Math.max(1, Math.ceil(filteredGuests.length / GUESTS_PER_PAGE));
   const currentGuestPage = Math.min(guestPage, pageCount - 1);

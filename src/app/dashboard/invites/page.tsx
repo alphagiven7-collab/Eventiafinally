@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 
 type Tab = 'overview' | 'guests' | 'tables' | 'drinks' | 'rsvps' | 'exports';
-type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp' | 'duplicates';
+type GuestTool = 'add' | 'import' | 'tables' | 'whatsapp';
 
 function drinkLabel(guest: Guest, names: ReadonlyMap<string, string>): string {
   return (guest.drink_preferences || '')
@@ -262,6 +262,7 @@ function GuestManagementContent() {
   });
   const [shareBatchIndex, setShareBatchIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('guests');
+  const [advancedGuestToolsOpen, setAdvancedGuestToolsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [guestPage, setGuestPage] = useState(0);
@@ -1357,7 +1358,31 @@ function GuestManagementContent() {
               ))}
             </div>
 
-            {pdfZipControls}
+            <button
+              type="button"
+              aria-expanded={advancedGuestToolsOpen}
+              onClick={() => setAdvancedGuestToolsOpen((open) => !open)}
+              className={`w-full min-h-11 px-4 rounded-xl text-sm font-semibold inline-flex items-center justify-between gap-2 ${
+                advancedGuestToolsOpen
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100'
+              }`}
+            >
+              <span className="text-left">
+                <span className="block">Plus d’actions</span>
+                <span className={`block text-[11px] font-normal ${advancedGuestToolsOpen ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
+                  PDF · doublons · sélection · partage
+                  {selectedGuests.length > 0 ? ` · ${selectedGuests.length} sélectionné(s)` : ''}
+                  {duplicateIds.length > 0 ? ` · ${duplicateIds.length} doublon(s)` : ''}
+                </span>
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition ${advancedGuestToolsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {advancedGuestToolsOpen && (
+              <div id="advanced-guest-tools" className="space-y-3">
+                {pdfZipControls}
+              </div>
+            )}
 
             {openTool === 'import' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
@@ -1518,20 +1543,7 @@ function GuestManagementContent() {
               </div>
             )}
 
-            <button
-              type="button"
-              aria-expanded={openTool === 'duplicates'}
-              onClick={() => setOpenTool((current) => current === 'duplicates' ? null : 'duplicates')}
-              className={`w-full min-h-11 px-4 rounded-xl text-sm font-semibold inline-flex items-center justify-between gap-2 ${
-                openTool === 'duplicates'
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100'
-              }`}
-            >
-              <span>Supprimer les doublons{duplicateIds.length > 0 ? ` · ${duplicateIds.length}` : ''}</span>
-              <ChevronDown className={`w-4 h-4 shrink-0 transition ${openTool === 'duplicates' ? 'rotate-180' : ''}`} />
-            </button>
-            {openTool === 'duplicates' && (
+            {advancedGuestToolsOpen && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
                 <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">Noms en double</h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
@@ -1619,7 +1631,7 @@ function GuestManagementContent() {
               ))}
             </div>
 
-            {guests.length > 0 && (
+            {advancedGuestToolsOpen && guests.length > 0 && (
               <section className="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800" aria-label="Actions sur la sélection">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -1728,7 +1740,7 @@ function GuestManagementContent() {
               </section>
             )}
 
-            {guests.length > 0 && (
+            {advancedGuestToolsOpen && guests.length > 0 && (
               <section className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30" aria-label="Partager les liens personnels sélectionnés">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
